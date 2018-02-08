@@ -5,7 +5,7 @@ module dsi_lane
     input  wire         clk_base_latch  ,      // clk_base, duty cycle 15%
     input  wire         reset_n         ,      // async reset
     input  wire         data_type       ,      // 0 - lp data, 1- hs data
-    input  wire         end_of_frame    ,
+    input  wire         end_of_frame    ,      // end of frame strobe. Indicates the need to get to lp state
     input  wire         data_write      ,
     input  wire         dummy_frame     , 	// flag that current frame contains no valid data
     input  wire [7:0]   data_input      ,
