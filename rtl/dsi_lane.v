@@ -10,7 +10,7 @@ module dsi_lane
     input  wire         dummy_frame     , 	// flag that current frame contains no valid data
     input  wire [7:0]   data_input      ,
 
-    output wire         data_ready      ,	// Shows the need to load a new data. During burst write it is critical to load data on the same clock
+    output wire         data_request    ,	// Shows the need to load a new data. During burst write it is critical to load data on the same clock
     output wire         active          , 	// Shows that transmition in progress
 
     output wire         serial_data_out ,
@@ -45,46 +45,21 @@ reg [3:0]   next_state;
 
 /* Input data buffers */
 
-reg [10:0]  pre_buff;
 reg [10:0]  buff;
-reg         prebuff_full;
 reg         buff_full;
-reg         data_ready_reg;
 
-wire        write_prebuff;
-wire        write_buff;
 wire        read_buff;
-
-assign      write_prebuff   = data_write && (!prebuff_full || write_buff);
-assign      write_buff      = prebuff_full && (!buff_full || read_buff);
-
-always @(posedge clk_base or negedge reset_n)
-    if(!reset_n)              pre_buff <= 11'b0;
-    else if(write_prebuff)    pre_buff <= {data_type, end_of_frame, dummy_frame, data_input};
 
 always @(posedge clk_base or negedge reset_n)
     if(!reset_n)            buff <= 11'b0;
-    else if(write_buff)     buff <= pre_buff;
-
-always @(posedge clk_base or negedge reset_n)
-    if(!reset_n)            prebuff_full <= 1'b0;
-    else if(write_prebuff)  prebuff_full <= 1'b1;
-    else if(write_buff)     prebuff_full <= 1'b0;
+    else if(data_write)     buff <= {data_type, end_of_frame, dummy_frame, data_input};
 
 always @(posedge clk_base or negedge reset_n)
     if(!reset_n)            buff_full <= 1'b0;
-    else if(write_buff)     buff_full <= 1'b1;
+    else if(data_write)     buff_full <= 1'b1;
     else if(read_buff)      buff_full <= 1'b0;
 
-always @(posedge clk_base or negedge reset_n)
-    if(!reset_n)                                                                        data_ready_reg <= 1'b1;
-    else if(((buff_full && prebuff_full || data_write && write_buff) && !read_buff))    data_ready_reg <= 1'b0;
-    else                                                                                data_ready_reg <= 1'b1;
-
-assign data_ready = 	(!buff_full && !prebuff_full) ||
-			(prebuff_full && !buff_full) || 
-			(!prebuff_full && buff_full) ||
-			(buff_full && prebuff_full && read_buff);
+assign data_request = !buff_full || (buff_full && read_buff);
 
 /* timeouts */
 localparam [7:0] HS_STATE_LPX_LENGHT    = 8'd10;
@@ -169,7 +144,7 @@ begin
     endcase
 end
 
-assign read_buff    = (current_state == STATE_HS_TRNSM);
+assign read_buff    = (current_state == STATE_HS_TRNSM) || (current_state == STATE_HS_SYNC);
 assign active       = (current_state != STATE_LP_STOP);
 
 wire [1:0]  lp_lines;
