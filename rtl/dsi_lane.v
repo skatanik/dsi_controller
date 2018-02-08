@@ -82,8 +82,8 @@ always @(posedge clk_base or negedge reset_n)
     else                                                                                data_ready_reg <= 1'b1;
 
 assign data_ready = 	(!buff_full && !prebuff_full) ||
-			(prebuff_full && !buff_full && !data_write) || 
-			(!prebuff_full && buff_full && !data_write) ||
+			(prebuff_full && !buff_full) || 
+			(!prebuff_full && buff_full) ||
 			(buff_full && prebuff_full && read_buff);
 
 /* timeouts */
