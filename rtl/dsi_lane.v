@@ -80,7 +80,8 @@ always @(posedge clk_base or negedge reset_n)
 
 assign data_ready = 	(!buff_full && !prebuff_full) ||
 			(prebuff_full && !buff_full && !data_write) || 
-			(!prebuff_full && buff_full && !data_write);
+			(!prebuff_full && buff_full && !data_write) ||
+			(buff_full && prebuff_full && read_buff);
 
 /* timeouts */
 localparam [7:0] HS_STATE_LPX_LENGHT    = 8'd10;
