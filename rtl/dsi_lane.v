@@ -7,11 +7,11 @@ module dsi_lane
     input  wire         data_type       ,      // 0 - lp data, 1- hs data
     input  wire         end_of_frame    ,
     input  wire         data_write      ,
-    input  wire         dummy_frame     ,
+    input  wire         dummy_frame     , 	// flag that current frame contains no valid data
     input  wire [7:0]   data_input      ,
 
-    output wire         data_ready      ,
-    output wire         active          ,
+    output wire         data_ready      ,	// Shows the need to load a new data. During burst write it is critical to load data on the same clock
+    output wire         active          , 	// Shows that transmition in progress
 
     output wire         serial_data_out ,
     output wire         lp_out_p        ,
@@ -19,7 +19,10 @@ module dsi_lane
 );
 
 localparam [7:0] SYNC_PATTERN = 8'b00011101;
-
+localparam DATA_TYPE_IND = 10;
+localparam EOF_IND = 9;	
+localparam DUMMY_FRAME_IND = 8;
+	
 /* FSM Declararion */
 
 localparam [3:0] STATE_LP_STOP      = 4'd0;
@@ -119,7 +122,7 @@ begin
     case (current_state)
 
         STATE_LP_STOP:
-            next_state = buff_full ? (buff[10] ? (STATE_HS_LPX) : (STATE_LP_RQST)) : STATE_LP_STOP;
+            next_state = buff_full ? (buff[DATA_TYPE_IND] ? (STATE_HS_LPX) : (STATE_LP_RQST)) : STATE_LP_STOP;
 
         STATE_LP_RQST:
             next_state = STATE_LP_RQST;
@@ -149,10 +152,10 @@ begin
             next_state = timeout_activated ? STATE_HS_SYNC : STATE_HS_ZERO;
 
         STATE_HS_SYNC:
-            next_state = buff[8] ? STATE_HS_TRNSM : STATE_HS_TRAIL;
+            next_state = !buff[DUMMY_FRAME_IND] ? STATE_HS_TRNSM : STATE_HS_TRAIL;
 
         STATE_HS_TRNSM:
-            next_state = buff[9] ? STATE_HS_TRAIL : STATE_HS_TRNSM;
+            next_state = buff[EOF_IND] ? STATE_HS_TRAIL : STATE_HS_TRNSM;
 
         STATE_HS_TRAIL:
             next_state = timeout_activated ? STATE_HS_EXIT : STATE_HS_TRAIL;
