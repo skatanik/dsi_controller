@@ -78,7 +78,9 @@ always @(posedge clk_base or negedge reset_n)
     else if(((buff_full && prebuff_full || data_write && write_buff) && !read_buff))    data_ready_reg <= 1'b0;
     else                                                                                data_ready_reg <= 1'b1;
 
-assign data_ready = data_ready_reg;
+assign data_ready = 	(!buff_full && !prebuff_full) ||
+			(prebuff_full && !buff_full && !data_write) || 
+			(!prebuff_full && buff_full && !data_write);
 
 /* timeouts */
 localparam [7:0] HS_STATE_LPX_LENGHT    = 8'd10;
