@@ -20,9 +20,9 @@ module dsi_lane
 
 localparam [7:0] SYNC_PATTERN = 8'b00011101;
 localparam DATA_TYPE_IND = 10;
-localparam EOF_IND = 9;	
+localparam EOF_IND = 9;
 localparam DUMMY_FRAME_IND = 8;
-	
+
 /* FSM Declararion */
 
 localparam [3:0] STATE_LP_STOP      = 4'd0;
@@ -62,11 +62,11 @@ always @(posedge clk_base or negedge reset_n)
 assign data_request = !buff_full || (buff_full && read_buff);
 
 /* timeouts */
-localparam [7:0] HS_STATE_LPX_LENGHT    = 8'd10;
-localparam [7:0] HS_STATE_PRPR_LENGHT   = 8'd10; // 38 - 95 ns
-localparam [7:0] HS_STATE_ZERO_LENGHT   = 8'd10; // 205 - 262 ns min
-localparam [7:0] HS_STATE_TRAIL_LENGHT  = 8'd10;
-localparam [7:0] HS_STATE_EXIT_LENGHT   = 8'd10;
+localparam [7:0] HS_STATE_LPX_LENGHT    = 8'd2;
+localparam [7:0] HS_STATE_PRPR_LENGHT   = 8'd2; // 38 - 95 ns
+localparam [7:0] HS_STATE_ZERO_LENGHT   = 8'd2; // 205 - 262 ns min
+localparam [7:0] HS_STATE_TRAIL_LENGHT  = 8'd2;
+localparam [7:0] HS_STATE_EXIT_LENGHT   = 8'd2;
 
 wire [7:0] timeout_value;
 
@@ -177,8 +177,9 @@ wire [7:0] data_out;
 reg  [7:0] trail_sequence;
 
 always @(posedge clk_base or negedge reset_n)
-    if(!reset_n)        trail_sequence <= 8'b0;
-    else if(buff[9])    trail_sequence <= !({8{buff[0]}});
+    if(!reset_n)                trail_sequence <= 8'b0;
+    else if(buff[0])            trail_sequence <= ({8{1'b1}});
+    else                        trail_sequence <= ({8{1'b0}});
 
 assign data_out = (current_state == STATE_HS_SYNC) ? SYNC_PATTERN : ((current_state == STATE_HS_TRAIL) ? trail_sequence : ( (current_state == STATE_HS_ZERO) ? 8'b0 : ( (current_state == STATE_HS_TRNSM) ? buff : 8'b0)));
 
