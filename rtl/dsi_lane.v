@@ -10,7 +10,7 @@ module dsi_lane
     input  wire         dummy_frame     , 	// flag that current frame contains no valid data
     input  wire [7:0]   data_input      ,
 
-    output wire         data_request    ,	// Shows the need to load a new data. During burst write it is critical to load data on the same clock
+    output wire         data_request    ,	// Shows the need to load new data. During burst write it is critical to load data on the same clock
     output wire         active          , 	// Shows that transmition in progress
 
     output wire         serial_data_out ,
