@@ -59,7 +59,8 @@ always @(posedge clk_base or negedge reset_n)
     else if(data_write)     buff_full <= 1'b1;
     else if(read_buff)      buff_full <= 1'b0;
 
-assign data_request = !buff_full || (buff_full && read_buff);
+	assign data_request = (!buff_full || (buff_full && read_buff) && ((current_state == STATE_HS_SYNC) || 
+									  (current_state == STATE_HS_TRNSM));
 
 /* timeouts */
 localparam [7:0] HS_STATE_LPX_LENGHT    = 8'd2;
