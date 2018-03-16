@@ -69,45 +69,32 @@ reg [15:0] crc_result;
 always @(posedge clk, negedge reset_n)
     if(!reset_n)            crc_result <= 16'hffff;
     else if(clear)          crc_result <= 16'hffff;
-    else if(data_write)     crc_result <= crc_out_1;
+    else if(data_write)     crc_result <= crc_out[bytes_number];
 
-wire [15:0] crc_out_1;
-wire [15:0] crc_out_2;
-wire [15:0] crc_out_3;
-wire [15:0] crc_out_4;
-
-wire [15:0] block_4_input;
-wire [15:0] block_3_input;
-wire [15:0] block_2_input;
-wire [15:0] block_1_input;
-
-assign block_4_input     = crc_result;
-assign block_3_input     = (bytes_number == 2'b10) ? crc_result : crc_out_4;
-assign block_2_input     = (bytes_number == 2'b01) ? crc_result : crc_out_3;
-assign block_1_input     = (bytes_number == 2'b00) ? crc_result : crc_out_2;
+wire [15:0] crc_out[0:3];
 
 byte_crc crc_out_1(
     .data_in    (data_input[7:0]    ),
-    .crc_in     (block_1_input      ),
-    .crc_res    (crc_out_1          )
+    .crc_in     (crc_result         ),
+    .crc_res    (crc_out[0]          )
     );
 
 byte_crc crc_out_2(
-    .data_in    (data_input[15:8]   ),
-    .crc_in     (block_2_input      ),
-    .crc_res    (crc_out_2          )
+    .data_in    (data_input[15:8]    ),
+    .crc_in     (crc_out[0]          ),
+    .crc_res    (crc_out[1]          )
     );
 
 byte_crc crc_out_3(
-    .data_in    (data_input[23:16]  ),
-    .crc_in     (block_3_input      ),
-    .crc_res    (crc_out_3          )
+    .data_in    (data_input[23:16]   ),
+    .crc_in     (crc_out[1]          ),
+    .crc_res    (crc_out[2]          )
     );
 
 byte_crc crc_out_4(
     .data_in    (data_input[31:24]  ),
-    .crc_in     (block_4_input      ),
-    .crc_res    (crc_out_4          )
+    .crc_in     (crc_out[2]         ),
+    .crc_res    (crc_out[3]         )
     );
 
 endmodule
