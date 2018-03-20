@@ -61,7 +61,8 @@ module crc_calculator
         input  wire [1:0]    bytes_number   ,   // bytes number. 0 means that only the first byte from data_input will be used. 1 means that first 2 bytes from data_input will be used etc.
         input  wire [31:0]   data_input     ,
  
-        output wire [15:0]   crc_output
+        output wire [15:0]   crc_output_curr, 
+        output wire [15:0]   crc_output_prev,
     );
 
 reg [15:0] crc_result;
