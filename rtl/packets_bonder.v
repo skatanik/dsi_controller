@@ -41,7 +41,6 @@ reg         temp_buffer_1_full;
 reg         data_is_header;
 reg [15:0]  reading_cycles_left;
 reg         fifo_data_valid;
-reg         skip_fifo_reading_reg;
 reg [1:0]   bytes_in_last_word;
 reg         one_cycle_for_crc;
 reg [15:0]  data_bytes_left;
@@ -98,7 +97,7 @@ always @(`DSI_CLK_RST(clk, reset_n))
 always @(`DSI_CLK_RST(clk, reset_n))
     if(`DSI_RST(reset_n))                                                       data_is_header <= 1'b1;
     else if(read_lp_header && |fifo_data[23:8])                                 data_is_header <= 1'b0;
-    else if(last_packet_word && fifo_data_valid && !skip_fifo_reading_reg)      data_is_header <= 1'b1;
+    else if(last_packet_word && fifo_data_valid && !skip_fifo_reading)          data_is_header <= 1'b1;
     else if(skip_fifo_reading)                                                  data_is_header <= 1'b1;
 
 always @(`DSI_CLK_RST(clk, reset_n))
@@ -122,7 +121,8 @@ always @(`DSI_CLK_RST(clk, reset_n))
     else if(last_packet_word)                                                   one_cycle_for_crc <= 1'b0;
 
 // signal to stop fifo reading
-assign skip_fifo_reading = last_packet_word && one_cycle_for_crc;
+assign skip_fifo_reading    = last_packet_word && one_cycle_for_crc;
+assign fifo_read            = fifo_not_empty && !skip_fifo_reading;
 
 // remember bytes in last reading from fifo cycle
 always @(`DSI_CLK_RST(clk, reset_n))
