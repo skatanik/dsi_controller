@@ -66,12 +66,14 @@ module crc_calculator
 
 reg [15:0] crc_result;
 
+wire [15:0] crc_out[0:3];
+    
+    assign crc_output = crc_out[bytes_number];
+    
 always @(posedge clk, negedge reset_n)
     if(!reset_n)            crc_result <= 16'hffff;
     else if(clear)          crc_result <= 16'hffff;
     else if(data_write)     crc_result <= crc_out[bytes_number];
-
-wire [15:0] crc_out[0:3];
 
 byte_crc crc_out_1(
     .data_in    (data_input[7:0]    ),
