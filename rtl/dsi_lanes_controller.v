@@ -168,56 +168,108 @@ logic [3:0]     res_strb;
 logic           transmission_active;
 logic           data_buff_0_empty;
 logic           data_buff_0_empty;
+logic           repacker_ack;
 
-always_ff @(posedge clk_sys or negedge rst_n) begin
+always_ff @(posedge clk_sys or negedge rst_n)
     if(~rst_n)                  transmission_active <= 1'b0;
     else if(iface_write_rqst)   transmission_active <= 1'b1;
     else if(iface_last_word)    transmission_active <= 1'b0;
 
 /********* data buffers *********/
 logic write_buff_0;
-assign write_buff_0 = iface_write_rqst && (data_buff_1_empty || pckt_trnsf_ack);
+assign write_buff_0 = iface_write_rqst && (data_buff_1_empty || repacker_ack);
 
-always_ff @(posedge clk_sys or negedge rst_n) begin
+always_ff @(posedge clk_sys or negedge rst_n)
     if(~rst_n)                 data_buff_0 <= 32'b0;
     else if(write_buff_0)      data_buff_0 <= iface_write_data;
 
-always_ff @(posedge clk_sys or negedge rst_n) begin
+always_ff @(posedge clk_sys or negedge rst_n)
     if(~rst_n)                      data_buff_1 <= 32'b0;
     else if(!data_buff_0_empty)     data_buff_1 <= data_buff_0;
 
 /********* strobes buffer *********/
 
-always_ff @(posedge clk_sys or negedge rst_n) begin
+always_ff @(posedge clk_sys or negedge rst_n)
     if(~rst_n)                 strb_buff_0 <= 4'b0;
     else if(write_buff_0)      strb_buff_0 <= iface_write_data;
 
-always_ff @(posedge clk_sys or negedge rst_n) begin
+logic res_strb = !data_buff_0_empty && write_buff_0 ? iface_write_strb & {4{!iface_last_word}} & strb_buff_0 : 4'b0;
+
+always_ff @(posedge clk_sys or negedge rst_n)
     if(~rst_n)                      strb_buff_1 <= 4'b0;
-    else if(!data_buff_0_empty)     strb_buff_1 <= strb_buff_0;
+    else if(!data_buff_0_empty)     strb_buff_1 <= res_strb;
 
 /********* empty flags *********/
 
-always_ff @(posedge clk_sys or negedge rst_n) begin
+always_ff @(posedge clk_sys or negedge rst_n)
     if(~rst_n)                      data_buff_0_empty <= 1'b1;
     else if(write_buff_0)           data_buff_0_empty <= 1'b0;
     else if(!data_buff_0_empty)     data_buff_0_empty <= 1'b1;
 
-always_ff @(posedge clk_sys or negedge rst_n) begin
+always_ff @(posedge clk_sys or negedge rst_n)
     if(~rst_n)                                      data_buff_1_empty <= 1'b1;
     else if(!data_buff_0_empty)                     data_buff_1_empty <= 1'b0;
-    else if(pckt_trnsf_ack && !data_buff_1_empty)   data_buff_1_empty <= 1'b1;
+    else if(repacker_ack && !data_buff_1_empty)     data_buff_1_empty <= 1'b1;
 
-
-assign iface_write_rqst = data_buff_0_empty || data_buff_1_empty || pckt_trnsf_ack;
+assign iface_write_rqst = data_buff_0_empty || data_buff_1_empty || repacker_ack;
 
 assign data_underflow_error = transmission_active && (data_buff_0_empty || data_buff_1_empty)
 
 /********************************************************************
             4 bytes stream to n bytes stream
 ********************************************************************/
+module byte_repacker_4_to_4 #(
+    parameter   DATA_LINE_WIDTH = 8
+    )(
+    input wire                              clk                 ,
+    input wire                              rst_n               ,
+
+    input wire                              data_valid_inp      ,       // connect to !data_buff_0_empty
+    input wire [4*DATA_LINE_WIDTH - 1:0]    input_data          ,       // data
+
+    input wire                              repacker_ack_inp    ,       // ready to take next data
+    output wire                             repacker_ack_out    ,       // ready to take next data
+
+    output wire                             data_valid_out      ,       // connect to !data_buff_0_empty
+    output wire [4*DATA_LINE_WIDTH - 1:0]   output_data         ,       // data
+
+    );
+
+logic [4*DATA_LINE_WIDTH - 1:0] data_buffer;
+
+logic data_valid_out_reg;
+
+always_ff @(posedge clk_sys or negedge rst_n)
+    if(~rst_n)                                      data_buffer <= 'b0;
+    else if(data_valid_inp && repacker_ack_inp)     data_buffer <= data_valid_inp;
+
+always_ff @(posedge clk_sys or negedge rst_n)
+    if(~rst_n)                  data_valid_out_reg <= 1'b0;
+    else if(data_valid_inp)     data_valid_out_reg <= 1'b1;
+    else                        data_valid_out_reg <= 1'b0;
+
+assign output_data = data_buffer;
+assign data_valid_out = data_valid_out_reg;
+assign repacker_ack_out = repacker_ack_inp;
+
+endmodule // byte_repacker_4_to_4
 
 
+byte_repacker_4_to_4 #(
+    .DATA_LINE_WIDTH(8)
+    ) data_repacker_4_to_4
+(
+    .clk                (clk_sys                ),
+    .rst_n              (rst_n                  ),
+    .data_valid_inp     (!data_buff_0_empty     ),
+    .input_data         (data_buff_1            ),
+    .repacker_ack_inp   (),
+    .repacker_ack_out   (repacker_ack           ),
+    .data_valid_out     (),
+    .output_data        (),
+
+    );
 
 endmodule
+
 
