@@ -27,7 +27,17 @@ module dsi_lanes_controller
         /********* Output signals *********/
         output wire         lines_ready             ,
         output wire         clock_ready             ,
-        output wire         data_underflow_error
+        output wire         data_underflow_error    ,
+
+        /********* Lanes *********/
+        output wire [3:0]   hs_lane_output          ,
+        output wire [3:0]   LP_p_output             ,
+        output wire [3:0]   LP_n_output             ,
+
+        /********* Clock output *********/
+        output wire [3:0]   clock_LP_p_output       ,
+        output wire [3:0]   clock_LP_n_output       ,
+        output wire [3:0]   clock_hs_output
 
     );
 
@@ -64,7 +74,7 @@ for(i = 0; i < 4; i = i + 1)
         .rst_n              (rst_n                          ),
 
         .start_rqst         (dsi_start_rqst[i]              ),
-        .fin_rqst           (dsi_fin_rqst[i]                ),
+        .fin_rqst           (dsi_fin_rqst[i]                ),  // change to data_rqst <= (state_next == STATE_TX_ACTIVE);
         .inp_data           (dsi_inp_data[i*8 + 7 : i*8]    ),
 
         .data_rqst          (dsi_data_rqst[i]               ),
@@ -104,6 +114,14 @@ dsi_lane_full #(
         .LP_p_output        (dsi_LP_p_output_clk            ),
         .LP_n_output        (dsi_LP_n_output_clk            )
     );
+
+
+assign hs_lane_output       = dsi_serial_hs_output;
+assign LP_p_output          = dsi_LP_p_output;
+assign LP_n_output          = dsi_LP_n_output;
+assign clock_LP_p_output    = dsi_LP_p_output_clk;
+assign clock_LP_n_output    = dsi_LP_n_output_clk;
+assign clock_hs_output      = dsi_serial_hs_output_clk;
 
 /********************************************************************
                     turning ON block FSM declaration
@@ -254,6 +272,10 @@ assign repacker_ack_out = repacker_ack_inp;
 
 endmodule // byte_repacker_4_to_4
 
+logic           data_valid_out;
+logic [31:0]    repacker_output_data;
+logic [3:0]     repacker_output_strobe;
+
 
 byte_repacker_4_to_4 #(
     .DATA_LINE_WIDTH(8)
@@ -263,13 +285,28 @@ byte_repacker_4_to_4 #(
     .rst_n              (rst_n                  ),
     .data_valid_inp     (!data_buff_0_empty     ),
     .input_data         (data_buff_1            ),
-    .repacker_ack_inp   (),
+    .repacker_ack_inp   (dsi_data_rqst          ),
     .repacker_ack_out   (repacker_ack           ),
-    .data_valid_out     (),
-    .output_data        (),
+    .data_valid_out     (data_valid_out         ),
+    .output_data        (repacker_output_data   ),
 
     );
 
+byte_repacker_4_to_4 #(
+    .DATA_LINE_WIDTH(1)
+    ) strobes_repacker_4_to_4
+(
+    .clk                (clk_sys                ),
+    .rst_n              (rst_n                  ),
+    .data_valid_inp     (!data_buff_0_empty     ),
+    .input_data         (strb_buff_1            ),
+    .repacker_ack_inp   (),
+    .repacker_ack_out   (),
+    .data_valid_out     (),
+    .output_data        (repacker_output_strobe ),
+    );
+
+assign dsi_fin_rqst     = !repacker_output_strobe & {4{data_valid_out}};
+assign dsi_inp_data     = repacker_output_data;
+
 endmodule
-
-
