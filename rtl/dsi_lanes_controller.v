@@ -20,10 +20,12 @@ module dsi_lanes_controller
 
         /********* Misc signals *********/
 
-        input wire [1:0]    reg_lanes_number
-
+        input wire [1:0]    reg_lanes_number    ,
+        input wire          lines_enable        ,   // enable output buffers of LP lines
+        input wire          clock_enable        ,   // enable clock
 
         /********* Output signals *********/
+        output wire         lines_active
 
     );
 
@@ -94,5 +96,53 @@ dsi_lane_full dsi_lane_clk(
         .LP_n_output        (dsi_LP_n_output_clk            )
     );
 
+/********************************************************************
+                    FSM declaration
+********************************************************************/
+
+enum logic [2:0]
+{
+    STATE_IDLE,                     // all output buffers are disabled
+    STATE_ENABLE_BUFFERS,           // send a signal to lanes to activate output LP buffers. Hold them in LP-11 mode
+    STATE_WAIT_CLK_ACTIVE,          // Wait while init sequence of clock line is finished
+    STATE_LANES_ACTIVE,             // Main state, clock active, lanes active
+    STATE_WAIT_CLK_UNACTIVE,        // Wait while deinit sequence of clock line is finished
+    STATE_DISABLE_BUFFERS           // send a signal to lanes to disactivate output LP buffers.
+} state_current, state_next;
+
+always_ff @(posedge clk_sys or negedge rst_n) begin
+    if(~rst_n) begin
+        state_current <= STATE_IDLE;
+    end else begin
+        state_current <= state_next;
+    end
+end
+
+always_comb begin
+    case (state_current)
+        STATE_IDLE:
+            state_next <= lines_enable ? STATE_ENABLE_BUFFERS : STATE_IDLE;
+
+        STATE_ENABLE_BUFFERS:
+            state_next <= clock_enable ? STATE_WAIT_CLK_ACTIVE : STATE_ENABLE_BUFFERS;
+
+        STATE_WAIT_CLK_ACTIVE:
+            state_next <= dsi_active_clk ? STATE_LANES_ACTIVE : STATE_WAIT_CLK_ACTIVE;
+
+        STATE_LANES_ACTIVE:
+            state_next <= !clock_enable ? STATE_WAIT_CLK_UNACTIVE : STATE_LANES_ACTIVE;
+
+        STATE_WAIT_CLK_UNACTIVE:
+            state_next <= !dsi_active_clk ? STATE_DISABLE_BUFFERS : (clock_enable ? STATE_WAIT_CLK_ACTIVE : STATE_WAIT_CLK_UNACTIVE);
+
+        STATE_DISABLE_BUFFERS:
+            state_next <= !lines_enable ? STATE_IDLE : STATE_DISABLE_BUFFERS;
+
+        default :
+            state_next <= STATE_IDLE;
+    endcase
+end
+
+assign lines_active = (state_current == STATE_LANES_ACTIVE);
 
 endmodule
