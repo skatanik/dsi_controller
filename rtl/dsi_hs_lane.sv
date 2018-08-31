@@ -1,4 +1,6 @@
-module dsi_hs_lane(
+module dsi_hs_lane #(
+    parameter MODE = 0  // 0 - lane, 1 - clk
+    )(
     input wire          clk_sys     , // serial data clock
     input wire          clk_serdes  , // logic clock = clk_hs/8
     input wire          clk_latch   , // clk_sys, duty cycle 15%
@@ -46,7 +48,7 @@ always_comb begin
             state_next <= start_rqst ? STATE_TX_GO : STATE_IDLE;
 
         STATE_TX_GO:
-            state_next <= tx_hs_go_timeout ? STATE_TX_SYNC : STATE_TX_GO;
+            state_next <= tx_hs_go_timeout ? (!MODE ? STATE_TX_SYNC : STATE_TX_ACTIVE) : STATE_TX_GO;
 
         STATE_TX_SYNC:
             state_next <= STATE_TX_ACTIVE;
@@ -65,6 +67,7 @@ end
 assign active       = (state_current != STATE_IDLE);
 assign fin_ack      = tx_hs_trail_timeout;
 
+// data_rqst line forming
 always_ff @(posedge clk_sys or negedge rst_n) begin
     if(~rst_n) begin
         data_rqst<= 1'b0;
@@ -78,6 +81,7 @@ localparam [7:0] SYNC_SEQUENCE = 8'b00011101;
 logic [7:0] serdes_data;
 logic [7:0] last_bit_byte;
 
+// serdes data mux
 always_comb begin
     if(state_current == STATE_TX_SYNC)
         serdes_data <= SYNC_SEQUENCE;
@@ -85,8 +89,11 @@ always_comb begin
         serdes_data <= inp_data;
     else if(state_current == STATE_TX_TRAIL)
         serdes_data <= last_bit_byte;
+    else if(state_current == STATE_TX_GO)
+        serdes_data <= 8'b0;
 end
 
+// remember bit for trail sequence
 always_ff @(posedge clk_sys or negedge rst_n) begin
     if(~rst_n) begin
          last_bit_byte <= 8'd0;
@@ -113,8 +120,8 @@ hs_buff hs_buff_inst_d0 (
     .dataout ( serial_hs_output )
     );
 
-// Timeout
-localparam [7:0] TX_HS_GO_TIMEOUT_VAL = 20; // 145 ns + 10*UI
+// Timeouts
+localparam [7:0] TX_HS_GO_TIMEOUT_VAL = 20; // 145 ns + 10*UI THS-zero
 localparam [7:0] TX_HS_TRAIL_TIMEOUT_VAL = 10; // 145 ns + 10*UI
 
 logic [7:0] tx_hs_go_counter;

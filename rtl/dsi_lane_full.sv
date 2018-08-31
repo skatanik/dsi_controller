@@ -63,7 +63,7 @@ end
 
 logic LP_p;
 logic LP_n;
-
+// LP lines control
 always_ff @(posedge clk_sys or negedge rst_n) begin
     if(~rst_n)                              LP_p <= 1;
     else if(state_next == STATE_IDLE)       LP_p <= 1;
@@ -79,7 +79,7 @@ end
 logic lp_lines_enable;
 
 assign lp_lines_enable = (state_current != STATE_HS_ACTIVE);
-
+// LP lines buffers
 lp_buff lp_buff_inst_p (
     .datain     ( LP_p              ),
     .oe         ( lp_lines_enable   ),
