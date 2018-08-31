@@ -68,13 +68,8 @@ assign active       = (state_current != STATE_IDLE);
 assign fin_ack      = tx_hs_trail_timeout;
 
 // data_rqst line forming
-always_ff @(posedge clk_sys or negedge rst_n) begin
-    if(~rst_n) begin
-        data_rqst<= 1'b0;
-    end else begin
-        data_rqst <= (state_next == STATE_TX_SYNC) || (state_next == STATE_TX_ACTIVE);
-    end
-end
+assign data_rqst = (state_next == STATE_TX_ACTIVE);
+
 
 localparam [7:0] SYNC_SEQUENCE = 8'b00011101;
 
