@@ -45,22 +45,22 @@ logic tx_hs_trail_timeout;
 always_comb begin
     case (state_current)
         STATE_IDLE:
-            state_next <= start_rqst ? STATE_TX_GO : STATE_IDLE;
+            state_next = start_rqst ? STATE_TX_GO : STATE_IDLE;
 
         STATE_TX_GO:
-            state_next <= tx_hs_go_timeout ? (!MODE ? STATE_TX_SYNC : STATE_TX_ACTIVE) : STATE_TX_GO;
+            state_next = tx_hs_go_timeout ? (!MODE ? STATE_TX_SYNC : STATE_TX_ACTIVE) : STATE_TX_GO;
 
         STATE_TX_SYNC:
-            state_next <= STATE_TX_ACTIVE;
+            state_next = STATE_TX_ACTIVE;
 
         STATE_TX_ACTIVE:
-            state_next <= fin_rqst ? STATE_TX_TRAIL : STATE_TX_ACTIVE;
+            state_next = fin_rqst ? STATE_TX_TRAIL : STATE_TX_ACTIVE;
 
         STATE_TX_TRAIL:
-            state_next <= tx_hs_trail_timeout ? STATE_IDLE : STATE_TX_TRAIL;
+            state_next = tx_hs_trail_timeout ? STATE_IDLE : STATE_TX_TRAIL;
 
         default :
-            state_next <= STATE_IDLE;
+            state_next = STATE_IDLE;
     endcase
 end
 
@@ -84,13 +84,13 @@ logic [7:0] last_bit_byte;
 // serdes data mux
 always_comb begin
     if(state_current == STATE_TX_SYNC)
-        serdes_data <= SYNC_SEQUENCE;
+        serdes_data = SYNC_SEQUENCE;
     else if(state_current == STATE_TX_ACTIVE)
-        serdes_data <= inp_data;
+        serdes_data = inp_data;
     else if(state_current == STATE_TX_TRAIL)
-        serdes_data <= last_bit_byte;
+        serdes_data = last_bit_byte;
     else if(state_current == STATE_TX_GO)
-        serdes_data <= 8'b0;
+        serdes_data = 8'b0;
 end
 
 // remember bit for trail sequence
