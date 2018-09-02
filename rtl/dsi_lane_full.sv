@@ -1,4 +1,6 @@
-module dsi_lane_full (
+module dsi_lane_full #(
+    parameter MODE = 0  // 0 - lane, 1 - clk
+    )(
     input wire          clk_sys     , // serial data clock
     input wire          clk_serdes  , // logic clock = clk_hs/8
     input wire          clk_latch   , // clk_sys, duty cycle 15%
@@ -16,7 +18,10 @@ module dsi_lane_full (
     output logic        LP_n_output
 );
 
-logic fin_ack;
+logic hs_fin_ack;
+logic hs_rqst_timeout;
+logic hs_prep_timeout;
+logic hs_exit_timeout;
 
 /***********************************
         FSM declaration
@@ -28,7 +33,7 @@ enum logic [2:0]
     STATE_HS_RQST,
     STATE_HS_PREP,
     STATE_HS_ACTIVE,
-    STATE_HS_EXIT,
+    STATE_HS_EXIT
 } state_current, state_next;
 
 always_ff @(posedge clk_sys or negedge rst_n) begin
@@ -80,13 +85,13 @@ logic lp_lines_enable;
 
 assign lp_lines_enable = (state_current != STATE_HS_ACTIVE);
 // LP lines buffers
-lp_buff lp_buff_inst_p (
+hs_buff lp_buff_inst_p (
     .datain     ( LP_p              ),
     .oe         ( lp_lines_enable   ),
     .dataout    ( LP_p_output       )
     );
 
-lp_buff lp_buff_inst_n (
+hs_buff lp_buff_inst_n (
     .datain     ( LP_n              ),
     .oe         ( lp_lines_enable   ),
     .dataout    ( LP_n_output       )
@@ -97,10 +102,6 @@ lp_buff lp_buff_inst_n (
 localparam [7:0] T_LPX          = 100;  // 50 ns
 localparam [7:0] T_HS_PREPARE   = 50;   // 40 ns + 4*UI  :  85 ns + 6*UI
 localparam [7:0] T_HS_EXIT      = 100;  // 100 ns
-
-logic hs_rqst_timeout;
-logic hs_prep_timeout;
-logic hs_exit_timeout;
 
 logic [7:0] hs_rqst_counter;
 logic [7:0] hs_prep_counter;
@@ -127,7 +128,9 @@ always_ff @(posedge clk_sys or negedge rst_n)
 
 assign hs_exit_timeout = (state_current == STATE_HS_EXIT) && !(|hs_exit_counter);
 
-dsi_hs_lane dsi_hs_lane_0(
+dsi_hs_lane  #(
+    .MODE(MODE)
+    ) dsi_hs_lane_0(
     .clk_sys                (clk_sys            ), // serial data clock
     .clk_serdes             (clk_serdes         ), // logic clock = clk_hs/8
     .clk_latch              (clk_latch          ), // clk_sys, duty cycle 15%
@@ -139,7 +142,7 @@ dsi_hs_lane dsi_hs_lane_0(
 
     .data_rqst              (data_rqst          ),
     .active                 (active             ),
-    .fin_ack                (fin_ack            ),
+    .fin_ack                (hs_fin_ack         ),
 
     .serial_hs_output       (serial_hs_output   )
 

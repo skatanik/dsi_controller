@@ -1,18 +1,18 @@
 module dsi_hs_lane #(
     parameter MODE = 0  // 0 - lane, 1 - clk
     )(
-    input wire          clk_sys     , // serial data clock
-    input wire          clk_serdes  , // logic clock = clk_hs/8
-    input wire          clk_latch   , // clk_sys, duty cycle 15%
-    input wire          rst_n       ,
+    input wire          clk_sys             , // serial data clock
+    input wire          clk_serdes          , // logic clock = clk_hs/8
+    input wire          clk_latch           , // clk_sys, duty cycle 15%
+    input wire          rst_n               ,
 
-    input wire          start_rqst  ,
-    input wire          fin_rqst    ,
-    input wire [7:0]    inp_data    ,
+    input wire          start_rqst          ,
+    input wire          fin_rqst            ,
+    input wire [7:0]    inp_data            ,
 
-    output logic        data_rqst,
-    output logic        active,
-    output logic        fin_ack,
+    output logic        data_rqst           ,
+    output logic        active              ,
+    output logic        fin_ack             ,        // shows that in the next clock block will finish trail sequence
 
     output logic        serial_hs_output
 
@@ -89,7 +89,7 @@ always_comb begin
         serdes_data = inp_data;
     else if(state_current == STATE_TX_TRAIL)
         serdes_data = last_bit_byte;
-    else if(state_current == STATE_TX_GO)
+    else
         serdes_data = 8'b0;
 end
 
