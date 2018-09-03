@@ -128,6 +128,10 @@ always_ff @(posedge clk_sys or negedge rst_n)
 
 assign hs_exit_timeout = (state_current == STATE_HS_EXIT) && !(|hs_exit_counter);
 
+logic hs_start_rqst;
+    
+assign hs_start_rqst = (state_next == STATE_HS_ACTIVE);
+    
 dsi_hs_lane  #(
     .MODE(MODE)
     ) dsi_hs_lane_0(
@@ -136,7 +140,7 @@ dsi_hs_lane  #(
     .clk_latch              (clk_latch          ), // clk_sys, duty cycle 15%
     .rst_n                  (rst_n              ),
 
-    .start_rqst             (start_rqst         ),
+    .start_rqst             (hs_start_rqst      ),
     .fin_rqst               (fin_rqst           ),
     .inp_data               (inp_data           ),
 
