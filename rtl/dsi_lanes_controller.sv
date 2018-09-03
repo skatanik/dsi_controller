@@ -45,7 +45,7 @@ module dsi_lanes_controller
     Module makes data preload in order to know when the last data comes.
     size of preload data is 2 fifo wide words.
 ********************************************************************/
-
+logic           transmission_active;
 /********************************************************************
                 DSI lanes instances
 ********************************************************************/
@@ -58,10 +58,10 @@ logic [3:0]     dsi_LP_p_output;
 logic [3:0]     dsi_LP_n_output;
 logic [31:0]    dsi_inp_data;
 
-assign dsi_start_rqst[0] = iface_write_rqst;
-assign dsi_start_rqst[1] = iface_write_rqst && (|reg_lanes_number);
-assign dsi_start_rqst[2] = iface_write_rqst && (reg_lanes_number[1] && !reg_lanes_number[0]);
-assign dsi_start_rqst[3] = iface_write_rqst && (&reg_lanes_number);
+assign dsi_start_rqst[0] = !transmission_active && iface_write_rqst;
+assign dsi_start_rqst[1] = !transmission_active && iface_write_rqst && (|reg_lanes_number);
+assign dsi_start_rqst[2] = !transmission_active && iface_write_rqst && (reg_lanes_number[1]);
+assign dsi_start_rqst[3] = !transmission_active && iface_write_rqst && (&reg_lanes_number);
 
 genvar i;
 
@@ -183,7 +183,6 @@ logic [31:0]    data_buff_1;
 logic [3:0]     strb_buff_0;
 logic [3:0]     strb_buff_1;
 logic [3:0]     res_strb;
-logic           transmission_active;
 logic           data_buff_0_empty;
 logic           data_buff_1_empty;
 logic           repacker_ack;

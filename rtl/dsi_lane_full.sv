@@ -109,29 +109,29 @@ logic [7:0] hs_exit_counter;
 
 always_ff @(posedge clk_sys or negedge rst_n)
     if(~rst_n)                              hs_rqst_counter <= 0;
-    else if(state_next == STATE_HS_RQST)    hs_rqst_counter <= T_LPX;
     else if(state_current == STATE_HS_RQST) hs_rqst_counter <= hs_rqst_counter - 1;
+    else if(state_next == STATE_HS_RQST)    hs_rqst_counter <= T_LPX;
 
 assign hs_rqst_timeout = (state_current == STATE_HS_RQST) && !(|hs_rqst_counter);
 
 always_ff @(posedge clk_sys or negedge rst_n)
     if(~rst_n)                              hs_prep_counter <= 0;
-    else if(state_next == STATE_HS_PREP)    hs_prep_counter <= T_LPX;
     else if(state_current == STATE_HS_PREP) hs_prep_counter <= hs_prep_counter - 1;
+    else if(state_next == STATE_HS_PREP)    hs_prep_counter <= T_LPX;
 
 assign hs_prep_timeout = (state_current == STATE_HS_PREP) && !(|hs_prep_counter);
 
 always_ff @(posedge clk_sys or negedge rst_n)
     if(~rst_n)                              hs_exit_counter <= 0;
-    else if(state_next == STATE_HS_EXIT)    hs_exit_counter <= T_LPX;
     else if(state_current == STATE_HS_EXIT) hs_exit_counter <= hs_exit_counter - 1;
+    else if(state_next == STATE_HS_EXIT)    hs_exit_counter <= T_LPX;
 
 assign hs_exit_timeout = (state_current == STATE_HS_EXIT) && !(|hs_exit_counter);
 
 logic hs_start_rqst;
-    
+
 assign hs_start_rqst = (state_next == STATE_HS_ACTIVE);
-    
+
 dsi_hs_lane  #(
     .MODE(MODE)
     ) dsi_hs_lane_0(

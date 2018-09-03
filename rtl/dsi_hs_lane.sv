@@ -22,6 +22,10 @@ module dsi_hs_lane #(
         FSM declaration
 ************************************/
 
+/* TO DO
+add state when all lines are disabled.
+*/
+
 enum logic [2:0]
 {
     STATE_IDLE,
