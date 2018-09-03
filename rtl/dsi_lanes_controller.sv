@@ -294,10 +294,16 @@ module byte_repacker_4_to_4 #(
 logic [4*DATA_LINE_WIDTH - 1:0] data_buffer;
 
 logic data_valid_out_reg;
+logic data_buff_full;
 
 always_ff @(posedge clk or negedge rst_n)
-    if(~rst_n)                                      data_buffer <= 'b0;
-    else if(data_valid_inp && repacker_ack_inp)     data_buffer <= data_valid_inp;
+    if(~rst_n)                 data_buff_full <= 1'b0;
+    else if(data_valid_inp)    data_buff_full <= 1'b1;
+
+
+always_ff @(posedge clk or negedge rst_n)
+    if(~rst_n)                                                          data_buffer <= 'b0;
+    else if(data_valid_inp && (!data_buff_full || repacker_ack_inp))    data_buffer <= data_valid_inp;
 
 always_ff @(posedge clk or negedge rst_n)
     if(~rst_n)                  data_valid_out_reg <= 1'b0;
@@ -306,6 +312,6 @@ always_ff @(posedge clk or negedge rst_n)
 
 assign output_data = data_buffer;
 assign data_valid_out = data_valid_out_reg;
-assign repacker_ack_out = repacker_ack_inp;
+assign repacker_ack_out = repacker_ack_inp || !data_buff_full;
 
 endmodule // byte_repacker_4_to_4
