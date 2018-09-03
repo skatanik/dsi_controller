@@ -13,8 +13,8 @@ module dsi_lanes_controller
         // Then on every iface_data_rqst Host should change data. When it comes to the last data piece Host should set iface_last_word.
         input wire [31:0]   iface_write_data        ,
         input wire [4:0]    iface_write_strb        , // iface_write_strb[4] - mode flag. 0 - hs, 1 - lp
-        input wire [3:0]    iface_write_rqst        ,
-        input wire [3:0]    iface_last_word         ,
+        input wire          iface_write_rqst        ,
+        input wire          iface_last_word         ,
 
         output wire         iface_data_rqst         ,
 
@@ -67,7 +67,7 @@ genvar i;
 
 generate
 for(i = 0; i < 4; i = i + 1)
-    dsi_lane_full dsi_lane_(
+    dsi_lane_full dsi_lane(
         .clk_sys            (clk_sys                        ), // serial data clock
         .clk_serdes         (clk_serdes                     ), // logic clock = clk_hs/8
         .clk_latch          (clk_latch                      ), // clk_sys, duty cycle 15%
