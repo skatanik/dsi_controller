@@ -229,7 +229,7 @@ always_ff @(posedge clk_sys or negedge rst_n)
     else if(!data_buff_0_empty)                     data_buff_1_empty <= 1'b0;
     else if(repacker_ack && !data_buff_1_empty)     data_buff_1_empty <= 1'b1;
 
-assign iface_write_rqst = data_buff_0_empty || data_buff_1_empty || repacker_ack;
+assign iface_data_rqst = data_buff_0_empty || data_buff_1_empty || repacker_ack;
 
 assign data_underflow_error = transmission_active && (data_buff_0_empty || data_buff_1_empty);
 
