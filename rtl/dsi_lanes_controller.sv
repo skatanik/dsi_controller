@@ -57,6 +57,7 @@ logic [3:0]     dsi_serial_hs_output;
 logic [3:0]     dsi_LP_p_output;
 logic [3:0]     dsi_LP_n_output;
 logic [31:0]    dsi_inp_data;
+logic [3:0]     dsi_lines_enable;
 
 assign dsi_start_rqst[0] = !transmission_active && iface_write_rqst;
 assign dsi_start_rqst[1] = !transmission_active && iface_write_rqst && (|reg_lanes_number);
@@ -79,6 +80,7 @@ for(i = 0; i < 4; i = i + 1)
 
         .data_rqst          (dsi_data_rqst[i]               ),
         .active             (dsi_active[i]                  ),
+        .lines_enable       (dsi_lines_enable[i]            ),
 
         .serial_hs_output   (dsi_serial_hs_output[i]        ),
         .LP_p_output        (dsi_LP_p_output[i]             ),
@@ -172,6 +174,17 @@ end
 
 assign lines_ready = (state_current == STATE_LANES_ACTIVE);
 assign clock_ready = dsi_active_clk;
+
+always_ff @(posedge clk_sys or negedge rst_n)
+    if(~rst_n)                                          dsi_lines_enable[0] <= 1'b0;
+    else if(state_current == STATE_ENABLE_BUFFERS)      dsi_lines_enable[0] <= 1'b1;
+    else if(state_current == STATE_DISABLE_BUFFERS)     dsi_lines_enable[0] <= 1'b1;
+    
+    assign dsi_lines_enable[0] = state_current !=;
+    assign dsi_lines_enable[1] = state_current != && (|reg_lanes_number);
+    assign dsi_lines_enable[2] = state_current != && (reg_lanes_number[1]);
+    assign dsi_lines_enable[3] = state_current != && (&reg_lanes_number);
+
 
 /********************************************************************
             Preload data part
