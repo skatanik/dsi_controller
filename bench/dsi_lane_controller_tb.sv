@@ -1,4 +1,4 @@
-`timescale 1ns/1ps
+//`timescale 1ns/1ps
 module dsi_lane_controller_tb();
 
 bit clk_sys;
@@ -6,10 +6,10 @@ bit clk_serdes;
 bit clk_serdes_clk;
 bit clk_latch;
 bit rst_n;
-logic [31:0]   iface_write_data = 0;
-logic [4:0]    iface_write_strb = 0;
-logic          iface_write_rqst = 0;
-logic          iface_last_word = 0;
+logic [31:0]   iface_write_data;
+logic [4:0]    iface_write_strb;
+logic          iface_write_rqst;
+logic          iface_last_word;
 logic          iface_data_rqst;
 logic [1:0]    reg_lanes_number = 3;
 logic          lines_enable = 0;
@@ -24,30 +24,30 @@ logic  [3:0]   clock_LP_p_output;
 logic  [3:0]   clock_LP_n_output;
 logic  [3:0]   clock_hs_output;
 
-dsi_lanes_controller dsi_lanes_controller_0(
-    .clk_sys                    (clk_sys                ),
-    .clk_serdes                 (clk_serdes             ),
-    .clk_serdes_clk             (clk_serdes_clk         ),
-    .clk_latch                  (clk_latch              ),
-    .rst_n                      (rst_n                  ),
-    .iface_write_data           (iface_write_data       ),
-    .iface_write_strb           (iface_write_strb       ),
-    .iface_write_rqst           (iface_write_rqst       ),
-    .iface_last_word            (iface_last_word        ),
-    .iface_data_rqst            (iface_data_rqst        ),
-    .reg_lanes_number           (reg_lanes_number       ),
-    .lines_enable               (lines_enable           ),
-    .clock_enable               (clock_enable           ),
-    .lines_ready                (lines_ready            ),
-    .clock_ready                (clock_ready            ),
-    .data_underflow_error       (data_underflow_error   ),
-    .hs_lane_output             (hs_lane_output         ),
-    .LP_p_output                (LP_p_output            ),
-    .LP_n_output                (LP_n_output            ),
-    .clock_LP_p_output          (clock_LP_p_output      ),
-    .clock_LP_n_output          (clock_LP_n_output      ),
-    .clock_hs_output            (clock_hs_output        )
-);
+//dsi_lanes_controller dsi_lanes_controller_0(
+//    .clk_sys                    (clk_sys                ),
+//    .clk_serdes                 (clk_serdes             ),
+//    .clk_serdes_clk             (clk_serdes_clk         ),
+//    .clk_latch                  (clk_latch              ),
+//    .rst_n                      (rst_n                  ),
+//    .iface_write_data           (iface_write_data       ),
+//    .iface_write_strb           (iface_write_strb       ),
+//    .iface_write_rqst           (iface_write_rqst       ),
+//    .iface_last_word            (iface_last_word        ),
+//    .iface_data_rqst            (iface_data_rqst        ),
+//    .reg_lanes_number           (reg_lanes_number       ),
+//    .lines_enable               (lines_enable           ),
+//    .clock_enable               (clock_enable           ),
+//    .lines_ready                (lines_ready            ),
+//    .clock_ready                (clock_ready            ),
+//    .data_underflow_error       (data_underflow_error   ),
+//    .hs_lane_output             (hs_lane_output         ),
+//    .LP_p_output                (LP_p_output            ),
+//    .LP_n_output                (LP_n_output            ),
+//    .clock_LP_p_output          (clock_LP_p_output      ),
+//    .clock_LP_n_output          (clock_LP_n_output      ),
+//    .clock_hs_output            (clock_hs_output        )
+//);
 
 initial begin
 clk_sys             = 0;
@@ -83,23 +83,25 @@ always
 task write_data;
 
     integer data_size = 0;
-    logic [31:0] data_array [0:64];
+    bit [31:0] data_array [0:64];
+    integer total_cycles;
+    integer data_left;
 
     data_size = $urandom_range(256,4);
     $display("Data size %d", data_size);
 
     for (int i = 0; i < data_size; i++) begin
         /* code */
-        memory_array[i/4][i%4*8 + 7 : i%4*8] = $urandom_range(0,8'hff);
+        data_array[i/4] = $urandom_range(0,32'hffff_ffff);
     end
 
-int total_cycles = data_size/4 + (data_size%4 ? 1 : 0);
+total_cycles = data_size/4 + (data_size%4 ? 1 : 0);
 
-int data_left = data_size;
+data_left = data_size;
 
 for (int i = 0; i < total_cycles; i++) begin
         wait(iface_data_rqst);
-        iface_write_data = memory_array[i];
+        iface_write_data = data_array[i];
         iface_write_strb = data_left%4 == 0 ? 4'hf : data_left%4 == 1 ? 4'h1 : data_left%4 == 2 ? 4'h3 : data_left%4 == 3 ? 4'h7 : 4'h0;
         iface_write_rqst = 1;
 
@@ -109,13 +111,45 @@ for (int i = 0; i < total_cycles; i++) begin
             iface_last_word = 0;
 
         data_left = data_left > 4 ? data_left - 4 : 0;
-        repeat(1)  @(posedge clk_sys)
+        repeat(1)  @(posedge clk_sys);
 
         if(iface_data_rqst)
             iface_write_rqst = 0;
 end
     iface_write_rqst = 0;
+    iface_last_word = 0;
 
 endtask
+
+initial
+begin
+iface_write_data    = 0;
+iface_write_strb    = 0;
+iface_write_rqst    = 0;
+iface_last_word     = 0;
+
+wait(rst_n)
+repeat(10)  @(posedge clk_sys);
+write_data();
+
+end
+
+initial
+begin
+    iface_data_rqst = 0;
+    wait(rst_n);
+    repeat(10)  @(posedge clk_sys);
+
+forever
+    begin
+        iface_data_rqst = 1;
+        repeat($urandom_range(0,6))  @(posedge clk_sys);
+        iface_data_rqst = 0;
+        repeat($urandom_range(0,6))  @(posedge clk_sys);
+    end
+
+
+end
+
 
 endmodule
