@@ -8,6 +8,7 @@ module dsi_lane_full #(
 
     input wire          start_rqst  ,
     input wire          fin_rqst    ,
+    input wire          lines_enable,
     input wire [7:0]    inp_data    ,
 
     output logic        data_rqst,
@@ -29,6 +30,7 @@ logic hs_exit_timeout;
 
 enum logic [2:0]
 {
+    STATE_LINES_DISABLED,
     STATE_IDLE,
     STATE_HS_RQST,
     STATE_HS_PREP,
@@ -46,8 +48,12 @@ end
 
 always_comb begin
     case (state_current)
+        
+        STATE_LINES_DISABLED: 
+            state_next <= lines_enable ? STATE_IDLE : STATE_LINES_DISABLED;
+        
         STATE_IDLE:
-            state_next <= start_rqst ? STATE_HS_RQST : STATE_IDLE;
+            state_next <= lines_enable ? (start_rqst ? STATE_HS_RQST : STATE_IDLE) : STATE_LINES_DISABLED;
 
         STATE_HS_RQST:
             state_next <= hs_rqst_timeout ? STATE_HS_PREP : STATE_HS_RQST;
@@ -83,7 +89,7 @@ end
 
 logic lp_lines_enable;
 
-assign lp_lines_enable = (state_current != STATE_HS_ACTIVE);
+    assign lp_lines_enable = (state_current != STATE_HS_ACTIVE) && (state_current != STATE_LINES_DISABLED);
 // LP lines buffers
 hs_buff lp_buff_inst_p (
     .datain     ( LP_p              ),
