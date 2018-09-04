@@ -79,28 +79,37 @@ always
 /********************************************************************
                     Generate data array
 ********************************************************************/
+integer data_size = 0;
+bit [31:0] data_array [0:64];
 
-task write_data;
-
-    integer data_size = 0;
-    bit [31:0] data_array [0:64];
-    integer total_cycles;
-    integer data_left;
-
+initial
+begin
     data_size = $urandom_range(256,4);
-    $display("Data size %d", data_size);
+    $display("Data size = %d", data_size);
 
     for (int i = 0; i < data_size; i++) begin
         /* code */
         data_array[i/4] = $urandom_range(0,32'hffff_ffff);
     end
+end
+
+
+task write_data;
+
+    input integer data_size;
+    ref bit [31:0] data_array [0:64];
+
+    integer total_cycles;
+    integer data_left;
 
 total_cycles = data_size/4 + (data_size%4 ? 1 : 0);
 
 data_left = data_size;
 
 for (int i = 0; i < total_cycles; i++) begin
-        wait(iface_data_rqst);
+
+        while(!iface_data_rqst)
+            @(posedge clk_sys);
         iface_write_data = data_array[i];
         iface_write_strb = data_left%4 == 0 ? 4'hf : data_left%4 == 1 ? 4'h1 : data_left%4 == 2 ? 4'h3 : data_left%4 == 3 ? 4'h7 : 4'h0;
         iface_write_rqst = 1;
@@ -130,7 +139,7 @@ iface_last_word     = 0;
 
 wait(rst_n)
 repeat(10)  @(posedge clk_sys);
-write_data();
+write_data(data_size, data_array);
 
 end
 
@@ -142,7 +151,7 @@ begin
 
 forever
     begin
-        iface_data_rqst = 1;
+        # 0.01 iface_data_rqst = 1;
         repeat($urandom_range(0,6))  @(posedge clk_sys);
         iface_data_rqst = 0;
         repeat($urandom_range(0,6))  @(posedge clk_sys);
@@ -153,3 +162,4 @@ end
 
 
 endmodule
+
