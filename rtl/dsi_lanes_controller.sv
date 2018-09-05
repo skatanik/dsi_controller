@@ -108,7 +108,8 @@ dsi_lane_full #(
 
         .start_rqst         (dsi_start_rqst_clk             ),
         .fin_rqst           (dsi_fin_rqst_clk               ),
-        .inp_data           (8'hAA                          ),
+        .inp_data           (8'hF0                          ),
+        .lines_enable       (dsi_lines_enable[0]            ),
 
         .active             (dsi_active_clk                 ),
 
@@ -156,13 +157,13 @@ always_comb begin
             state_next = clock_enable ? STATE_WAIT_CLK_ACTIVE : STATE_ENABLE_BUFFERS;
 
         STATE_WAIT_CLK_ACTIVE:
-            state_next = dsi_active_clk ? STATE_LANES_ACTIVE : STATE_WAIT_CLK_ACTIVE;
+            state_next = clock_ready ? STATE_LANES_ACTIVE : STATE_WAIT_CLK_ACTIVE;
 
         STATE_LANES_ACTIVE:
             state_next = !clock_enable ? STATE_WAIT_CLK_UNACTIVE : STATE_LANES_ACTIVE;
 
         STATE_WAIT_CLK_UNACTIVE:
-            state_next = !dsi_active_clk ? STATE_DISABLE_BUFFERS : (clock_enable ? STATE_WAIT_CLK_ACTIVE : STATE_WAIT_CLK_UNACTIVE);
+            state_next = !clock_ready ? STATE_DISABLE_BUFFERS : (clock_enable ? STATE_WAIT_CLK_ACTIVE : STATE_WAIT_CLK_UNACTIVE);
 
         STATE_DISABLE_BUFFERS:
             state_next = !lines_enable ? STATE_IDLE : STATE_DISABLE_BUFFERS;
@@ -175,16 +176,28 @@ end
 assign lines_ready = (state_current == STATE_LANES_ACTIVE);
 assign clock_ready = dsi_active_clk;
 
+assign dsi_start_rqst_clk   = state_next == STATE_WAIT_CLK_ACTIVE;
+assign dsi_fin_rqst_clk     = state_next == STATE_WAIT_CLK_UNACTIVE;
+
 always_ff @(posedge clk_sys or negedge rst_n)
     if(~rst_n)                                          dsi_lines_enable[0] <= 1'b0;
     else if(state_current == STATE_ENABLE_BUFFERS)      dsi_lines_enable[0] <= 1'b1;
-    else if(state_current == STATE_DISABLE_BUFFERS)     dsi_lines_enable[0] <= 1'b1;
-    
-    assign dsi_lines_enable[0] = state_current !=;
-    assign dsi_lines_enable[1] = state_current != && (|reg_lanes_number);
-    assign dsi_lines_enable[2] = state_current != && (reg_lanes_number[1]);
-    assign dsi_lines_enable[3] = state_current != && (&reg_lanes_number);
+    else if(state_current == STATE_DISABLE_BUFFERS)     dsi_lines_enable[0] <= 1'b0;
 
+always_ff @(posedge clk_sys or negedge rst_n)
+    if(~rst_n)                                          dsi_lines_enable[1] <= 1'b0;
+    else if(state_current == STATE_ENABLE_BUFFERS)      dsi_lines_enable[1] <= (|reg_lanes_number);
+    else if(state_current == STATE_DISABLE_BUFFERS)     dsi_lines_enable[1] <= !(|reg_lanes_number);
+
+always_ff @(posedge clk_sys or negedge rst_n)
+    if(~rst_n)                                          dsi_lines_enable[2] <= 1'b0;
+    else if(state_current == STATE_ENABLE_BUFFERS)      dsi_lines_enable[2] <= (reg_lanes_number[1]);
+    else if(state_current == STATE_DISABLE_BUFFERS)     dsi_lines_enable[2] <= !(reg_lanes_number[1]);
+
+always_ff @(posedge clk_sys or negedge rst_n)
+    if(~rst_n)                                          dsi_lines_enable[3] <= 1'b0;
+    else if(state_current == STATE_ENABLE_BUFFERS)      dsi_lines_enable[3] <= (&reg_lanes_number);
+    else if(state_current == STATE_DISABLE_BUFFERS)     dsi_lines_enable[3] <= !(&reg_lanes_number);
 
 /********************************************************************
             Preload data part

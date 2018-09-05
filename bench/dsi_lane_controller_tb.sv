@@ -1,4 +1,4 @@
-//`timescale 1ns/1ps
+`timescale 1ns/1ps
 module dsi_lane_controller_tb();
 
 bit clk_sys;
@@ -12,48 +12,48 @@ logic          iface_write_rqst;
 logic          iface_last_word;
 logic          iface_data_rqst;
 logic [1:0]    reg_lanes_number = 3;
-logic          lines_enable = 0;
-logic          clock_enable = 0;
+logic          lines_enable;
+logic          clock_enable;
 logic          lines_ready;
 logic          clock_ready;
 logic          data_underflow_error;
 logic  [3:0]   hs_lane_output;
-logic  [3:0]   LP_p_output;
-logic  [3:0]   LP_n_output;
-logic  [3:0]   clock_LP_p_output;
-logic  [3:0]   clock_LP_n_output;
-logic  [3:0]   clock_hs_output;
+logic          LP_p_output;
+logic          LP_n_output;
+logic          clock_LP_p_output;
+logic          clock_LP_n_output;
+logic          clock_hs_output;
 
-//dsi_lanes_controller dsi_lanes_controller_0(
-//    .clk_sys                    (clk_sys                ),
-//    .clk_serdes                 (clk_serdes             ),
-//    .clk_serdes_clk             (clk_serdes_clk         ),
-//    .clk_latch                  (clk_latch              ),
-//    .rst_n                      (rst_n                  ),
-//    .iface_write_data           (iface_write_data       ),
-//    .iface_write_strb           (iface_write_strb       ),
-//    .iface_write_rqst           (iface_write_rqst       ),
-//    .iface_last_word            (iface_last_word        ),
-//    .iface_data_rqst            (iface_data_rqst        ),
-//    .reg_lanes_number           (reg_lanes_number       ),
-//    .lines_enable               (lines_enable           ),
-//    .clock_enable               (clock_enable           ),
-//    .lines_ready                (lines_ready            ),
-//    .clock_ready                (clock_ready            ),
-//    .data_underflow_error       (data_underflow_error   ),
-//    .hs_lane_output             (hs_lane_output         ),
-//    .LP_p_output                (LP_p_output            ),
-//    .LP_n_output                (LP_n_output            ),
-//    .clock_LP_p_output          (clock_LP_p_output      ),
-//    .clock_LP_n_output          (clock_LP_n_output      ),
-//    .clock_hs_output            (clock_hs_output        )
-//);
+dsi_lanes_controller dsi_lanes_controller_0(
+    .clk_sys                    (clk_sys                ),
+    .clk_serdes                 (clk_serdes             ),
+    .clk_serdes_clk             (clk_serdes_clk         ),
+    .clk_latch                  (clk_latch              ),
+    .rst_n                      (rst_n                  ),
+    .iface_write_data           (iface_write_data       ),
+    .iface_write_strb           (iface_write_strb       ),
+    .iface_write_rqst           (iface_write_rqst       ),
+    .iface_last_word            (iface_last_word        ),
+    .iface_data_rqst            (iface_data_rqst        ),
+    .reg_lanes_number           (reg_lanes_number       ),
+    .lines_enable               (lines_enable           ),
+    .clock_enable               (clock_enable           ),
+    .lines_ready                (lines_ready            ),
+    .clock_ready                (clock_ready            ),
+    .data_underflow_error       (data_underflow_error   ),
+    .hs_lane_output             (hs_lane_output         ),
+    .LP_p_output                (LP_p_output            ),
+    .LP_n_output                (LP_n_output            ),
+    .clock_LP_p_output          (clock_LP_p_output      ),
+    .clock_LP_n_output          (clock_LP_n_output      ),
+    .clock_hs_output            (clock_hs_output        )
+);
 
 initial begin
-clk_sys             = 0;
-clk_latch           = 0;
-clk_serdes          = 0;
-clk_serdes_clk      = 0;
+clk_sys             = 1;
+clk_latch           = 1;
+clk_serdes          = 1;
+clk_serdes_clk      = 1;
 rst_n               = 0;
 
 #100
@@ -66,8 +66,8 @@ always
 
 always
 begin
-    #7 clk_latch = 1;
-    #3 clk_latch = ~clk_latch;
+    #6.25 clk_latch = 1;
+    #3.75 clk_latch = ~clk_latch;
 end
 
 always
@@ -85,12 +85,15 @@ bit [31:0] data_array [0:64];
 
 initial begin
 iface_write_rqst = 0;
-wait(rst_n);
-repeat(10) @(posedge clk_sys)
+lines_enable = 0;
+clock_enable = 0;
 
-iface_write_rqst = 1;
-repeat(1) @(posedge clk_sys)
-iface_write_rqst = 0;
+wait(rst_n);
+repeat(10) @(posedge clk_sys);
+lines_enable = 1;
+
+repeat(1) @(posedge clk_sys);
+clock_enable = 1;
 
 
 

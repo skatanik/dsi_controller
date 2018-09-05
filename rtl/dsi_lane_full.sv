@@ -40,7 +40,7 @@ enum logic [2:0]
 
 always_ff @(posedge clk_sys or negedge rst_n) begin
     if(~rst_n) begin
-        state_current <= STATE_IDLE;
+        state_current <= STATE_LINES_DISABLED;
     end else begin
         state_current <= state_next;
     end
@@ -48,27 +48,27 @@ end
 
 always_comb begin
     case (state_current)
-        
-        STATE_LINES_DISABLED: 
-            state_next <= lines_enable ? STATE_IDLE : STATE_LINES_DISABLED;
-        
+
+        STATE_LINES_DISABLED:
+            state_next = lines_enable ? STATE_IDLE : STATE_LINES_DISABLED;
+
         STATE_IDLE:
-            state_next <= lines_enable ? (start_rqst ? STATE_HS_RQST : STATE_IDLE) : STATE_LINES_DISABLED;
+            state_next = lines_enable ? (start_rqst ? STATE_HS_RQST : STATE_IDLE) : STATE_LINES_DISABLED;
 
         STATE_HS_RQST:
-            state_next <= hs_rqst_timeout ? STATE_HS_PREP : STATE_HS_RQST;
+            state_next = hs_rqst_timeout ? STATE_HS_PREP : STATE_HS_RQST;
 
         STATE_HS_PREP:
-            state_next <= hs_prep_timeout ? STATE_HS_ACTIVE : STATE_HS_PREP;
+            state_next = hs_prep_timeout ? STATE_HS_ACTIVE : STATE_HS_PREP;
 
         STATE_HS_ACTIVE:
-            state_next <= hs_fin_ack ? STATE_HS_EXIT : STATE_HS_ACTIVE;
+            state_next = hs_fin_ack ? STATE_HS_EXIT : STATE_HS_ACTIVE;
 
         STATE_HS_EXIT:
-            state_next <= hs_exit_timeout ? STATE_IDLE : STATE_HS_ACTIVE;
+            state_next = hs_exit_timeout ? STATE_IDLE : STATE_HS_ACTIVE;
 
         default :
-            state_next <= STATE_IDLE;
+            state_next = STATE_LINES_DISABLED;
     endcase
 end
 
