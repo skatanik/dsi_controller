@@ -8,13 +8,9 @@ module dsi_lanes_controller
         input wire          rst_n                   ,
 
         /********* Fifo signals *********/
-
-        // host should set iface_write_rqst, and at the same time set iface_write_data to the first data.
-        // Then on every iface_data_rqst Host should change data. When it comes to the last data piece Host should set iface_last_word.
         input wire [31:0]   iface_write_data        ,
         input wire [4:0]    iface_write_strb        , // iface_write_strb[4] - mode flag. 0 - hs, 1 - lp
         input wire          iface_write_rqst        ,
-        input wire          iface_last_word         ,
 
         output wire         iface_data_rqst         ,
 
@@ -27,7 +23,7 @@ module dsi_lanes_controller
         /********* Output signals *********/
         output wire         lines_ready             ,
         output wire         clock_ready             ,
-        output wire         data_underflow_error    ,
+        output wire         writing_active          ,
 
         /********* Lanes *********/
         output wire [3:0]   hs_lane_output          ,
@@ -42,8 +38,16 @@ module dsi_lanes_controller
     );
 
 /********************************************************************
-    Module makes data preload in order to know when the last data comes.
-    size of preload data is 2 fifo wide words.
+   On the power on module has all lines output buffers off. At first it is needed to set  lines_enable signal, then when lines_ready signal is got 
+   one can wait for a while and then set clock_enable signal and again wait for clock_ready signal. After that it is possible to start writing data.
+    
+    When data writing is needed follow next steps
+    1. set iface_write_rqst also set iface_write_data with first data  and iface_write_strb
+    2. on each active  iface_data_rqst set new data on iface_write_data iface_write_strb
+    3. when there is no data set  iface_write_strb to all zeros 
+    4. wait until writing_active is 0.
+    
+    after that module can start a new writing data sequence          
 ********************************************************************/
 logic           transmission_active;
 /********************************************************************
