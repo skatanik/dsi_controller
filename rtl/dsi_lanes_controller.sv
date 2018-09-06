@@ -44,7 +44,7 @@ module dsi_lanes_controller
     When data writing is needed follow next steps
     1. set iface_write_rqst also set iface_write_data with first data  and iface_write_strb
     2. on each active  iface_data_rqst set new data on iface_write_data iface_write_strb
-    3. when there is no data set  iface_write_strb to all zeros 
+    3. when there is no data set iface_write_rqst and iface_write_strb to all zeros 
     4. wait until writing_active is 0.
     
     after that module can start a new writing data sequence          
