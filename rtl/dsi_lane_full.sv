@@ -105,9 +105,9 @@ hs_buff lp_buff_inst_n (
 
 /******* Timeouts *******/
 
-localparam [7:0] T_LPX          = 100;  // 50 ns
-localparam [7:0] T_HS_PREPARE   = 50;   // 40 ns + 4*UI  :  85 ns + 6*UI
-localparam [7:0] T_HS_EXIT      = 100;  // 100 ns
+localparam [7:0] T_LPX          = 3;  // 50 ns
+localparam [7:0] T_HS_PREPARE   = 3;   // 40 ns + 4*UI  :  85 ns + 6*UI
+localparam [7:0] T_HS_EXIT      = 3;  // 100 ns
 
 logic [7:0] hs_rqst_counter;
 logic [7:0] hs_prep_counter;
