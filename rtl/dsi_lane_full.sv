@@ -65,31 +65,33 @@ always_comb begin
             state_next = hs_fin_ack ? STATE_HS_EXIT : STATE_HS_ACTIVE;
 
         STATE_HS_EXIT:
-            state_next = hs_exit_timeout ? STATE_IDLE : STATE_HS_ACTIVE;
+            state_next = hs_exit_timeout ? STATE_IDLE : STATE_HS_EXIT;
 
         default :
             state_next = STATE_LINES_DISABLED;
     endcase
 end
 
+assign active = (state_current != STATE_LINES_DISABLED) && (state_current != STATE_IDLE);
+
 logic LP_p;
 logic LP_n;
 // LP lines control
 always_ff @(posedge clk_sys or negedge rst_n) begin
-    if(~rst_n)                              LP_p <= 1;
-    else if(state_next == STATE_IDLE)       LP_p <= 1;
-    else if(state_next == STATE_HS_RQST)    LP_p <= 0;
+    if(~rst_n)                                                              LP_p <= 1;
+    else if(state_next == STATE_IDLE || state_next == STATE_HS_EXIT)        LP_p <= 1;
+    else if(state_next == STATE_HS_RQST)                                    LP_p <= 0;
 end
 
 always_ff @(posedge clk_sys or negedge rst_n) begin
-    if(~rst_n)                              LP_n <= 1;
-    else if(state_next == STATE_IDLE)       LP_n <= 1;
-    else if(state_next == STATE_HS_PREP)    LP_n <= 0;
+    if(~rst_n)                                                              LP_n <= 1;
+    else if(state_next == STATE_IDLE || state_next == STATE_HS_EXIT)        LP_n <= 1;
+    else if(state_next == STATE_HS_PREP)                                    LP_n <= 0;
 end
 
 logic lp_lines_enable;
 
-    assign lp_lines_enable = (state_current != STATE_HS_ACTIVE) && (state_current != STATE_LINES_DISABLED);
+assign lp_lines_enable = (state_current != STATE_HS_ACTIVE) && (state_current != STATE_LINES_DISABLED);
 // LP lines buffers
 hs_buff lp_buff_inst_p (
     .datain     ( LP_p              ),
@@ -138,6 +140,8 @@ logic hs_start_rqst;
 
 assign hs_start_rqst = (state_next == STATE_HS_ACTIVE);
 
+logic hs_lane_active;
+
 dsi_hs_lane  #(
     .MODE(MODE)
     ) dsi_hs_lane_0(
@@ -151,7 +155,7 @@ dsi_hs_lane  #(
     .inp_data               (inp_data           ),
 
     .data_rqst              (data_rqst          ),
-    .active                 (active             ),
+    .active                 (hs_lane_active     ),
     .fin_ack                (hs_fin_ack         ),
 
     .serial_hs_output       (serial_hs_output   )

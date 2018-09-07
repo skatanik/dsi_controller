@@ -7,7 +7,7 @@ bit clk_serdes_clk;
 bit clk_latch;
 bit rst_n;
 logic [31:0]   iface_write_data;
-logic [4:0]    iface_write_strb;
+logic [3:0]    iface_write_strb;
 logic          iface_write_rqst;
 logic          iface_last_word;
 logic          iface_data_rqst;
@@ -40,7 +40,6 @@ dsi_lanes_controller dsi_lanes_controller_0(
     .clock_enable               (clock_enable           ),
     .lines_ready                (lines_ready            ),
     .clock_ready                (clock_ready            ),
-    .data_underflow_error       (data_underflow_error   ),
     .hs_lane_output             (hs_lane_output         ),
     .LP_p_output                (LP_p_output            ),
     .LP_n_output                (LP_n_output            ),
@@ -85,58 +84,83 @@ bit [31:0] data_array [0:64];
 
 initial begin
 iface_write_rqst = 0;
+iface_write_data = 0;
+iface_write_strb = 0;
+iface_last_word = 0;
 lines_enable = 0;
 clock_enable = 0;
 
 wait(rst_n);
 repeat(10) @(posedge clk_sys);
 lines_enable = 1;
+wait(lines_ready);
+repeat(10) @(posedge clk_sys);
 
-repeat(1) @(posedge clk_sys);
 clock_enable = 1;
 
+wait(clock_ready);
 
+repeat(20) @(posedge clk_sys);
+
+write_data();
 
 end // initial
 
 
-//task write_data;
-//
-//    integer data_size = 0;
-//    logic [31:0] data_array [0:64];
-//
-//    data_size = $urandom_range(256,4);
-//    $display("Data size %d", data_size);
-//
-//    for (int i = 0; i < data_size; i++) begin
-//        /* code */
-//        memory_array[i/4][i%4*8 + 7 : i%4*8] = $urandom_range(0,8'hff);
-//    end
-//
-//int total_cycles = data_size/4 + (data_size%4 ? 1 : 0);
-//
-//int data_left = data_size;
-//
-//for (int i = 0; i < total_cycles; i++) begin
-//        wait(iface_data_rqst);
-//        iface_write_data = memory_array[i];
-//        iface_write_strb = data_left%4 == 0 ? 4'hf : data_left%4 == 1 ? 4'h1 : data_left%4 == 2 ? 4'h3 : data_left%4 == 3 ? 4'h7 : 4'h0;
-//        iface_write_rqst = 1;
-//
-//        if(i == total_cycles - 1)
-//            iface_last_word = 1;
-//        else
-//            iface_last_word = 0;
-//
-//        data_left = data_left > 4 ? data_left - 4 : 0;
-//        repeat(1)  @(posedge clk_sys)
-//
-//        if(iface_data_rqst)
-//            iface_write_rqst = 0;
-//end
-//    iface_write_rqst = 0;
-//
-//endtask
+task write_data;
+
+    integer data_size;
+    bit [31:0] data_array [0:64];
+    integer total_cycles;
+    integer data_left;
+    integer i;
+    data_size = $urandom_range(4,256);
+    $display("Data size %d", data_size);
+
+
+    for (i = 0; i < data_size; i++) begin
+        data_array[i] = $urandom_range(0,32'hffff_ffff);
+    end
+
+    total_cycles = data_size/4 + (data_size%4 ? 1 : 0);
+
+    $display("Total cycles %d", total_cycles);
+
+    data_left = data_size;
+    i = 0;
+    iface_write_data = data_array[i];
+    iface_write_strb = 4'hf;
+    iface_write_rqst = 1;
+    i = i + 1;
+
+    while(i <= total_cycles) begin
+        repeat(1) @(posedge clk_sys);
+        if(iface_data_rqst)
+        begin
+             $display($time()," Current data %h", data_array[i]);
+             $display($time()," Index %h", i);
+            #0.01 iface_write_data = data_array[i];
+            iface_write_strb = data_left >= 4 ? 4'hf : (4'hf >> (4 - data_left));
+
+            iface_write_rqst = 1;
+
+            if(i == total_cycles)
+                iface_last_word = 1;
+            else
+                iface_last_word = 0;
+
+            i = i + 1;
+            data_left = data_left >= 4 ? data_left - 4 : 0;
+            $display($time()," Data left %h", data_left);
+        end
+    end
+    repeat(1) @(posedge clk_sys);
+
+    iface_write_rqst = 0;
+    iface_last_word = 0;
+    iface_write_strb = 0;
+
+endtask
 
 endmodule
 

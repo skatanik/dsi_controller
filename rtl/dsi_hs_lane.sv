@@ -70,7 +70,7 @@ end
 
 always_ff @(posedge clk_sys or negedge rst_n)
     if(~rst_n)                                  active <= 1'b0;
-    else if(state_next == STATE_TX_ACTIVE)      active <= 1'b1;
+    else if(state_next == STATE_TX_GO)          active <= 1'b1;
     else if(state_next == STATE_IDLE)           active <= 1'b0;
 
 assign fin_ack      = tx_hs_trail_timeout;

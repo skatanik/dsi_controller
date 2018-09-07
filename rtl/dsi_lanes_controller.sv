@@ -9,8 +9,9 @@ module dsi_lanes_controller
 
         /********* Fifo signals *********/
         input wire [31:0]   iface_write_data        ,
-        input wire [4:0]    iface_write_strb        , // iface_write_strb[4] - mode flag. 0 - hs, 1 - lp
+        input wire [3:0]    iface_write_strb        , // iface_write_strb[4] - mode flag. 0 - hs, 1 - lp
         input wire          iface_write_rqst        ,
+        input wire          iface_last_word         ,
 
         output wire         iface_data_rqst         ,
 
@@ -23,7 +24,7 @@ module dsi_lanes_controller
         /********* Output signals *********/
         output wire         lines_ready             ,
         output wire         clock_ready             ,
-        output wire         writing_active          ,
+        output wire         lines_active            ,
 
         /********* Lanes *********/
         output wire [3:0]   hs_lane_output          ,
@@ -38,16 +39,16 @@ module dsi_lanes_controller
     );
 
 /********************************************************************
-   On the power on module has all lines output buffers off. At first it is needed to set  lines_enable signal, then when lines_ready signal is got 
+   On the power on module has all lines output buffers off. At first it is needed to set  lines_enable signal, then when lines_ready signal is got
    one can wait for a while and then set clock_enable signal and again wait for clock_ready signal. After that it is possible to start writing data.
-    
+
     When data writing is needed follow next steps
     1. set iface_write_rqst also set iface_write_data with first data  and iface_write_strb
     2. on each active  iface_data_rqst set new data on iface_write_data iface_write_strb
-    3. when there is no data set iface_write_rqst and iface_write_strb to all zeros 
+    3. when there is no data set iface_write_rqst and iface_write_strb to all zeros
     4. wait until writing_active is 0.
-    
-    after that module can start a new writing data sequence          
+
+    after that module can start a new writing data sequence
 ********************************************************************/
 logic           transmission_active;
 /********************************************************************
@@ -91,6 +92,8 @@ for(i = 0; i < 4; i = i + 1)
         .LP_n_output        (dsi_LP_n_output[i]             )
     );
 endgenerate
+
+assign lines_active = |dsi_active;
 
 /********************************************************************
         CLK lane
@@ -177,7 +180,7 @@ always_comb begin
     endcase
 end
 
-assign lines_ready = (state_current == STATE_LANES_ACTIVE);
+assign lines_ready = (state_current != STATE_IDLE);
 assign clock_ready = dsi_active_clk;
 
 assign dsi_start_rqst_clk   = state_next == STATE_WAIT_CLK_ACTIVE;
@@ -207,7 +210,28 @@ always_ff @(posedge clk_sys or negedge rst_n)
             Preload data part
 ********************************************************************/
 
-assign dsi_fin_rqst     = !repacker_output_strobe & {4{data_valid_out}};
-assign dsi_inp_data     = repacker_output_data;
+always_ff @(posedge clk_sys or negedge rst_n)
+    if(~rst_n)                  transmission_active <= 1'b0;
+    else if(iface_write_rqst)   transmission_active <= 1'b1;
+    else if(iface_last_word)    transmission_active <= 1'b0;
+
+logic rpckr_iface_data_rqst;
+
+repacker_4_to_4 repacker_4_to_4_0(
+    .clk                (clk_sys                ),
+    .rst_n              (rst_n                  ),
+
+    .data_req           (|dsi_data_rqst         ),   // data request signal. Need to get new data on the next clock.
+    .data_out           (dsi_inp_data           ),   // output data
+    .last_data_strb     (dsi_fin_rqst           ),   // strobes indicate last data bytes on each line
+
+    .data_change_req    (rpckr_iface_data_rqst  ),   // request data changing. new data on the next clock is needed
+    .input_data         (iface_write_data       ),   // input data
+    .input_strb         (iface_write_strb       ),   // input strobes
+
+    .enable             (transmission_active    )   // enable repacker signal
+    );
+
+assign iface_data_rqst = rpckr_iface_data_rqst & transmission_active;
 
 endmodule
