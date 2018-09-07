@@ -129,8 +129,8 @@ hs_buff hs_buff_inst_d0 (
     );
 
 // Timeouts
-localparam [7:0] TX_HS_GO_TIMEOUT_VAL = 20; // 145 ns + 10*UI THS-zero
-localparam [7:0] TX_HS_TRAIL_TIMEOUT_VAL = 10; // 145 ns + 10*UI
+localparam [7:0] TX_HS_GO_TIMEOUT_VAL = 2; // 145 ns + 10*UI THS-zero
+localparam [7:0] TX_HS_TRAIL_TIMEOUT_VAL = 2; // 145 ns + 10*UI
 
 logic [7:0] tx_hs_go_counter;
 logic [7:0] tx_hs_trail_counter;
