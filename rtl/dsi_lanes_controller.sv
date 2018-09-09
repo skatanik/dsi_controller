@@ -115,7 +115,7 @@ dsi_lane_full #(
 
         .start_rqst         (dsi_start_rqst_clk             ),
         .fin_rqst           (dsi_fin_rqst_clk               ),
-        .inp_data           (8'hF0                          ),
+        .inp_data           (8'b01010101                    ),
         .lines_enable       (dsi_lines_enable[0]            ),
 
         .active             (dsi_active_clk                 ),
@@ -212,24 +212,24 @@ always_ff @(posedge clk_sys or negedge rst_n)
 
 always_ff @(posedge clk_sys or negedge rst_n)
     if(~rst_n)                  transmission_active <= 1'b0;
-    else if(iface_write_rqst)   transmission_active <= 1'b1;
     else if(iface_last_word)    transmission_active <= 1'b0;
+    else if(iface_write_rqst)   transmission_active <= 1'b1;
 
 logic rpckr_iface_data_rqst;
 
 repacker_4_to_4 repacker_4_to_4_0(
-    .clk                (clk_sys                ),
-    .rst_n              (rst_n                  ),
+    .clk                (clk_sys                            ),
+    .rst_n              (rst_n                              ),
 
-    .data_req           (|dsi_data_rqst         ),   // data request signal. Need to get new data on the next clock.
-    .data_out           (dsi_inp_data           ),   // output data
-    .last_data_strb     (dsi_fin_rqst           ),   // strobes indicate last data bytes on each line
+    .data_req           (|dsi_data_rqst                     ),   // data request signal. Need to get new data on the next clock.
+    .data_out           (dsi_inp_data                       ),   // output data
+    .last_data_strb     (dsi_fin_rqst                       ),   // strobes indicate last data bytes on each line
 
-    .data_change_req    (rpckr_iface_data_rqst  ),   // request data changing. new data on the next clock is needed
-    .input_data         (iface_write_data       ),   // input data
-    .input_strb         (iface_write_strb       ),   // input strobes
+    .data_change_req    (rpckr_iface_data_rqst              ),   // request data changing. new data on the next clock is needed
+    .input_data         (iface_write_data                   ),   // input data
+    .input_strb         (iface_write_strb                   ),   // input strobes
 
-    .enable             (transmission_active    )   // enable repacker signal
+    .enable             (iface_write_rqst || (|dsi_active)  )   // enable repacker signal
     );
 
 assign iface_data_rqst = rpckr_iface_data_rqst & transmission_active;

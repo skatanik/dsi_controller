@@ -1,21 +1,21 @@
 module dsi_lane_full #(
     parameter MODE = 0  // 0 - lane, 1 - clk
     )(
-    input wire          clk_sys     , // serial data clock
-    input wire          clk_serdes  , // logic clock = clk_hs/8
-    input wire          clk_latch   , // clk_sys, duty cycle 15%
-    input wire          rst_n       ,
+    input wire          clk_sys             , // serial data clock
+    input wire          clk_serdes          , // logic clock = clk_hs/8
+    input wire          clk_latch           , // clk_sys, duty cycle 15%
+    input wire          rst_n               ,
 
-    input wire          start_rqst  ,
-    input wire          fin_rqst    ,
-    input wire          lines_enable,
-    input wire [7:0]    inp_data    ,
+    input wire          start_rqst          ,
+    input wire          fin_rqst            ,
+    input wire          lines_enable        ,
+    input wire [7:0]    inp_data            ,
 
-    output logic        data_rqst,
-    output logic        active,
+    output logic        data_rqst           ,
+    output logic        active              ,
 
-    output logic        serial_hs_output,
-    output logic        LP_p_output,
+    output logic        serial_hs_output    ,
+    output logic        LP_p_output         ,
     output logic        LP_n_output
 );
 
@@ -118,27 +118,27 @@ logic [7:0] hs_exit_counter;
 always_ff @(posedge clk_sys or negedge rst_n)
     if(~rst_n)                              hs_rqst_counter <= 0;
     else if(state_current == STATE_HS_RQST) hs_rqst_counter <= hs_rqst_counter - 1;
-    else if(state_next == STATE_HS_RQST)    hs_rqst_counter <= T_LPX;
+    else if(state_next == STATE_HS_RQST)    hs_rqst_counter <= T_LPX - 1;
 
 assign hs_rqst_timeout = (state_current == STATE_HS_RQST) && !(|hs_rqst_counter);
 
 always_ff @(posedge clk_sys or negedge rst_n)
     if(~rst_n)                              hs_prep_counter <= 0;
     else if(state_current == STATE_HS_PREP) hs_prep_counter <= hs_prep_counter - 1;
-    else if(state_next == STATE_HS_PREP)    hs_prep_counter <= T_LPX;
+    else if(state_next == STATE_HS_PREP)    hs_prep_counter <= T_HS_PREPARE - 1;
 
 assign hs_prep_timeout = (state_current == STATE_HS_PREP) && !(|hs_prep_counter);
 
 always_ff @(posedge clk_sys or negedge rst_n)
     if(~rst_n)                              hs_exit_counter <= 0;
     else if(state_current == STATE_HS_EXIT) hs_exit_counter <= hs_exit_counter - 1;
-    else if(state_next == STATE_HS_EXIT)    hs_exit_counter <= T_LPX;
+    else if(state_next == STATE_HS_EXIT)    hs_exit_counter <= T_HS_EXIT - 1;
 
 assign hs_exit_timeout = (state_current == STATE_HS_EXIT) && !(|hs_exit_counter);
 
 logic hs_start_rqst;
 
-assign hs_start_rqst = (state_next == STATE_HS_ACTIVE);
+assign hs_start_rqst = (state_next == STATE_HS_ACTIVE) && (state_current != STATE_HS_ACTIVE);
 
 logic hs_lane_active;
 

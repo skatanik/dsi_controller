@@ -37,9 +37,9 @@ always_ff @(posedge clk or negedge rst_n)
     else if(!enable)          input_strb_reg <= 0;
 
 always_ff @(posedge clk or negedge rst_n)
-    if(~rst_n)          output_strb_reg <= 0;
-    else if(enable)     output_strb_reg <= enable ? (input_strb_reg ^ input_strb) & ~input_strb : 4'b0;
-    else                output_strb_reg <= 0;
+    if(~rst_n)                      output_strb_reg <= 0;
+    else if(data_change_req)        output_strb_reg <= enable ? (input_strb_reg ^ input_strb) & ~input_strb : 4'b0;
+    else                            output_strb_reg <= 0;
 
 assign last_data_strb = output_strb_reg;
 

@@ -18,8 +18,8 @@ logic          lines_ready;
 logic          clock_ready;
 logic          data_underflow_error;
 logic  [3:0]   hs_lane_output;
-logic          LP_p_output;
-logic          LP_n_output;
+logic  [3:0]   LP_p_output;
+logic  [3:0]   LP_n_output;
 logic          clock_LP_p_output;
 logic          clock_LP_n_output;
 logic          clock_hs_output;
@@ -49,31 +49,44 @@ dsi_lanes_controller dsi_lanes_controller_0(
 );
 
 initial begin
-clk_sys             = 1;
-clk_latch           = 1;
-clk_serdes          = 1;
-clk_serdes_clk      = 1;
 rst_n               = 0;
-
 #100
 wait(10) @(posedge clk_sys)
 rst_n = 1;
 end
 
-always
-    #5 clk_sys = ~clk_sys;
-
-always
+initial
 begin
-    #6.25 clk_latch = 1;
-    #3.75 clk_latch = ~clk_latch;
+clk_serdes = 1;
+#1.25;
+forever    #1.25 clk_serdes      = ~clk_serdes;
 end
 
-always
-    #0.625 clk_serdes      = ~clk_serdes;
+initial
+begin
+#0.6125;
+clk_serdes_clk = 1;
+forever    #1.25 clk_serdes_clk      = ~clk_serdes_clk;
+end
 
-always
-    #0.625 clk_serdes_clk  = ~clk_serdes_clk;
+initial
+begin
+#5;
+clk_latch = 1;
+forever
+    begin
+     #2.5 clk_latch  = ~clk_latch;
+     #17.5 clk_latch = 1;
+    end
+end
+
+initial
+begin
+#1.25;
+clk_sys = 1;
+forever    #10 clk_sys      = ~clk_sys;
+end
+
 
 /********************************************************************
                     Generate data array
@@ -126,23 +139,24 @@ task write_data;
 
     $display("Total cycles %d", total_cycles);
 
+    total_cycles = 2;
+
     data_left = data_size;
     i = 0;
-    iface_write_data = data_array[i];
+    #0.01 iface_write_data = data_array[i];
     iface_write_strb = 4'hf;
     iface_write_rqst = 1;
     i = i + 1;
 
     while(i <= total_cycles) begin
         repeat(1) @(posedge clk_sys);
+        iface_write_rqst = 0;
         if(iface_data_rqst)
         begin
              $display($time()," Current data %h", data_array[i]);
              $display($time()," Index %h", i);
             #0.01 iface_write_data = data_array[i];
             iface_write_strb = data_left >= 4 ? 4'hf : (4'hf >> (4 - data_left));
-
-            iface_write_rqst = 1;
 
             if(i == total_cycles)
                 iface_last_word = 1;
