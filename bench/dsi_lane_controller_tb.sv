@@ -16,7 +16,6 @@ logic          lines_enable;
 logic          clock_enable;
 logic          lines_ready;
 logic          clock_ready;
-logic          data_underflow_error;
 logic  [3:0]   hs_lane_output;
 logic  [3:0]   LP_p_output;
 logic  [3:0]   LP_n_output;
@@ -127,7 +126,8 @@ task write_data;
     integer total_cycles;
     integer data_left;
     integer i;
-    data_size = $urandom_range(4,256);
+
+    data_size = 20;
     $display("Data size %d", data_size);
 
 
@@ -138,8 +138,6 @@ task write_data;
     total_cycles = data_size/4 + (data_size%4 ? 1 : 0);
 
     $display("Total cycles %d", total_cycles);
-
-    total_cycles = 2;
 
     data_left = data_size;
     i = 0;
