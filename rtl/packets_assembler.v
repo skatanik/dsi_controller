@@ -108,4 +108,21 @@ always_ff @(`CLK_RST(clk, reset_n))
     else if(state_current == STATE_IDLE && streaming_enable)        line_pix_counter <= horizontal_full_resolution;
     else if(!(|line_pix_counter) && state_current != STATE_IDLE)    line_pix_counter <= horizontal_full_resolution;
 
+    
+/********************************************************************
+                Sending sequences
+After sending each periodical command we check whether there are any commands
+in command fifo. If yes then it is appended after current command. But every time we check
+the lenght of this command. If command size is too big to write at the current time,
+then this command will be sent next time. CMD fifo depth is less than horizontal line size.
+Sending is not possible in STATE_LPM. All command are sent in hs mode.
+********************************************************************/
+
+/********************************************************************
+                        Packets assembler
+
+
+Packets assembler at the right time strarts to send commands. If needed sends additional cmds from cmd fifo
+calculates right size of each packet (also blank packets if lpm_enable = 0). add ECC and CRC. Adds right offset.
+********************************************************************/    
 endmodule
