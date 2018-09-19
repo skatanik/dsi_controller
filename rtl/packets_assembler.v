@@ -1,3 +1,6 @@
+`ifndef DSI_PACKETS_ASSEMBLER
+`define DSI_PACKETS_ASSEMBLER
+
 module packets_assembler #(
     CMD_FIFO_DEPTH      = 10
     )(
@@ -5,6 +8,12 @@ module packets_assembler #(
         input   wire                            clk_sys                         ,
         input   wire                            rst_n                           ,
 
+    /********* lanes controller iface *********/
+        output wire [31:0]                      iface_write_data                ,
+        output wire [4:0]                       iface_write_strb                ,
+        output wire                             iface_write_rqst                ,
+        output wire                             iface_last_word                 ,
+        input  wire                             iface_data_rqst                 ,
 
     /********* pixel FIFO interface *********/
         input   wire  [31:0]                    pix_fifo_data                   ,
@@ -21,7 +30,6 @@ module packets_assembler #(
         input   wire                            lpm_enable                      ,   // 1: go to LPM after sending commands. 0: send blank packet after sending command or data
 
     /********* timings registers *********/
-
         input   wire                            horizontal_full_resolution      ,
         input   wire                            horizontal_active_resolution    ,
         input   wire                            vertical_full_resolution        ,
@@ -108,7 +116,7 @@ always_ff @(`CLK_RST(clk, reset_n))
     else if(state_current == STATE_IDLE && streaming_enable)        line_pix_counter <= horizontal_full_resolution;
     else if(!(|line_pix_counter) && state_current != STATE_IDLE)    line_pix_counter <= horizontal_full_resolution;
 
-    
+
 /********************************************************************
                 Sending sequences
 After sending each periodical command we check whether there are any commands
@@ -121,8 +129,13 @@ Sending is not possible in STATE_LPM. All command are sent in hs mode.
 /********************************************************************
                         Packets assembler
 
+Packets assembler at the right time strarts to send commands.
+If needed sends additional cmds from cmd fifo
+calculates right size of each packet (also blank packets if lpm_enable = 0).
+adds ECC and CRC, appropriate offset.
+********************************************************************/
 
-Packets assembler at the right time strarts to send commands. If needed sends additional cmds from cmd fifo
-calculates right size of each packet (also blank packets if lpm_enable = 0). add ECC and CRC. Adds right offset.
-********************************************************************/    
+
+
 endmodule
+`endif

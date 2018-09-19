@@ -9,7 +9,7 @@ module dsi_lanes_controller
 
         /********* Fifo signals *********/
         input wire [31:0]   iface_write_data        ,
-        input wire [3:0]    iface_write_strb        , // iface_write_strb[4] - mode flag. 0 - hs, 1 - lp
+        input wire [4:0]    iface_write_strb        , // iface_write_strb[4] - mode flag. 0 - hs, 1 - lp
         input wire          iface_write_rqst        ,
         input wire          iface_last_word         ,
 
@@ -227,7 +227,7 @@ repacker_4_to_4 repacker_4_to_4_0(
 
     .data_change_req    (rpckr_iface_data_rqst              ),   // request data changing. new data on the next clock is needed
     .input_data         (iface_write_data                   ),   // input data
-    .input_strb         (iface_write_strb                   ),   // input strobes
+    .input_strb         (iface_write_strb[3:0]              ),   // input strobes
 
     .enable             (iface_write_rqst || (|dsi_active)  )   // enable repacker signal
     );
