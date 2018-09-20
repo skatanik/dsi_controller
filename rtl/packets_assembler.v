@@ -127,12 +127,21 @@ Sending is not possible in STATE_LPM. All command are sent in hs mode.
 ********************************************************************/
 
 /********************************************************************
-                        Packets assembler
-
+                        Packets assembler (PA)
 Packets assembler at the right time strarts to send commands.
 If needed sends additional cmds from cmd fifo
 calculates right size of each packet (also blank packets if lpm_enable = 0).
 adds ECC and CRC, appropriate offset.
+
+Working when low power mode is enabled.
+PA works in interrupt mode when signals from counters signalize when PA must start next cmd or data sending.
+After sending obligatory cmd or data PA can append cmd from FIFO if size of this cmd is less than time to the next cmd sending.
+After sending data in HS mode PA allow lanes to get into LP mode. And then waits for the next signal from corresponding counter.
+
+Working when low power mode is disabled.
+PA starts to send sequences of packets in HS mode. In the end of every packet it calculates size of the next packet according to current state and counters values (time to line end).
+As when LP mode is off PA can append additional cmd to periodicaly sent cmd or data. After thet it will send blank packet with an appropriate size/
+
 ********************************************************************/
 
 
