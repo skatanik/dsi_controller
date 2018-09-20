@@ -143,6 +143,20 @@ PA starts to send sequences of packets in HS mode. In the end of every packet it
 As when LP mode is off PA can append additional cmd to periodicaly sent cmd or data. After thet it will send blank packet with an appropriate size/
 
 ********************************************************************/
+/********* LPM enable mode *********/
+logic send_vss;
+
+assign send_vss = state_next == STATE_SEND_VSS;
+
+always @(`CLK_RST(clk, reset_n))
+    if(`RST(reset_n))                   output_data_reg <= 32'b0;
+    else if(send_vss)                   output_data_reg <= cmd_vss;
+    else if(cmd_available_delayed)      output_data_reg <= cmd_fifo_out_with_ecc;
+    else if(send_hss)                   output_data_reg <= cmd_hss;
+    else if(send_rgb_cmd)               output_data_reg <= cmd_rgb;
+    else if(send_rgb_data)              output_data_reg <= rgb_fifo_out;
+    else if(send_rgb_crc)               output_data_reg <= rgb_crc_res;
+
 
 
 
