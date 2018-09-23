@@ -146,19 +146,70 @@ As when LP mode is off PA can append additional cmd to periodicaly sent cmd or d
 /********* LPM enable mode *********/
 logic send_vss;
 
+logic [23:0]    command_data;
+logic [7:0]     ecc_result;
+logic [31:0]    command_res;
+logic [31:0]    data_to_write;
+logic [15:0]    crc_result;
+logic [1:0]     bytes_in_line;
+logic           clear_crc;
+logic           write_crc;
+
+assign command_res = {command_data, ecc_result};
+
 assign send_vss = state_next == STATE_SEND_VSS;
 
 always @(`CLK_RST(clk, reset_n))
     if(`RST(reset_n))                   output_data_reg <= 32'b0;
-    else if(send_vss)                   output_data_reg <= cmd_vss;
-    else if(cmd_available_delayed)      output_data_reg <= cmd_fifo_out_with_ecc;
-    else if(send_hss)                   output_data_reg <= cmd_hss;
-    else if(send_rgb_cmd)               output_data_reg <= cmd_rgb;
-    else if(send_rgb_data)              output_data_reg <= rgb_fifo_out;
-    else if(send_rgb_crc)               output_data_reg <= rgb_crc_res;
+    else if(send_cmd)                   output_data_reg <= command_res;
+    else if(send_rgb_data)              output_data_reg <= data_to_write;
+    else if(send_rgb_crc)               output_data_reg <= crc_result;
 
+// ECC bloc input mux
+always @(*)
+    begin
+        if(send_vss)
+            command_data = CMD_VSS;
+        else if(send_hss)
+            command_data = CMD_HSS;
+        else if(send_rgb_cmd)
+            command_data = CMD_RGB;
+        else if(fifo_cmd)
+            command_data = cmd_fifo_data;
+        else
+            command_data = 'b0;
+    end
 
+ecc_calc ecc_0
+(
+    .data       (command_data       ),
+    .ecc_result (ecc_result         )
+);
 
+// CRC block input mux
+
+crc_calculator
+(
+    .clk                (clk                    ),
+    .reset_n            (reset_n                ),
+    .clear              (clear_crc              ),
+    .data_write         (write_crc              ),
+    .bytes_number       (bytes_in_line          ),
+    .data_input         (data_to_write          ),
+    .crc_output_async   (),
+    .crc_output_sync    (crc_result             )
+);
+
+always @(*)
+    begin
+        if(state_pix_fifo_reading)
+            data_to_write = pix_fifo_data;
+        else if(state_cmd_data_reading)
+            data_to_write = cmd_fifo_data;
+        else
+            data_to_write = 32'b0
+
+    end
 
 endmodule
 `endif

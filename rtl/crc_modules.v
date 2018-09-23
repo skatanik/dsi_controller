@@ -53,23 +53,24 @@ endmodule
 
 module crc_calculator
     (
-        input  wire          clk            ,
-        input  wire          reset_n        ,
+        input  wire          clk                ,
+        input  wire          reset_n            ,
 
-        input  wire          clear          ,   // reset crc
-        input  wire          data_write     ,   // latch crc
-        input  wire [1:0]    bytes_number   ,   // bytes number. 0 means that only the first byte from data_input will be used. 1 means that first 2 bytes from data_input will be used etc.
-        input  wire [31:0]   data_input     ,
+        input  wire          clear              ,   // reset crc
+        input  wire          data_write         ,   // latch crc
+        input  wire [1:0]    bytes_number       ,   // bytes number. 0 means that only the first byte from data_input will be used. 1 means that first 2 bytes from data_input will be used etc.
+        input  wire [31:0]   data_input         ,
 
-        output wire [15:0]   crc_output_curr,
-        output wire [15:0]   crc_output_prev,
+        output wire [15:0]   crc_output_async   ,
+        output wire [15:0]   crc_output_sync    ,
     );
 
 reg [15:0] crc_result;
 
 wire [15:0] crc_out[0:3];
 
-assign crc_output_curr = crc_out[bytes_number];
+assign crc_output_async = crc_out[bytes_number];
+assign crc_output_sync  = crc_result;
 
 always @(posedge clk, negedge reset_n)
     if(!reset_n)            crc_result <= 16'hffff;
