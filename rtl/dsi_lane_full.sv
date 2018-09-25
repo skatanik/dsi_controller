@@ -6,6 +6,9 @@ module dsi_lane_full #(
     input wire          clk_latch           , // clk_sys, duty cycle 15%
     input wire          rst_n               ,
 
+    input wire          lane_zero           , // signals that this lane is lane zero
+
+    input wire          mode_lp             , // which mode to use to send data throught this lane. 0 - hs, 1 - lp
     input wire          start_rqst          ,
     input wire          fin_rqst            ,
     input wire          lines_enable        ,
@@ -23,6 +26,8 @@ logic hs_fin_ack;
 logic hs_rqst_timeout;
 logic hs_prep_timeout;
 logic hs_exit_timeout;
+logic hs_data_rqst;
+logic lp_data_is_sent;
 
 /***********************************
         FSM declaration
@@ -35,7 +40,11 @@ enum logic [2:0]
     STATE_HS_RQST,
     STATE_HS_PREP,
     STATE_HS_ACTIVE,
-    STATE_HS_EXIT
+    STATE_HS_EXIT,
+    STATE_LP_SEND_ESC_MODE_ENTRY,
+    STATE_LP_SEND_ENTRY_CMD,        // entry command is fixed to Low-Power Data Transmission
+    STATE_LP_SEND_LP_CMD,
+    STATE_LP_SEND_MARK_ONE
 } state_current, state_next;
 
 always_ff @(posedge clk_sys or negedge rst_n) begin
@@ -53,7 +62,7 @@ always_comb begin
             state_next = lines_enable ? STATE_IDLE : STATE_LINES_DISABLED;
 
         STATE_IDLE:
-            state_next = lines_enable ? (start_rqst ? STATE_HS_RQST : STATE_IDLE) : STATE_LINES_DISABLED;
+            state_next = lines_enable ? (start_rqst ? (mode_lp && lane_zero ? STATE_LP_SEND_ESC_MODE_ENTRY : STATE_HS_RQST) : STATE_IDLE) : STATE_LINES_DISABLED;
 
         STATE_HS_RQST:
             state_next = hs_rqst_timeout ? STATE_HS_PREP : STATE_HS_RQST;
@@ -67,6 +76,18 @@ always_comb begin
         STATE_HS_EXIT:
             state_next = hs_exit_timeout ? STATE_IDLE : STATE_HS_EXIT;
 
+        STATE_LP_SEND_ESC_MODE_ENTRY:
+            state_next = send_esc_mode_entry_done ? STATE_LP_SEND_ENTRY_CMD : STATE_LP_SEND_ESC_MODE_ENTRY;
+
+        STATE_LP_SEND_ENTRY_CMD:
+            state_next = send_entry_cmd_done ? STATE_LP_SEND_LP_CMD : STATE_LP_SEND_LP_CMD;
+
+        STATE_LP_SEND_LP_CMD:
+            state_next = lp_data_is_sent ? STATE_LP_SEND_MARK_ONE : STATE_LP_SEND_LP_CMD;
+
+        STATE_LP_SEND_MARK_ONE:
+            state_next = send_mark_one_done ? STATE_IDLE : STATE_LP_SEND_MARK_ONE;
+
         default :
             state_next = STATE_LINES_DISABLED;
     endcase
@@ -74,19 +95,112 @@ end
 
 assign active = (state_current != STATE_LINES_DISABLED) && (state_current != STATE_IDLE);
 
+localparam [7:0]    ESC_MODE_ENTRY      = 8'b00000010;
+localparam [7:0]    ENTRY_CMD           = 8'b11100001;
+localparam [7:0]    LP_BAUD_TIME        = 8'd30;
+
 logic LP_p;
 logic LP_n;
+logic [7:0] lp_data_buffer;
+logic       lp_buffer_empty
+logic [3:0] lp_data_bits_counter;
+logic [7:0] lp_data_to_send;
+logic       lp_data_rqst;
+logic [7:0] lp_baud_counter;
+logic       set_first_half_bit;
+logic       set_second_half_bit;
+logic       write_lp_data_to_send;
+logic       next_state_lpdt;
+logic       last_lp_byte;
+
+assign next_state_lpdt          = (state_next == STATE_LP_SEND_ESC_MODE_ENTRY) && (state_current == STATE_IDLE);
+assign next_state_entry_cmd     = (state_next == STATE_LP_SEND_ENTRY_CMD) && (state_current == STATE_LP_SEND_ESC_MODE_ENTRY);
+assign next_state_mark_one      = (state_next == STATE_LP_SEND_MARK_ONE) && (state_current == STATE_LP_SEND_ENTRY_CMD);
+assign write_lp_data_to_send    = next_state_lpdt || (state_current == STATE_LP_SEND_LP_CMD) && (lp_data_rqst);
+assign data_rqst                = ((state_current == STATE_HS_RQST) || (state_current == STATE_HS_PREP) || (state_current == STATE_HS_ACTIVE)) ? hs_data_rqst : lp_data_rqst;
+assign latch_lp_data_buffer     = !lp_data_rqst && !(|lp_baud_counter);
+
+always_ff @(posedge clk_sys or negedge rst_n) begin
+    if(~rst_n)                                      lp_data_buffer <= 8'b0;
+    else if(next_state_lpdt)                        lp_data_buffer <= ESC_MODE_ENTRY;
+    else if(next_state_entry_cmd)                   lp_data_buffer <= ENTRY_CMD;
+    else if(latch_lp_data_buffer)                   lp_data_buffer <= lp_data_to_send;
+    else if(next_state_mark_one)                    lp_data_buffer <= 8'hff;
+
+always_ff @(posedge clk_sys or negedge rst_n) begin
+    if(~rst_n)                     lp_data_to_send <= 8'b0;
+    if(write_lp_data_to_send)      lp_data_to_send <= inp_data;
+
+logic set_lp_data_rqst;
+
+assign set_lp_data_rqst             = (state_current == STATE_LP_SEND_LP_CMD) && lp_data_bits_counter == 7 && inc_lp_data_bits_counter;
+assign send_esc_mode_entry_done     = (state_current == STATE_LP_SEND_ESC_MODE_ENTRY) && lp_data_bits_counter == 2 && inc_lp_data_bits_counter;
+assign send_entry_cmd_done          = (state_current == STATE_LP_SEND_ENTRY_CMD) && lp_data_bits_counter == 7 && inc_lp_data_bits_counter;
+assign send_mark_one_done           = (state_current == STATE_LP_SEND_MARK_ONE) && lp_data_bits_counter == 0 && set_second_half_bit;
+
+always_ff @(posedge clk_sys or negedge rst_n) begin
+    if(~rst_n)                              lp_data_rqst <= 1'b1;
+    else if(write_lp_data_to_send)          lp_data_rqst <= 1'b0;
+    else if(set_lp_data_rqst)               lp_data_rqst <= 1'b1;
+
+always_ff @(posedge clk_sys or negedge rst_n) begin
+    if(~rst_n)                          last_lp_byte <= 1'b0;
+    else if(write_lp_data_to_send)      last_lp_byte <= fin_rqst;
+    else if(state_next == STATE_IDLE)   last_lp_byte <= 1'b0;
+
+assign lp_data_is_sent = set_lp_data_rqst & last_lp_byte;
+
+logic inc_lp_data_bits_counter;
+
+assign inc_lp_data_bits_counter = !(|lp_baud_counter) && ((state_current == STATE_LP_SEND_ESC_MODE_ENTRY) || (state_current == STATE_LP_SEND_ENTRY_CMD) || (state_current == STATE_LP_SEND_LP_CMD) || (state_current == STATE_LP_SEND_MARK_ONE));
+
+always_ff @(posedge clk_sys or negedge rst_n) begin
+    if(~rst_n)                                                                                      lp_data_bits_counter <= 4'b0;
+    else if(inc_lp_data_bits_counter)
+    begin
+        if((state_current == STATE_LP_SEND_ESC_MODE_ENTRY) && lp_data_bits_counter == 2)            lp_data_bits_counter <= 4'b0;
+        else if((state_current == STATE_LP_SEND_ENTRY_CMD) && lp_data_bits_counter == 7)            lp_data_bits_counter <= 4'b0;
+        else if((state_current == STATE_LP_SEND_LP_CMD) && lp_data_bits_counter == 7)               lp_data_bits_counter <= 4'b0;
+        else if((state_current == STATE_LP_SEND_MARK_ONE) && lp_data_bits_counter == 1)             lp_data_bits_counter <= 4'b0;
+    end
+    else if(inc_lp_data_bits_counter)                                                               lp_data_bits_counter <= lp_data_bits_counter + 4'b1;
+
+logic reset_baud_counter;
+
+assign reset_baud_counter = next_state_lpdt || inc_lp_data_bits_counter;
+
+always_ff @(posedge clk_sys or negedge rst_n) begin
+    if(~rst_n)                          lp_baud_counter <= 8'b0;
+    else if(reset_baud_counter)         lp_baud_counter <= LP_BAUD_TIME;
+    else if(state_next == STATE_IDLE)   lp_baud_counter <= 8'b0;
+    else if(|lp_baud_counter)           lp_baud_counter <= lp_baud_counter - 8'b1;
+
+assign set_first_half_bit   = lp_baud_counter == LP_BAUD_TIME;
+assign set_second_half_bit  = (lp_baud_counter == {1'b0, LP_BAUD_TIME[6:0]});
+
+logic current_lp_data_bit;
+logic [7:0] shifted_lp_data;
+
+assign shifted_lp_data = lp_data_buffer << lp_data_bits_counter;
+assign current_lp_data_bit = shifted_lp_data[7];
+
 // LP lines control
 always_ff @(posedge clk_sys or negedge rst_n) begin
     if(~rst_n)                                                              LP_p <= 1;
     else if(state_next == STATE_IDLE || state_next == STATE_HS_EXIT)        LP_p <= 1;
     else if(state_next == STATE_HS_RQST)                                    LP_p <= 0;
+    else if(set_first_half_bit && current_lp_data_bit)                      LP_p <= 1;
+    else if(set_second_half_bit && current_lp_data_bit)                     LP_p <= 0;
+    else                                                                    LP_p <= 0;
 end
 
 always_ff @(posedge clk_sys or negedge rst_n) begin
     if(~rst_n)                                                              LP_n <= 1;
     else if(state_next == STATE_IDLE || state_next == STATE_HS_EXIT)        LP_n <= 1;
     else if(state_next == STATE_HS_PREP)                                    LP_n <= 0;
+    else if(set_first_half_bit && !current_lp_data_bit)                     LP_p <= 1;
+    else if(set_second_half_bit && !current_lp_data_bit)                    LP_p <= 0;
+    else                                                                    LP_p <= 0;
 end
 
 logic lp_lines_enable;
@@ -154,7 +268,7 @@ dsi_hs_lane  #(
     .fin_rqst               (fin_rqst           ),
     .inp_data               (inp_data           ),
 
-    .data_rqst              (data_rqst          ),
+    .data_rqst              (hs_data_rqst          ),
     .active                 (hs_lane_active     ),
     .fin_ack                (hs_fin_ack         ),
 
