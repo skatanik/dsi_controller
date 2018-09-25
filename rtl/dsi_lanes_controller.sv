@@ -64,32 +64,57 @@ logic [3:0]     dsi_LP_n_output;
 logic [31:0]    dsi_inp_data;
 logic [3:0]     dsi_lines_enable;
 
-assign dsi_start_rqst[0] = !transmission_active && iface_write_rqst;
-assign dsi_start_rqst[1] = !transmission_active && iface_write_rqst && (|reg_lanes_number);
-assign dsi_start_rqst[2] = !transmission_active && iface_write_rqst && (reg_lanes_number[1]);
-assign dsi_start_rqst[3] = !transmission_active && iface_write_rqst && (&reg_lanes_number);
+assign dsi_start_rqst[0] = !iface_write_strb[4] && !transmission_active && iface_write_rqst;
+assign dsi_start_rqst[1] = !iface_write_strb[4] && !transmission_active && iface_write_rqst && (|reg_lanes_number);
+assign dsi_start_rqst[2] = !iface_write_strb[4] && !transmission_active && iface_write_rqst && (reg_lanes_number[1]);
+assign dsi_start_rqst[3] = !iface_write_strb[4] && !transmission_active && iface_write_rqst && (&reg_lanes_number);
+
+
+dsi_lane_full dsi_lane_0(
+        .clk_sys            (clk_sys                            ), // serial data clock
+        .clk_serdes         (clk_serdes                         ), // logic clock = clk_hs/8
+        .clk_latch          (clk_latch                          ), // clk_sys, duty cycle 15%
+        .rst_n              (rst_n                              ),
+
+        .lane_zero          (1'b1                               ),
+        .mode_lp            (iface_write_strb[4]                ),
+
+        .start_rqst         (dsi_start_rqst[0]                  ),
+        .fin_rqst           (dsi_fin_rqst[0]                    ),  // change to data_rqst <= (state_next == STATE_TX_ACTIVE);
+        .inp_data           (dsi_inp_data[7 : 0]                ),
+
+        .data_rqst          (dsi_data_rqst[0]                   ),
+        .active             (dsi_active[0]                      ),
+        .lines_enable       (dsi_lines_enable[0]                ),
+
+        .serial_hs_output   (dsi_serial_hs_output[0]            ),
+        .LP_p_output        (dsi_LP_p_output[0]                 ),
+        .LP_n_output        (dsi_LP_n_output[0]                 )
+    );
 
 genvar i;
-
 generate
-for(i = 0; i < 4; i = i + 1)
+for(i = 1; i < 4; i = i + 1)
     dsi_lane_full dsi_lane(
-        .clk_sys            (clk_sys                        ), // serial data clock
-        .clk_serdes         (clk_serdes                     ), // logic clock = clk_hs/8
-        .clk_latch          (clk_latch                      ), // clk_sys, duty cycle 15%
-        .rst_n              (rst_n                          ),
+        .clk_sys            (clk_sys                            ), // serial data clock
+        .clk_serdes         (clk_serdes                         ), // logic clock = clk_hs/8
+        .clk_latch          (clk_latch                          ), // clk_sys, duty cycle 15%
+        .rst_n              (rst_n                              ),
 
-        .start_rqst         (dsi_start_rqst[i]              ),
-        .fin_rqst           (dsi_fin_rqst[i]                ),  // change to data_rqst <= (state_next == STATE_TX_ACTIVE);
-        .inp_data           (dsi_inp_data[i*8 + 7 : i*8]    ),
+        .lane_zero          (1'b0                               ),
+        .mode_lp            (1'b0                               ),
 
-        .data_rqst          (dsi_data_rqst[i]               ),
-        .active             (dsi_active[i]                  ),
-        .lines_enable       (dsi_lines_enable[i]            ),
+        .start_rqst         (dsi_start_rqst[i]                  ),
+        .fin_rqst           (dsi_fin_rqst[i]                    ),  // change to data_rqst <= (state_next == STATE_TX_ACTIVE);
+        .inp_data           (dsi_inp_data[i*8 + 7 : i*8]        ),
 
-        .serial_hs_output   (dsi_serial_hs_output[i]        ),
-        .LP_p_output        (dsi_LP_p_output[i]             ),
-        .LP_n_output        (dsi_LP_n_output[i]             )
+        .data_rqst          (dsi_data_rqst[i]                   ),
+        .active             (dsi_active[i]                      ),
+        .lines_enable       (dsi_lines_enable[i]                ),
+
+        .serial_hs_output   (dsi_serial_hs_output[i]            ),
+        .LP_p_output        (dsi_LP_p_output[i]                 ),
+        .LP_n_output        (dsi_LP_n_output[i]                 )
     );
 endgenerate
 
@@ -211,25 +236,26 @@ always_ff @(posedge clk_sys or negedge rst_n)
 ********************************************************************/
 
 always_ff @(posedge clk_sys or negedge rst_n)
-    if(~rst_n)                  transmission_active <= 1'b0;
-    else if(iface_last_word)    transmission_active <= 1'b0;
-    else if(iface_write_rqst)   transmission_active <= 1'b1;
+    if(~rst_n)                                          transmission_active <= 1'b0;
+    else if(iface_last_word)                            transmission_active <= 1'b0;
+    else if(iface_write_rqst && !iface_write_strb[4])   transmission_active <= 1'b1;
 
 logic rpckr_iface_data_rqst;
+logic enable_repacker = iface_write_rqst && !iface_write_strb[4] || (|dsi_active);
 
 repacker_4_to_4 repacker_4_to_4_0(
-    .clk                (clk_sys                            ),
-    .rst_n              (rst_n                              ),
+    .clk                (clk_sys                    ),
+    .rst_n              (rst_n                      ),
 
-    .data_req           (|dsi_data_rqst                     ),   // data request signal. Need to get new data on the next clock.
-    .data_out           (dsi_inp_data                       ),   // output data
-    .last_data_strb     (dsi_fin_rqst                       ),   // strobes indicate last data bytes on each line
+    .data_req           (|dsi_data_rqst             ),   // data request signal. Need to get new data on the next clock.
+    .data_out           (dsi_inp_data               ),   // output data
+    .last_data_strb     (dsi_fin_rqst               ),   // strobes indicate last data bytes on each line
 
-    .data_change_req    (rpckr_iface_data_rqst              ),   // request data changing. new data on the next clock is needed
-    .input_data         (iface_write_data                   ),   // input data
-    .input_strb         (iface_write_strb[3:0]              ),   // input strobes
+    .data_change_req    (rpckr_iface_data_rqst      ),   // request data changing. new data on the next clock is needed
+    .input_data         (iface_write_data           ),   // input data
+    .input_strb         (iface_write_strb[3:0]      ),   // input strobes
 
-    .enable             (iface_write_rqst || (|dsi_active)  )   // enable repacker signal
+    .enable             (enable_repacker            )   // enable repacker signal
     );
 
 assign iface_data_rqst = rpckr_iface_data_rqst & transmission_active;
