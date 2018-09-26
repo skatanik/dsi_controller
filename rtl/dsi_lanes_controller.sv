@@ -9,9 +9,10 @@ module dsi_lanes_controller
 
         /********* Fifo signals *********/
         input wire [31:0]   iface_write_data        ,
-        input wire [4:0]    iface_write_strb        , // iface_write_strb[4] - mode flag. 0 - hs, 1 - lp
+        input wire [3:0]    iface_write_strb        , // iface_write_strb[4] - mode flag. 0 - hs, 1 - lp
         input wire          iface_write_rqst        ,
         input wire          iface_last_word         ,
+        input wire          iface_lpm_en            , // should be asserted at least one cycle before iface_write_rqst and disasserted one cycle after iface_last_word
 
         output wire         iface_data_rqst         ,
 
@@ -64,11 +65,19 @@ logic [3:0]     dsi_LP_n_output;
 logic [31:0]    dsi_inp_data;
 logic [3:0]     dsi_lines_enable;
 
-assign dsi_start_rqst[0] = !iface_write_strb[4] && !transmission_active && iface_write_rqst;
-assign dsi_start_rqst[1] = !iface_write_strb[4] && !transmission_active && iface_write_rqst && (|reg_lanes_number);
-assign dsi_start_rqst[2] = !iface_write_strb[4] && !transmission_active && iface_write_rqst && (reg_lanes_number[1]);
-assign dsi_start_rqst[3] = !iface_write_strb[4] && !transmission_active && iface_write_rqst && (&reg_lanes_number);
+assign dsi_start_rqst[0] = !iface_lpm_en && !transmission_active && iface_write_rqst;
+assign dsi_start_rqst[1] = !iface_lpm_en && !transmission_active && iface_write_rqst && (|reg_lanes_number);
+assign dsi_start_rqst[2] = !iface_lpm_en && !transmission_active && iface_write_rqst && (reg_lanes_number[1]);
+assign dsi_start_rqst[3] = !iface_lpm_en && !transmission_active && iface_write_rqst && (&reg_lanes_number);
 
+logic           lp_data_request;
+logic           lp_start_rqst;
+logic           lp_last_byte;
+logic [7:0]     lp_data_byte;
+logic [4:0]     lp_bytes_counter;
+logic [2:0]     lp_bytes_number;
+logic [31:0]    lp_word_to_write;
+logic [3:0]     lp_word_strb;
 
 dsi_lane_full dsi_lane_0(
         .clk_sys            (clk_sys                            ), // serial data clock
@@ -77,13 +86,14 @@ dsi_lane_full dsi_lane_0(
         .rst_n              (rst_n                              ),
 
         .lane_zero          (1'b1                               ),
-        .mode_lp            (iface_write_strb[4]                ),
+        .mode_lp            (iface_lpm_en                       ),
 
-        .start_rqst         (dsi_start_rqst[0]                  ),
-        .fin_rqst           (dsi_fin_rqst[0]                    ),  // change to data_rqst <= (state_next == STATE_TX_ACTIVE);
-        .inp_data           (dsi_inp_data[7 : 0]                ),
+        .start_rqst         (!iface_lpm_en ? dsi_start_rqst[0]   : lp_start_rqst               ),
+        .fin_rqst           (!iface_lpm_en ? dsi_fin_rqst[0]     : lp_last_byte               ),  // change to data_rqst <= (state_next == STATE_TX_ACTIVE);
+        .inp_data           (!iface_lpm_en ? dsi_inp_data[7 : 0] : lp_data_byte               ),
 
         .data_rqst          (dsi_data_rqst[0]                   ),
+
         .active             (dsi_active[0]                      ),
         .lines_enable       (dsi_lines_enable[0]                ),
 
@@ -91,6 +101,10 @@ dsi_lane_full dsi_lane_0(
         .LP_p_output        (dsi_LP_p_output[0]                 ),
         .LP_n_output        (dsi_LP_n_output[0]                 )
     );
+
+/********* send data to lane 0 with preloading 1 word *********/
+
+
 
 genvar i;
 generate
@@ -238,10 +252,10 @@ always_ff @(posedge clk_sys or negedge rst_n)
 always_ff @(posedge clk_sys or negedge rst_n)
     if(~rst_n)                                          transmission_active <= 1'b0;
     else if(iface_last_word)                            transmission_active <= 1'b0;
-    else if(iface_write_rqst && !iface_write_strb[4])   transmission_active <= 1'b1;
+    else if(iface_write_rqst && !iface_lpm_en)          transmission_active <= 1'b1;
 
 logic rpckr_iface_data_rqst;
-logic enable_repacker = iface_write_rqst && !iface_write_strb[4] || (|dsi_active);
+logic enable_repacker = (iface_write_rqst || (|dsi_active)) && !iface_lpm_en;
 
 repacker_4_to_4 repacker_4_to_4_0(
     .clk                (clk_sys                    ),
@@ -258,6 +272,6 @@ repacker_4_to_4 repacker_4_to_4_0(
     .enable             (enable_repacker            )   // enable repacker signal
     );
 
-assign iface_data_rqst = rpckr_iface_data_rqst & transmission_active;
+assign iface_data_rqst = !iface_lpm_en ? rpckr_iface_data_rqst & transmission_active : lp_data_request;
 
 endmodule
