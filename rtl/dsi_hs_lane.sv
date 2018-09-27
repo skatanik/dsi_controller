@@ -113,7 +113,7 @@ end
 wire serdes_enable;
 wire serdes_out;
 
-assign serdes_enable = (state_current != STATE_IDLE);
+assign serdes_enable = (state_current != STATE_IDLE); // or (state_next != STATE_IDLE)
 
 altlvds altlvds_inst_0 (
     .tx_enable ( clk_latch ),
@@ -136,16 +136,16 @@ logic [7:0] tx_hs_go_counter;
 logic [7:0] tx_hs_trail_counter;
 
 always_ff @(posedge clk_sys or negedge rst_n)
-    if(~rst_n)                              tx_hs_go_counter <= 0;
-    else if(state_current == STATE_TX_GO)   tx_hs_go_counter <= tx_hs_go_counter - 1;
-    else if(state_next == STATE_TX_GO)      tx_hs_go_counter <= TX_HS_GO_TIMEOUT_VAL - 1;
+    if(~rst_n)                                                          tx_hs_go_counter <= 0;
+    else if((state_current == STATE_TX_GO) && (|tx_hs_go_counter))      tx_hs_go_counter <= tx_hs_go_counter - 1;
+    else if(state_next == STATE_TX_GO)                                  tx_hs_go_counter <= TX_HS_GO_TIMEOUT_VAL - 1;
 
 assign tx_hs_go_timeout = (state_current == STATE_TX_GO) && !(|tx_hs_go_counter);
 
 always_ff @(posedge clk_sys or negedge rst_n)
-    if(~rst_n)                                  tx_hs_trail_counter <= 0;
-    else if(state_current == STATE_TX_TRAIL)    tx_hs_trail_counter <= tx_hs_trail_counter - 1;
-    else if(state_next == STATE_TX_TRAIL)       tx_hs_trail_counter <= TX_HS_TRAIL_TIMEOUT_VAL - 1;
+    if(~rst_n)                                                              tx_hs_trail_counter <= 0;
+    else if((state_current == STATE_TX_TRAIL) && (|tx_hs_trail_counter))    tx_hs_trail_counter <= tx_hs_trail_counter - 1;
+    else if(state_next == STATE_TX_TRAIL)                                   tx_hs_trail_counter <= TX_HS_TRAIL_TIMEOUT_VAL - 1;
 
 assign tx_hs_trail_timeout = (state_current == STATE_TX_TRAIL) && !(|tx_hs_trail_counter);
 

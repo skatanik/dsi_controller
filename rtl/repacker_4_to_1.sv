@@ -15,7 +15,7 @@ module repacker_4_to_1
     input   wire            sink_data_rqst      ,
     output  wire [7:0]      sink_input_data     ,
     output  wire            sink_start_rqst     ,
-    output  wire            sink_fin_rqst       ,
+    output  wire            sink_fin_rqst
 
     );
 

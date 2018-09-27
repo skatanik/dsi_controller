@@ -28,12 +28,16 @@ logic hs_prep_timeout;
 logic hs_exit_timeout;
 logic hs_data_rqst;
 logic lp_data_is_sent;
+logic send_esc_mode_entry_done;
+logic send_entry_cmd_done;
+logic send_mark_one_done;
+logic inc_lp_data_bits_counter;
 
 /***********************************
         FSM declaration
 ************************************/
 
-enum logic [2:0]
+enum logic [3:0]
 {
     STATE_LINES_DISABLED,
     STATE_IDLE,
@@ -102,7 +106,7 @@ localparam [7:0]    LP_BAUD_TIME        = 8'd30;
 logic LP_p;
 logic LP_n;
 logic [7:0] lp_data_buffer;
-logic       lp_buffer_empty
+logic       lp_buffer_empty;
 logic [3:0] lp_data_bits_counter;
 logic [7:0] lp_data_to_send;
 logic       lp_data_rqst;
@@ -120,41 +124,39 @@ assign write_lp_data_to_send    = next_state_lpdt || (state_current == STATE_LP_
 assign data_rqst                = ((state_current == STATE_HS_RQST) || (state_current == STATE_HS_PREP) || (state_current == STATE_HS_ACTIVE)) ? hs_data_rqst : lp_data_rqst;
 assign latch_lp_data_buffer     = !lp_data_rqst && !(|lp_baud_counter);
 
-always_ff @(posedge clk_sys or negedge rst_n) begin
+always_ff @(posedge clk_sys or negedge rst_n)
     if(~rst_n)                                      lp_data_buffer <= 8'b0;
     else if(next_state_lpdt)                        lp_data_buffer <= ESC_MODE_ENTRY;
     else if(next_state_entry_cmd)                   lp_data_buffer <= ENTRY_CMD;
     else if(latch_lp_data_buffer)                   lp_data_buffer <= lp_data_to_send;
     else if(next_state_mark_one)                    lp_data_buffer <= 8'hff;
 
-always_ff @(posedge clk_sys or negedge rst_n) begin
-    if(~rst_n)                     lp_data_to_send <= 8'b0;
-    if(write_lp_data_to_send)      lp_data_to_send <= inp_data;
+always_ff @(posedge clk_sys or negedge rst_n)
+    if(~rst_n)                          lp_data_to_send <= 8'b0;
+    else if(write_lp_data_to_send)      lp_data_to_send <= inp_data;
 
 logic set_lp_data_rqst;
 
 assign set_lp_data_rqst             = (state_current == STATE_LP_SEND_LP_CMD) && lp_data_bits_counter == 7 && inc_lp_data_bits_counter;
-assign send_esc_mode_entry_done     = (state_current == STATE_LP_SEND_ESC_MODE_ENTRY) && lp_data_bits_counter == 2 && inc_lp_data_bits_counter;
+assign send_esc_mode_entry_done     = (state_current == STATE_LP_SEND_ESC_MODE_ENTRY) && (lp_data_bits_counter == 2) && inc_lp_data_bits_counter;
 assign send_entry_cmd_done          = (state_current == STATE_LP_SEND_ENTRY_CMD) && lp_data_bits_counter == 7 && inc_lp_data_bits_counter;
 assign send_mark_one_done           = (state_current == STATE_LP_SEND_MARK_ONE) && lp_data_bits_counter == 0 && set_second_half_bit;
 
-always_ff @(posedge clk_sys or negedge rst_n) begin
+always_ff @(posedge clk_sys or negedge rst_n)
     if(~rst_n)                              lp_data_rqst <= 1'b1;
     else if(write_lp_data_to_send)          lp_data_rqst <= 1'b0;
     else if(set_lp_data_rqst)               lp_data_rqst <= 1'b1;
 
-always_ff @(posedge clk_sys or negedge rst_n) begin
+always_ff @(posedge clk_sys or negedge rst_n)
     if(~rst_n)                          last_lp_byte <= 1'b0;
     else if(write_lp_data_to_send)      last_lp_byte <= fin_rqst;
     else if(state_next == STATE_IDLE)   last_lp_byte <= 1'b0;
 
 assign lp_data_is_sent = set_lp_data_rqst & last_lp_byte;
 
-logic inc_lp_data_bits_counter;
-
 assign inc_lp_data_bits_counter = !(|lp_baud_counter) && ((state_current == STATE_LP_SEND_ESC_MODE_ENTRY) || (state_current == STATE_LP_SEND_ENTRY_CMD) || (state_current == STATE_LP_SEND_LP_CMD) || (state_current == STATE_LP_SEND_MARK_ONE));
 
-always_ff @(posedge clk_sys or negedge rst_n) begin
+always_ff @(posedge clk_sys or negedge rst_n)
     if(~rst_n)                                                                                      lp_data_bits_counter <= 4'b0;
     else if(inc_lp_data_bits_counter)
     begin
@@ -169,7 +171,7 @@ logic reset_baud_counter;
 
 assign reset_baud_counter = next_state_lpdt || inc_lp_data_bits_counter;
 
-always_ff @(posedge clk_sys or negedge rst_n) begin
+always_ff @(posedge clk_sys or negedge rst_n)
     if(~rst_n)                          lp_baud_counter <= 8'b0;
     else if(reset_baud_counter)         lp_baud_counter <= LP_BAUD_TIME;
     else if(state_next == STATE_IDLE)   lp_baud_counter <= 8'b0;

@@ -34,6 +34,7 @@ dsi_lanes_controller dsi_lanes_controller_0(
     .iface_write_rqst           (iface_write_rqst       ),
     .iface_last_word            (iface_last_word        ),
     .iface_data_rqst            (iface_data_rqst        ),
+    .iface_lpm_en               (1'b1                   ),
     .reg_lanes_number           (reg_lanes_number       ),
     .lines_enable               (lines_enable           ),
     .clock_enable               (clock_enable           ),
@@ -116,6 +117,12 @@ repeat(20) @(posedge clk_sys);
 
 write_data();
 
+repeat(20) @(posedge clk_sys);
+clock_enable = 0;
+repeat(10) @(posedge clk_sys);
+lines_enable = 0;
+
+
 end // initial
 
 
@@ -127,7 +134,7 @@ task write_data;
     integer data_left;
     integer i;
 
-    data_size = 20;
+    data_size = 10;
     $display("Data size %d", data_size);
 
 
@@ -144,6 +151,7 @@ task write_data;
     #0.01 iface_write_data = data_array[i];
     iface_write_strb = 4'hf;
     iface_write_rqst = 1;
+    data_left = data_left >= 4 ? data_left - 4 : 0;
     i = i + 1;
 
     while(i <= total_cycles) begin
@@ -156,7 +164,7 @@ task write_data;
             #0.01 iface_write_data = data_array[i];
             iface_write_strb = data_left >= 4 ? 4'hf : (4'hf >> (4 - data_left));
 
-            if(i == total_cycles)
+            if(i == total_cycles - 1)
                 iface_last_word = 1;
             else
                 iface_last_word = 0;
