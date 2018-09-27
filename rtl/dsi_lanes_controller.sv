@@ -42,13 +42,11 @@ module dsi_lanes_controller
 /********************************************************************
    On the power on module has all lines output buffers off. At first it is needed to set  lines_enable signal, then when lines_ready signal is got
    one can wait for a while and then set clock_enable signal and again wait for clock_ready signal. After that it is possible to start writing data.
-
     When data writing is needed follow next steps
     1. set iface_write_rqst also set iface_write_data with first data  and iface_write_strb
     2. on each active  iface_data_rqst set new data on iface_write_data iface_write_strb
     3. when there is no data set iface_write_rqst and iface_write_strb to all zeros
     4. wait until writing_active is 0.
-
     after that module can start a new writing data sequence
 ********************************************************************/
 logic           transmission_active;
@@ -104,7 +102,25 @@ dsi_lane_full dsi_lane_0(
 
 /********* send data to lane 0 with preloading 1 word *********/
 
+repacker_4_to_1 repacker_4_to_1_0
+(
+    .clk                 (clk_sys                           ),
+    .rst_n               (rst_n                             ),
 
+    /********* Data source iface *********/
+    .src_data_rqst       (lp_data_request                   ),
+
+    .src_input_data      (iface_write_data                  ),
+    .src_input_strb      (iface_write_strb                  ),
+    .src_start_rqst      (iface_lpm_en && iface_write_rqst  ),
+    .src_fin_rqst        (iface_lpm_en && iface_last_word   ),
+
+    /********* Data sink iface *********/
+    .sink_data_rqst      (iface_lpm_en && dsi_data_rqst[0]  ),
+    .sink_input_data     (lp_data_byte                      ),
+    .sink_start_rqst     (lp_start_rqst                     ),
+    .sink_fin_rqst       (lp_last_byte                      )
+    );
 
 genvar i;
 generate
