@@ -105,13 +105,14 @@ logic LP_p;
 logic LP_n;
 logic [7:0] lp_data_buffer;
 logic [3:0] lp_data_bits_counter;
-logic [7:0] lp_data_to_send;
 logic       lp_data_rqst;
 logic [7:0] lp_baud_counter;
 logic       set_first_half_bit;
 logic       set_second_half_bit;
 logic       next_state_lpdt;
 logic       last_lp_byte;
+logic       send_lp_data;
+logic       reset_baud_counter;
 
 assign next_state_lpdt          = (state_next == STATE_LP_SEND_ESC_MODE_ENTRY) && (state_current == STATE_IDLE);
 assign next_state_entry_cmd     = (state_next == STATE_LP_SEND_ENTRY_CMD) && (state_current == STATE_LP_SEND_ESC_MODE_ENTRY);
@@ -134,7 +135,6 @@ assign lp_data_is_sent = lp_data_rqst & last_lp_byte;
 
 assign inc_lp_data_bits_counter = !(|lp_baud_counter) && ((state_current == STATE_LP_SEND_ESC_MODE_ENTRY) || (state_current == STATE_LP_SEND_ENTRY_CMD) || (state_current == STATE_LP_SEND_LP_CMD) || (state_current == STATE_LP_SEND_MARK_ONE));
 
-logic send_lp_data;
 logic bits_counter_is_zero;
 
 assign bits_counter_is_zero     = !(|lp_data_bits_counter) && reset_baud_counter;
@@ -151,9 +151,7 @@ always_ff @(posedge clk_sys or negedge rst_n)
 assign lp_data_rqst                 = (state_current == STATE_LP_SEND_LP_CMD) && bits_counter_is_zero || (state_current == STATE_IDLE);
 assign send_esc_mode_entry_done     = (state_current == STATE_LP_SEND_ESC_MODE_ENTRY) && bits_counter_is_zero;
 assign send_entry_cmd_done          = (state_current == STATE_LP_SEND_ENTRY_CMD) && bits_counter_is_zero;
-assign send_mark_one_done           = (state_current == STATE_LP_SEND_MARK_ONE) && bits_counter_is_zero;
-
-logic reset_baud_counter;
+assign send_mark_one_done           = (state_current == STATE_LP_SEND_MARK_ONE) && set_second_half_bit;
 
 assign reset_baud_counter = next_state_lpdt || inc_lp_data_bits_counter;
 
@@ -186,9 +184,9 @@ always_ff @(posedge clk_sys or negedge rst_n) begin
     if(~rst_n)                                                              LP_n <= 1;
     else if(state_next == STATE_IDLE || state_next == STATE_HS_EXIT)        LP_n <= 1;
     else if(state_next == STATE_HS_PREP)                                    LP_n <= 0;
-    else if(set_first_half_bit && !current_lp_data_bit)                     LP_p <= 1;
-    else if(set_second_half_bit && !current_lp_data_bit)                    LP_p <= 0;
-    else if(current_lp_data_bit)                                            LP_p <= 0;
+    else if(set_first_half_bit && !current_lp_data_bit)                     LP_n <= 1;
+    else if(set_second_half_bit && !current_lp_data_bit)                    LP_n <= 0;
+    else if(current_lp_data_bit)                                            LP_n <= 0;
 end
 
 logic lp_lines_enable;

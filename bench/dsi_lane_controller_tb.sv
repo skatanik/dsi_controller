@@ -117,9 +117,9 @@ repeat(20) @(posedge clk_sys);
 
 write_data();
 
-repeat(20) @(posedge clk_sys);
+repeat(2000) @(posedge clk_sys);
 clock_enable = 0;
-repeat(10) @(posedge clk_sys);
+repeat(1000) @(posedge clk_sys);
 lines_enable = 0;
 
 
