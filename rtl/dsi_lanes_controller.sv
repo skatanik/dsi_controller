@@ -79,7 +79,6 @@ dsi_lane_full dsi_lane_0(
         .clk_latch          (clk_latch                          ), // clk_sys, duty cycle 15%
         .rst_n              (rst_n                              ),
 
-        .lane_zero          (1'b1                               ),
         .mode_lp            (iface_lpm_en                       ),
 
         .start_rqst         (!iface_lpm_en ? dsi_start_rqst[0]   : lp_start_rqst               ),
@@ -127,7 +126,6 @@ for(i = 1; i < 4; i = i + 1)
         .clk_latch          (clk_latch                          ), // clk_sys, duty cycle 15%
         .rst_n              (rst_n                              ),
 
-        .lane_zero          (1'b0                               ),
         .mode_lp            (1'b0                               ),
 
         .start_rqst         (dsi_start_rqst[i]                  ),
@@ -168,7 +166,6 @@ dsi_lane_full #(
         .fin_rqst           (dsi_fin_rqst_clk               ),
         .inp_data           (8'b01010101                    ),
         .lines_enable       (dsi_lines_enable[0]            ),
-        .lane_zero          (1'b0                           ),
         .mode_lp            (1'b0                           ),
 
         .active             (dsi_active_clk                 ),
