@@ -113,7 +113,7 @@ clock_enable = 1;
 
 wait(clock_ready);
 
-repeat(20) @(posedge clk_sys);
+repeat(40) @(posedge clk_sys);
 
 write_data();
 
