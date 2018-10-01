@@ -66,9 +66,6 @@ logic [3:0]     task_addr;
 logic [31:0]    task_data_write;
 logic [31:0]    task_data_read;
 
-logic [31:0]    sys_data_write;
-logic [31:0]    sys_data_read;
-
 initial
 begin
 clk = 0;
@@ -89,16 +86,13 @@ avl_mm_read = 0;
 avl_mm_write = 0;
 avl_mm_writedata = 0;
 avl_mm_byteenable = 0;
-sys_read_ready  = 0;
-sys_read_data   = 0;
 sys_read_resp   = 0;
 sys_write_ready     = 1;
 sys_write_strb = 0;
 task_addr = 0;
 task_data_write = 0;
 task_data_read = 0;
-sys_data_write = 0;
-sys_data_read = 0;
+
 
 repeat(10) @(posedge clk);
 
@@ -115,6 +109,25 @@ avalon_read(task_addr, task_data_read);
 
 end // initial
 
+always_ff @(posedge clk or negedge rst_n) begin
+    if(~rst_n) begin
+         sys_read_data <= 0;
+         sys_read_ready <= 1'b0;
+    end
+    else if(sys_read_ready)
+    begin
+        sys_read_ready <= 0;
+         sys_read_data <= 0;
+    end
+    else if(|sys_read_req) begin
+        sys_read_ready <= 1'b1;
+         sys_read_data = $urandom_range(0,32'hffff_ffff);
+    end
+        else
+            sys_read_ready <= 1'b0;
+            sys_read_data <= 0;
+end
+
 
 task avalon_write;
     input [31:0] addr;
@@ -125,11 +138,10 @@ task avalon_write;
     avl_mm_writedata    = data;
     avl_mm_byteenable   = 4'hf;
 
-    repeat(1) @(posedge clk);
-
     $display($time()," Current waitrequest %h", avl_mm_waitrequest);
-    while(avl_mm_waitrequest)
+    do
         repeat(1) @(posedge clk);
+    while(avl_mm_waitrequest);
 
     avl_mm_addr         = 'b0;
     avl_mm_write        = 1'b0;
@@ -144,10 +156,10 @@ task avalon_read;
 
     #0.01 avl_mm_addr   = addr;
     avl_mm_read         = 1'b1;
-    repeat(1) @(posedge clk);
 
-    while(!avl_mm_waitrequest)
+    do
         repeat(1) @(posedge clk);
+    while(avl_mm_waitrequest);
 
     avl_mm_addr         = 'b0;
     avl_mm_read        = 1'b0;
