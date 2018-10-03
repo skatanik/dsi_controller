@@ -73,6 +73,8 @@ always_ff @(`CLK_RST(clk, reset_n))
     if(`RST(reset_n))   state_current <= STATE_IDLE;
     else                state_current <= state_next;
 
+/********* Read memory, repack data, write it to fifo, repeat *********/
+
 always_comb
     begin
         case (state_current)
@@ -112,10 +114,10 @@ logic           reset_current_address;
 assign reset_current_address = next_state_idle & (current_addess == (base_address_reg + total_size));
 
 always @(`CLK_RST(clk, reset_n))
-    if(`RST(reset_n))                               current_addess <= 'b0;
-    else if(reset_current_address)                  current_addess <= base_address_reg;
-    else if(initial_write_address)                  current_addess <= base_address;
-    else if((state_current == STATE_REPACK_DATA))   current_addess <= current_addess + 32'd32 * (word_mode ? 32'd1 : 32'd4);
+    if(`RST(reset_n))                   current_addess <= 'b0;
+    else if(reset_current_address)      current_addess <= base_address_reg;
+    else if(initial_write_address)      current_addess <= base_address;
+    else if(next_state_repack)          current_addess <= current_addess + 32'd32 * (word_mode ? 32'd1 : 32'd4);
 
 logic avl_mm_read_reg;
 logic data_ready;
