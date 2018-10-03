@@ -112,10 +112,10 @@ logic           reset_current_address;
 assign reset_current_address = next_state_idle & (current_addess == (base_address_reg + total_size));
 
 always @(`CLK_RST(clk, reset_n))
-    if(`RST(reset_n))                   current_addess <= 'b0;
-    else if(reset_current_address)      current_addess <= base_address_reg;
-    else if(initial_write_address)      current_addess <= base_address;
-    else if(next_state_repack)          current_addess <= current_addess + 32'd32 * (word_mode ? 32'd1 : 32'd4);
+    if(`RST(reset_n))                               current_addess <= 'b0;
+    else if(reset_current_address)                  current_addess <= base_address_reg;
+    else if(initial_write_address)                  current_addess <= base_address;
+    else if((state_current == STATE_REPACK_DATA))   current_addess <= current_addess + 32'd32 * (word_mode ? 32'd1 : 32'd4);
 
 logic avl_mm_read_reg;
 logic data_ready;
@@ -195,6 +195,7 @@ assign pix_fifo_data            = fifo_register;
 
 assign repack_done              = (state_current == STATE_REPACK_DATA) && (words_counter == (transform_data ? 5'd5 : 5'd7));
 assign fifo_write_available     = pix_fifo_usedw < pix_fifo_threshold;
+assign active                   = state_current != STATE_IDLE;
 
 endmodule
 
