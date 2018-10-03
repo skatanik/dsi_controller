@@ -38,9 +38,15 @@ module pixel_uploader (
     input  wire [31:0]      total_size                  ,
     input  wire             transform_data              ,   // 0 - write data from memory directly to fifo, 1 - transform 4 bytes to 4, removing empty 3rd byte in memory data
 
+    output wire             read_error_w                ,
     output wire             active
 
     );
+
+/********* Vars *********/
+
+logic read_error;
+logic read_error_reg;
 
 /********* FSM *********/
 
@@ -67,10 +73,10 @@ always_comb
     begin
         case (state_current)
             STATE_IDLE:
-                state_next = enable && fifo_write_available ? STATE_READ_DATA : STATE_IDLE;
+                state_next = enable && fifo_write_available && !read_error_reg ? STATE_READ_DATA : STATE_IDLE;
 
             STATE_READ_DATA:
-                state_next = read_done ? STATE_REPACK_DATA : STATE_READ_DATA;
+                state_next = read_error ? STATE_IDLE : (read_done ? STATE_REPACK_DATA : STATE_READ_DATA);
 
             STATE_REPACK_DATA:
                 state_next = repack_done ? STATE_IDLE : STATE_REPACK_DATA;
@@ -107,8 +113,81 @@ always @(`CLK_RST(clk, reset_n))
     else if(initial_write_address)      current_addess <= base_address;
     else if(next_state_repack)          current_addess <= current_addess + 32'd32 * (word_mode ? 32'd1 : 32'd4);
 
-/********* Repacker 32 to 4 *********/
+logic avl_mm_read_reg;
+logic data_ready;
+logic data_ready_delayed;
 
+assign data_ready = avl_mm_read_reg & !avl_mm_waitrequest;
+
+always @(`CLK_RST(clk, reset_n))
+    if(`RST(reset_n))           avl_mm_read_reg <= 1'b0;
+    else if(next_state_read)    avl_mm_read_reg <= 1'b1;
+    else if(data_ready)         avl_mm_read_reg <= 1'b0;
+
+always @(`CLK_RST(clk, reset_n))
+    if(`RST(reset_n))   data_ready_delayed <= 1'b0;
+    else                data_ready_delayed <= data_ready;
+
+logic read_data;
+
+assign read_error_w = read_error;
+assign read_error   = avl_mm_readdatavalid & (|avl_mm_response);
+assign read_data    = data_ready_delayed & avl_mm_readdatavalid & !(|avl_mm_response);
+assign read_done    = read_data;
+
+always @(`CLK_RST(clk, reset_n))
+    if(`RST(reset_n))       read_error_reg <= 1'b0;
+    else if(read_error)     read_error_reg <= 1'b1;
+    else if(!enable)        read_error_reg <= 1'b0;
+
+logic [255:0] data_reg;
+
+always @(`CLK_RST(clk, reset_n))
+    if(`RST(reset_n))       data_reg <= 'b0;
+    else if(read_data)      data_reg <= avl_mm_readdata;
+
+/********* Repacker 32 to 4 *********/
+/********* remap 256 bit to 192 bit vector *********/
+
+logic [191:0] data_vector_remapped;
+
+genvar i, j;
+
+generate
+    for(i = 0, j = 0; i < 32; i = i + 1)
+    begin
+        if(i%4 != 3)
+        begin
+            assign data_vector_remapped[j*8 + 7: j*8]  = data_reg[i*8 + 7: i*8];
+            j = j + 1;
+        end
+    end
+endgenerate
+
+logic [2:0] words_counter;
+logic       write_fifo_reg;
+
+always @(`CLK_RST(clk, reset_n))
+    if(`RST(reset_n))           words_counter <= 2'b0;
+    else if(write_fifo_reg)     words_counter <= words_counter + 2'd1;
+    else if(next_state_idle)    words_counter <= 2'b0;
+
+logic [31:0] fifo_register;
+
+always @(`CLK_RST(clk, reset_n))
+    if(`RST(reset_n))           fifo_register <= 32'b0;
+    else if(write_fifo_reg)     fifo_register <= transform_data ? data_vector_remapped[32*words_counter+:32] : data_reg[32*words_counter+:32];
+
+assign write_fifo_reg = (state_current == STATE_REPACK_DATA) && (words_counter <= (transform_data ? 5'd5 : 5'd7)) && (!pix_fifo_full);
+
+logic fifo_buff_write;
+
+always @(`CLK_RST(clk, reset_n))
+    if(`RST(reset_n))           fifo_buff_write <= 1'b0;
+    else if(!pix_fifo_full)     fifo_buff_write <= write_fifo_reg;
+
+assign pix_fifo_write   = fifo_buff_write & (!pix_fifo_full);
+assign pix_fifo_data    = fifo_register;
 
 endmodule
 
