@@ -43,6 +43,7 @@ always
  #10 clk_slow = !clk_slow;
 
 semaphore mem_read_sem;
+semaphore fifo_read_sem;
 
 for(int i = 0; i < DATA_SIZE; i = i + 1)
     memory_data = $urandom_range(0,32'hffffffff);
@@ -84,6 +85,8 @@ logic fifo_mem_addr;
 
 task fifo_read;
 
+fifo_read_sem.get(1);
+
 logic [31:0] data_pointer;
 
 data_pointer = 0;
@@ -110,6 +113,8 @@ fifo_read = 0;
 repeat(20) @(posedge clk_slow);
 end
 
+fifo_read_sem.put(1);
+
 endtask : fifo_read
 
 initial
@@ -120,6 +125,7 @@ forever
 begin
     fork
         memory_read;
+        fifo_read;
     join_any
 end
 end
