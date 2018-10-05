@@ -137,7 +137,7 @@ always @(`CLK_RST(clk, rst_n))
 logic read_data;
 
 assign read_error_w = read_error;
-assign read_error   = avl_mm_readdatavalid & (|avl_mm_response);
+assign read_error   = avl_mm_readdatavalid & (|avl_mm_response) || data_ready_delayed & !avl_mm_readdatavalid;
 assign read_data    = data_ready_delayed & avl_mm_readdatavalid & !(|avl_mm_response);
 assign read_done    = read_data;
 
