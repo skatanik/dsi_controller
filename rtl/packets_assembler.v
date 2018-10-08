@@ -142,6 +142,8 @@ Working when low power mode is disabled.
 PA starts to send sequences of packets in HS mode. In the end of every packet it calculates size of the next packet according to current state and counters values (time to line end).
 As when LP mode is off PA can append additional cmd to periodicaly sent cmd or data. After thet it will send blank packet with an appropriate size/
 
+several short packets can be send after regular data in each line. But after sending long packet transmission stopped until next line
+
 ********************************************************************/
 /********* LPM enable mode *********/
 logic send_vss;
@@ -195,14 +197,25 @@ always @(`CLK_RST(clk, reset_n))
     else if(send_header)                output_data_reg <= command_res;
     else if(send_rgb_data)              output_data_reg <= data_to_write;
 
-logic [15:0] data_counter;
+logic [15:0] data_counter;          // read/write cycles counter
+logic [15:0] data_to_write_size;
+
+assign data_to_write_size = {command_res[23:16], command_res[15:8]};
 
 always @(`CLK_RST(clk, reset_n))
     if(`RST(reset_n))                           data_counter <= 16'b0;
-    else if(sd_next_state_send_data)            data_counter <= {command_res[23:16], command_res[15:8]};
+    else if(sd_next_state_send_data)            data_counter <= data_to_write_size[15:2] + {15'b0, |data_to_write_size[1:0]}; // amount of words to be read from fifo
     else if(send_rgb_data && (|data_counter))   data_counter <= data_counter - 16'd1;
 
 assign ldp_sending_done = (sd_state_current == SD_STATE_SEND_DATA) && !(|data_counter);
+
+/********* CRC adding block *********/
+
+logic
+
+
+
+
 
 // ECC bloc input mux
 always_comb
