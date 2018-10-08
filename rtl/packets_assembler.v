@@ -155,18 +155,57 @@ logic [1:0]     bytes_in_line;
 logic           clear_crc;
 logic           write_crc;
 
-assign command_res = {command_data, ecc_result};
-
-assign send_vss = state_next == STATE_SEND_VSS;
+enum logic [1:0] {
+    SD_STATE_IDLE,
+    SD_STATE_SEND_HEADER,
+    SD_STATE_SEND_DATA
+} sd_state_current, sd_state_next;
 
 always @(`CLK_RST(clk, reset_n))
+    if(`RST(reset_n))   sd_state_current <= SD_STATE_IDLE;
+    else                sd_state_current <= sd_state_next;
+
+always_comb
+    begin
+        case (sd_state_current)
+            SD_STATE_IDLE:
+                sd_state_next = send_cmd_data ? SD_STATE_SEND_HEADER : SD_STATE_IDLE;
+
+            SD_STATE_SEND_HEADER:
+                sd_state_next = send_header ? (header_long_packet ? SD_STATE_SEND_DATA : (send_cmd_data ? SD_STATE_SEND_HEADER : SD_STATE_IDLE) : SD_STATE_SEND_HEADER);
+
+            SD_STATE_SEND_DATA:
+                sd_state_next = ldp_sending_done ? (send_cmd_data ? SD_STATE_SEND_HEADER : SD_STATE_IDLE) : SD_STATE_SEND_DATA;
+
+            default :
+                sd_state_next = SD_STATE_IDLE;
+        endcase
+    end
+
+assign command_res = {command_data, ecc_result};
+
+assign send_header              = (sd_state_current == SD_STATE_SEND_HEADER) && write_available;
+assign send_rgb_data            = (sd_state_current == SD_STATE_SEND_DATA) && write_available;
+assign sd_next_state_send_data  = (sd_state_current == SD_STATE_SEND_HEADER) && (sd_state_next == SD_STATE_SEND_DATA);
+assign sd_next_state_send_data  = (sd_state_current == SD_STATE_SEND_HEADER) && (sd_state_next == SD_STATE_SEND_DATA);
+
+/********* Latch data in output register *********/
+always @(`CLK_RST(clk, reset_n))
     if(`RST(reset_n))                   output_data_reg <= 32'b0;
-    else if(send_cmd)                   output_data_reg <= command_res;
+    else if(send_header)                output_data_reg <= command_res;
     else if(send_rgb_data)              output_data_reg <= data_to_write;
-    else if(send_rgb_crc)               output_data_reg <= crc_result;
+
+logic [15:0] data_counter;
+
+always @(`CLK_RST(clk, reset_n))
+    if(`RST(reset_n))                           data_counter <= 16'b0;
+    else if(sd_next_state_send_data)            data_counter <= {command_res[23:16], command_res[15:8]};
+    else if(send_rgb_data && (|data_counter))   data_counter <= data_counter - 16'd1;
+
+assign ldp_sending_done = (sd_state_current == SD_STATE_SEND_DATA) && !(|data_counter);
 
 // ECC bloc input mux
-always @(*)
+always_comb
     begin
         if(send_vss)
             command_data = CMD_VSS;
@@ -174,7 +213,7 @@ always @(*)
             command_data = CMD_HSS;
         else if(send_rgb_cmd)
             command_data = CMD_RGB;
-        else if(fifo_cmd)
+        else if(source_cmd_fifo)
             command_data = cmd_fifo_data;
         else
             command_data = 'b0;
@@ -202,13 +241,12 @@ crc_calculator
 
 always @(*)
     begin
-        if(state_pix_fifo_reading)
+        if(source_pix_fifo)
             data_to_write = pix_fifo_data;
-        else if(state_cmd_data_reading)
+        else if(source_cmd_fifo)
             data_to_write = cmd_fifo_data;
         else
             data_to_write = 32'b0
-
     end
 
 endmodule

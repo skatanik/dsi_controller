@@ -117,7 +117,7 @@ always @(`CLK_RST(clk, rst_n))
     if(`RST(rst_n))                     current_addess <= 'b0;
     else if(reset_current_address)      current_addess <= base_address_reg;
     else if(initial_write_address)      current_addess <= base_address;
-    else if(next_state_repack)          current_addess <= current_addess + 32'd32 * (word_mode ? 32'd1 : 32'd4);
+    else if(next_state_repack)          current_addess <= current_addess + (word_mode ? 32'd8 : 32'd32);
 
 logic avl_mm_read_reg;
 logic data_ready;
@@ -171,8 +171,8 @@ logic       write_fifo_reg;
 
 always @(`CLK_RST(clk, rst_n))
     if(`RST(rst_n))             words_counter <= 2'b0;
-    else if(write_fifo_reg)     words_counter <= words_counter + 2'd1;
     else if(next_state_idle)    words_counter <= 2'b0;
+    else if(write_fifo_reg)     words_counter <= words_counter + 2'd1;
 
 logic [31:0] fifo_register;
 
@@ -194,6 +194,8 @@ assign pix_fifo_data            = fifo_register;
 assign repack_done              = (state_current == STATE_REPACK_DATA) && (words_counter == (transform_data ? 5'd5 : 5'd7));
 assign fifo_write_available     = pix_fifo_usedw < pix_fifo_threshold;
 assign active                   = state_current != STATE_IDLE;
+assign avl_mm_addr              = current_addess;
+assign avl_mm_read              = avl_mm_read_reg;
 
 endmodule
 
