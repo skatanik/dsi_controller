@@ -143,7 +143,7 @@ PA starts to send sequences of packets in HS mode. In the end of every packet it
 As when LP mode is off PA can append additional cmd to periodicaly sent cmd or data. After thet it will send blank packet with an appropriate size/
 
 several short packets can be send after regular data in each line. But after sending long packet transmission stopped until next line
-
+all long pakcets in cmd fifo should be with crc in right format
 ********************************************************************/
 /********* LPM enable mode *********/
 logic send_vss;
