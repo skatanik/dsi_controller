@@ -132,30 +132,36 @@ Packets assembler at the right time strarts to send commands.
 If needed sends additional cmds from cmd fifo
 calculates right size of each packet (also blank packets if lpm_enable = 0).
 adds ECC and CRC, appropriate offset.
-
 Working when low power mode is enabled.
 PA works in interrupt mode when signals from counters signalize when PA must start next cmd or data sending.
 After sending obligatory cmd or data PA can append cmd from FIFO if size of this cmd is less than time to the next cmd sending.
 After sending data in HS mode PA allow lanes to get into LP mode. And then waits for the next signal from corresponding counter.
-
 Working when low power mode is disabled.
 PA starts to send sequences of packets in HS mode. In the end of every packet it calculates size of the next packet according to current state and counters values (time to line end).
 As when LP mode is off PA can append additional cmd to periodicaly sent cmd or data. After thet it will send blank packet with an appropriate size/
-
 several short packets can be send after regular data in each line. But after sending long packet transmission stopped until next line
-all long pakcets in cmd fifo should be with crc in right format
+
 ********************************************************************/
-/********* LPM enable mode *********/
+
+localparam [31:0] BLANK_PATTERN = 32'h5555_5555;
+
 logic send_vss;
 
-logic [23:0]    command_data;
 logic [7:0]     ecc_result;
-logic [31:0]    command_res;
 logic [31:0]    data_to_write;
 logic [15:0]    crc_result;
 logic [1:0]     bytes_in_line;
 logic           clear_crc;
 logic           write_crc;
+logic           source_cmd_fifo;
+logic           source_pix_fifo;
+logic           source_blank_gen;
+logic [23:0]    packet_header;
+logic [31:0]    packet_header_wecc;
+logic           read_header;
+logic           read_lp_data;
+logic           packet_type_long;
+logic           packet_type_short;
 
 enum logic [1:0] {
     SD_STATE_IDLE,
@@ -174,7 +180,7 @@ always_comb
                 sd_state_next = send_cmd_data ? SD_STATE_SEND_HEADER : SD_STATE_IDLE;
 
             SD_STATE_SEND_HEADER:
-                sd_state_next = send_header ? (header_long_packet ? SD_STATE_SEND_DATA : (send_cmd_data ? SD_STATE_SEND_HEADER : SD_STATE_IDLE) : SD_STATE_SEND_HEADER);
+                sd_state_next = start_sp_sending ? (packet_type_long ? SD_STATE_SEND_DATA : (send_cmd_data ? SD_STATE_SEND_HEADER : SD_STATE_IDLE) : SD_STATE_SEND_HEADER);
 
             SD_STATE_SEND_DATA:
                 sd_state_next = ldp_sending_done ? (send_cmd_data ? SD_STATE_SEND_HEADER : SD_STATE_IDLE) : SD_STATE_SEND_DATA;
@@ -184,83 +190,96 @@ always_comb
         endcase
     end
 
-assign command_res = {command_data, ecc_result};
-
 assign send_header              = (sd_state_current == SD_STATE_SEND_HEADER) && write_available;
 assign send_rgb_data            = (sd_state_current == SD_STATE_SEND_DATA) && write_available;
 assign sd_next_state_send_data  = (sd_state_current == SD_STATE_SEND_HEADER) && (sd_state_next == SD_STATE_SEND_DATA);
 assign sd_next_state_send_data  = (sd_state_current == SD_STATE_SEND_HEADER) && (sd_state_next == SD_STATE_SEND_DATA);
 
-/********* Latch data in output register *********/
-always @(`CLK_RST(clk, reset_n))
-    if(`RST(reset_n))                   output_data_reg <= 32'b0;
-    else if(send_header)                output_data_reg <= command_res;
-    else if(send_rgb_data)              output_data_reg <= data_to_write;
-
-logic [15:0] data_counter;          // read/write cycles counter
-logic [15:0] data_to_write_size;
-
-assign data_to_write_size = {command_res[23:16], command_res[15:8]};
-
-always @(`CLK_RST(clk, reset_n))
-    if(`RST(reset_n))                           data_counter <= 16'b0;
-    else if(sd_next_state_send_data)            data_counter <= data_to_write_size[15:2] + {15'b0, |data_to_write_size[1:0]}; // amount of words to be read from fifo
-    else if(send_rgb_data && (|data_counter))   data_counter <= data_counter - 16'd1;
-
-assign ldp_sending_done = (sd_state_current == SD_STATE_SEND_DATA) && !(|data_counter);
-
-/********* CRC adding block *********/
-
-logic
-
-
-
-
-
-// ECC bloc input mux
+/********* packet header ecc appending *********/
 always_comb
-    begin
-        if(send_vss)
-            command_data = CMD_VSS;
-        else if(send_hss)
-            command_data = CMD_HSS;
-        else if(send_rgb_cmd)
-            command_data = CMD_RGB;
-        else if(source_cmd_fifo)
-            command_data = cmd_fifo_data;
-        else
-            command_data = 'b0;
-    end
+    if(source_pix_fifo)         packet_header = current_periodic_cmd;
+    else if(source_cmd_fifo)    packet_header = cmd_fifo_data;
+    else if(source_blank_gen)   packet_header = BLANK_CMD;
+    else                        packet_header = 24'b0;
+
+assign packet_header_wecc = {packet_header, ecc_result};
 
 ecc_calc ecc_0
 (
-    .data       (command_data       ),
-    .ecc_result (ecc_result         )
+    .data       (packet_header ),
+    .ecc_result (ecc_result    )
 );
+
+/********* Packet type decoder *********/
+logic [16:0]    data_size_left;
+logic           current_packet_type; // 1 - long, 0 - short
+logic           start_lp_sending;
+logic           start_sp_sending;
+logic           last_lp_read;
+
+assign start_lp_sending = read_header && packet_type_long;
+assign start_sp_sending = read_header && packet_type_short;
+
+always @(`CLK_RST(clk, reset_n))
+    if(`RST(reset_n))               current_packet_type <= 1'b0;
+    else if(start_lp_sending)       current_packet_type <= 1'b0;
+    else if(start_sp_sending)       current_packet_type <= 1'b0;
+
+assign last_lp_read = read_lp_data && (data_size_left <= 17'd4);
+
+always @(`CLK_RST(clk, reset_n))
+    if(`RST(reset_n))           data_size_left <= 17'b0;
+    else if(start_lp_sending)   data_size_left <= {1'b0, packet_header[15:0]} + 16'd2;
+    else if(last_lp_read)       data_size_left <= 17'b0;
+    else if(read_lp_data)       data_size_left <= data_size_left - 17'd4;
+
+logic [17:0] data_size_left_wo_crc;
+
+assign data_size_left_wo_crc = data_size_left - 17'd2;
+assign bytes_in_line = !(|data_size_left_wo_crc[1:0]) ? 2'd3 : data_size_left_wo_crc[1:0];
+
+logic packet_not_reserved;
+logic packet_decoder_error;
+
+assign packet_decoder_error = read_header && !packet_not_reserved;
+assign packet_not_reserved  = !(|packet_header[19:16]) && !(&packet_header[19:16]);
+assign packet_type_long     = !packet_header[19] || packet_header[19] && (!(|packet_header[21:20]) && !(|packet_header[18:16])) && packet_not_reserved;
+assign packet_type_short    = packet_header[19] && !(packet_header[19] && (!(|packet_header[21:20]) && !(|packet_header[18:16]))) && packet_not_reserved;
 
 // CRC block input mux
 
+assign clear_crc = (sd_state_current != SD_STATE_SEND_DATA);
+
+always_comb
+    if(source_pix_fifo)         data_to_write = pix_fifo_data;
+    else if(source_cmd_fifo)    data_to_write = cmd_fifo_data;
+    else if(source_blank_gen)   data_to_write = BLANK_PATTERN;
+    else                        data_to_write = 32'b0;
+
 crc_calculator
 (
-    .clk                (clk                    ),
-    .reset_n            (reset_n                ),
-    .clear              (clear_crc              ),
-    .data_write         (write_crc              ),
-    .bytes_number       (bytes_in_line          ),
-    .data_input         (data_to_write          ),
+    .clk                (clk            ),
+    .reset_n            (reset_n        ),
+    .clear              (clear_crc      ),
+    .data_write         (read_lp_data   ),
+    .bytes_number       (bytes_in_line  ),
+    .data_input         (data_to_write  ),
     .crc_output_async   (),
-    .crc_output_sync    (crc_result             )
+    .crc_output_sync    (crc_result     )
 );
 
-always @(*)
-    begin
-        if(source_pix_fifo)
-            data_to_write = pix_fifo_data;
-        else if(source_cmd_fifo)
-            data_to_write = cmd_fifo_data;
-        else
-            data_to_write = 32'b0
-    end
+logic [31:0] current_data;
+
+always_comb
+    if(sd_state_current == SD_STATE_SEND_HEADER)        current_data = packet_header;
+    else if(sd_state_current == SD_STATE_SEND_DATA)     current_data = data_to_write;
+    else                                                current_data = 32'b0;
+
+logic [31:0] output_data;
+logic [31:0] temp_buffer;
+logic [2:0]  offset_value;
+
+assign output_data = 
 
 endmodule
 `endif
