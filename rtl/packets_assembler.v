@@ -216,6 +216,9 @@ logic           current_packet_type; // 1 - long, 0 - short
 logic           start_lp_sending;
 logic           start_sp_sending;
 logic           last_lp_read;
+logic           add_crc;
+logic [15:0]    crc_val;
+logic [17:0]    data_size_left_wo_crc;
 
 assign start_lp_sending = read_header && packet_type_long;
 assign start_sp_sending = read_header && packet_type_short;
@@ -226,14 +229,13 @@ always @(`CLK_RST(clk, reset_n))
     else if(start_sp_sending)       current_packet_type <= 1'b0;
 
 assign last_lp_read = read_lp_data && (data_size_left <= 17'd4);
+assign add_crc      = read_lp_data && (data_size_left_wo_crc <= 17'd4);
 
 always @(`CLK_RST(clk, reset_n))
     if(`RST(reset_n))           data_size_left <= 17'b0;
     else if(start_lp_sending)   data_size_left <= {1'b0, packet_header[15:0]} + 16'd2;
     else if(last_lp_read)       data_size_left <= 17'b0;
     else if(read_lp_data)       data_size_left <= data_size_left - 17'd4;
-
-logic [17:0] data_size_left_wo_crc;
 
 assign data_size_left_wo_crc = data_size_left - 17'd2;
 assign bytes_in_line = !(|data_size_left_wo_crc[1:0]) ? 2'd3 : data_size_left_wo_crc[1:0];
@@ -268,6 +270,10 @@ crc_calculator
     .crc_output_sync    (crc_result     )
 );
 
+always @(`CLK_RST(clk, reset_n))
+    if(`RST(reset_n))                   crc_val <= 16'b0;
+    else if(add_crc && !last_lp_read)   crc_val <= crc_result;
+
 logic [31:0] current_data;
 
 always_comb
@@ -279,7 +285,9 @@ logic [31:0] output_data;
 logic [31:0] temp_buffer;
 logic [2:0]  offset_value;
 
-assign output_data = 
+always @(`CLK_RST(clk, reset_n))
+    if(`RST(reset_n))   output_data <= 32'b0;
+    else if(read_data)  output_data <= 
 
 endmodule
 `endif
