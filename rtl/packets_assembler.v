@@ -281,13 +281,32 @@ always_comb
     else if(sd_state_current == SD_STATE_SEND_DATA)     current_data = data_to_write;
     else                                                current_data = 32'b0;
 
+
+
 logic [31:0] output_data;
+logic [31:0] input_data_1;  // main data
+logic [31:0] input_data_2;  // aditional data
 logic [31:0] temp_buffer;
 logic [2:0]  offset_value;
+logic [15:0] data_size_left;
+
 
 always @(`CLK_RST(clk, reset_n))
-    if(`RST(reset_n))   output_data <= 32'b0;
-    else if(read_data)  output_data <= 
+    if(`RST(reset_n))                                   output_data <= 32'b0;
+    else if(read_data)
+        if(data_ok)                                     output_data <= (input_data_1 << (offset_value * 8)) | temp_buffer;
+        else if((data_size_left + offset_value) < 4)    output_data <= (input_data_1 << (offset_value * 8)) | temp_buffer | (input_data_2 << ((data_size_left + offset_value) * 8));
+
+always @(`CLK_RST(clk, reset_n))
+    if(`RST(reset_n))                                   temp_buffer <= 32'b0;
+    else if(read_data)
+        if(data_ok)                                     temp_buffer <= (input_data_1 >> ((4 - offset_value) * 8));
+        else if((data_size_left + offset_value) < 4)    temp_buffer <= 32'b0 | (input_data_2 >> ((4 - data_size_left - offset_value) * 8));
+
+always @(`CLK_RST(clk, reset_n))
+    if(`RST(reset_n))                                               offset_value <= 3'b0;
+    else if(read_data && ((data_size_left + offset_value) < 4))     offset_value <= (4 - data_size_left - offset_value);
+
 
 endmodule
 `endif
