@@ -32,8 +32,10 @@ always @(`CLK_RST(clk, reset_n))
         else                        temp_buffer <= (input_data_1 >> ((4 - offset_value) * 8));
 
 always @(`CLK_RST(clk, reset_n))
-    if(`RST(reset_n))                            offset_value <= 3'b0;
-    else if(read_data && ask_for_extra_data)     offset_value <= (4 - data_size_left - offset_value);
+    if(`RST(reset_n))               offset_value <= 3'b0;
+    else if(read_data)
+        if(ask_for_extra_data)      offset_value <= (data_size_left + offset_value);
+        else if(data_size_left < 4)     offset_value <= data_size_left + offset_value - 4;
 
 always
 #10 clk = !clk;
@@ -48,23 +50,37 @@ end
 logic [31:0] temp_data;
 logic [31:0] mask;
 
+integer cnt;
+
+bit [31:0] memory_array [0:4095];
+
 initial
 begin
-input_data_1 = $urandom_range(0,32'hffff_ffff);
-input_data_2 = $urandom_range(0,32'hffff_ffff);
-data_size_left = $urandom_range(0,5'h1f) + 4;
+for(int i = 0; i < 4096; i = i + 1)
+    memory_array[i] = $urandom_range(0,32'hffff_ffff);
+
+cnt = 0;
+input_data_1 = memory_array[cnt];
+input_data_2 = memory_array[cnt];
+data_size_left = $urandom_range(4,5'h1f) + 4;
+temp_data = 0;
+
+wait(reset_n);
+
 forever
     begin
         repeat(1) @(posedge clk);
         if(read_data)
         begin
-            if(data_size_left < 4)
-                data_size_left = $urandom_range(0,5'h1f);
-            else
-                data_size_left = (data_size_left - 4 == 0) ? $urandom_range(0,5'h1f) : data_size_left - 4;
+            cnt = cnt + 1;
 
-            temp_data = $urandom_range(0,32'hffff_ffff);
-            mask = 32'hffff_ffff >> (((data_size_left > 4) ? 0 : (4 - data_size_left % 4) * 8) );
+            if(data_size_left < 4)
+                data_size_left = $urandom_range(4,5'h1f);
+            else
+                data_size_left = (data_size_left - 4 == 0) ? $urandom_range(4,5'h1f) : data_size_left - 4;
+
+            temp_data = $urandom_range(0,32'hffff_ffff); //memory_array[cnt];
+            mask = 32'hffff_ffff >> (((data_size_left >= 4) ? 0 : (4 - data_size_left % 4) * 8) );
             input_data_1 = temp_data & mask;
             $display("Data %h", temp_data);
             $display("mask %h", mask);
@@ -72,8 +88,14 @@ forever
             $display("------------------");
 
             if(ask_for_extra_data)
-                input_data_2 = $urandom_range(0,32'hffff_ffff);
+            begin
+                input_data_2 = $urandom_range(0,32'hffff_ffff); //memory_array[cnt];
+ //               cnt = cnt + 1;
+            end
+
         end
+
+
     end
 
 end
@@ -92,5 +114,6 @@ begin
 end
 
 end
+
 
 endmodule
