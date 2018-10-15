@@ -281,8 +281,6 @@ always_comb
     else if(sd_state_current == SD_STATE_SEND_DATA)     current_data = data_to_write;
     else                                                current_data = 32'b0;
 
-
-
 logic [31:0] output_data;
 logic [31:0] input_data_1;  // main data
 logic [31:0] input_data_2;  // aditional data
@@ -294,20 +292,22 @@ logic        ask_for_extra_data;
 assign ask_for_extra_data = (data_size_left + offset_value) < 4 ;
 
 always @(`CLK_RST(clk, reset_n))
-    if(`RST(reset_n))                  output_data <= 32'b0;
+    if(`RST(reset_n))               output_data <= 32'b0;
     else if(read_data)
-        if(data_ok)                    output_data <= (input_data_1 << (offset_value * 8)) | temp_buffer;
-        else if(ask_for_extra_data)    output_data <= (input_data_1 << (offset_value * 8)) | temp_buffer | (input_data_2 << ((data_size_left + offset_value) * 8));
+        if(ask_for_extra_data)      output_data <= (input_data_1 << (offset_value * 8)) | temp_buffer | (input_data_2 << ((data_size_left + offset_value) * 8));
+        else                        output_data <= (input_data_1 << (offset_value * 8)) | temp_buffer;
 
 always @(`CLK_RST(clk, reset_n))
-    if(`RST(reset_n))                  temp_buffer <= 32'b0;
+    if(`RST(reset_n))               temp_buffer <= 32'b0;
     else if(read_data)
-        if(data_ok)                    temp_buffer <= (input_data_1 >> ((4 - offset_value) * 8));
-        else if(ask_for_extra_data)    temp_buffer <= 32'b0 | (input_data_2 >> ((4 - data_size_left - offset_value) * 8));
+        if(ask_for_extra_data)      temp_buffer <= 32'b0 | (input_data_2 >> ((4 - data_size_left - offset_value) * 8));
+        else                        temp_buffer <= (input_data_1 >> ((4 - offset_value) * 8));
 
 always @(`CLK_RST(clk, reset_n))
-    if(`RST(reset_n))                            offset_value <= 3'b0;
-    else if(read_data && ask_for_extra_data)     offset_value <= (4 - data_size_left - offset_value);
+    if(`RST(reset_n))               offset_value <= 3'b0;
+    else if(read_data)
+        if(ask_for_extra_data)      offset_value <= (data_size_left + offset_value);
+        else if(data_size_left < 4)     offset_value <= data_size_left + offset_value - 4;
 
 
 endmodule
