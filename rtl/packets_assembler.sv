@@ -283,11 +283,13 @@ always_comb
 
 logic [31:0] output_data;
 logic [31:0] input_data_1;  // main data
-logic [31:0] input_data_2;  // aditional data
+logic [31:0] input_data_2;  // extra data
 logic [31:0] temp_buffer;
 logic [2:0]  offset_value;
 logic [15:0] data_size_left;
 logic        ask_for_extra_data;
+logic [2:0]  outp_data_size;
+logic        extra_data_ok;
 
 assign ask_for_extra_data = (data_size_left + offset_value) < 4 ;
 
@@ -304,10 +306,34 @@ always @(`CLK_RST(clk, reset_n))
         else                        temp_buffer <= (input_data_1 >> ((4 - offset_value) * 8));
 
 always @(`CLK_RST(clk, reset_n))
-    if(`RST(reset_n))               offset_value <= 3'b0;
+    if(`RST(reset_n))                                       offset_value <= 3'b0;
     else if(read_data)
-        if(ask_for_extra_data)      offset_value <= (data_size_left + offset_value);
-        else if(data_size_left < 4)     offset_value <= data_size_left + offset_value - 4;
+        if(ask_for_extra_data && extra_data_ok)             offset_value <= (data_size_left + offset_value);
+        else if(ask_for_extra_data && !extra_data_ok)       offset_value <= 3'b0;
+        else if(data_size_left < 4)                         offset_value <= data_size_left + offset_value - 4;
+
+always @(`CLK_RST(clk, reset_n))
+    if(`RST(reset_n))                                       outp_data_size <= 3'd0;
+    else if(read_data)
+        if(ask_for_extra_data && !extra_data_ok)            outp_data_size <= (data_size_left + offset_value);
+        else                                                outp_data_size <= 3'd4;
+
+assign iface_last_word = outp_data_size < 3'd4;
+
+always_comb
+    case(outp_data_size):
+    3'd0:
+        iface_write_strb = 4'b0000;
+    3'd1:
+        iface_write_strb = 4'b0001;
+    3'd2:
+        iface_write_strb = 4'b0011;
+    3'd3:
+        iface_write_strb = 4'b0111;
+    3'd4:
+        iface_write_strb = 4'b1111;
+    default:
+        iface_write_strb = 4'b0000;
 
 
 endmodule
