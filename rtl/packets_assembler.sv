@@ -182,9 +182,7 @@ ecc_calc ecc_0
 
 logic [31:0] cmd_header_output;
 
-always @(`CLK_RST(clk, reset_n))
-    if(`RST(reset_n))   cmd_header_output <= 32'b0;
-    else if(read_cmd)   cmd_header_output <= packet_header;
+assign   cmd_header_output = packet_header;
 
 /********* Packet type decoder *********/
 logic [16:0]    data_size_left;
@@ -239,14 +237,12 @@ assign last_fifo_reading_wcrc   = !(|packet_size_left[16:2]) && |packet_size_lef
 logic [31:0] lp_data_output;
 
 /********* latch data or data with crc or just crc to long packet output data register  *********/
-always @(`CLK_RST(clk, reset_n))
-    if(`RST(reset_n))                                           lp_data_output <= 32'b0;
-    if(read_lp_data)
-        if(!last_fifo_reading & !last_fifo_reading_wcrc)        lp_data_output <= data_to_write;
-        else if(last_fifo_reading & last_fifo_reading_wcrc)     lp_data_output <= data_to_write & (32'hffff_ffff >> (packet_size_left_wocrc[1:0] * 8)) |
-                                                                                    ({16'b0, crc_result_async} << ((2'd2 - packet_size_left_wocrc[1:0]) * 8));
-        else if(last_fifo_reading & !last_fifo_reading_wcrc)    lp_data_output <= data_to_write & (32'hffff_ffff >> ((17'd4 - packet_size_left) * 8)) | ( {16'b0, crc_result_async} << ((packet_size_left) * 8));
-        else if(!last_fifo_reading & last_fifo_reading_wcrc)    lp_data_output <= {16'b0, crc_result_sync} >> ((2 - packet_size_left_wocrc) * 8) | 32'b0;
+    always_comb
+        if(!last_fifo_reading & !last_fifo_reading_wcrc)        lp_data_output = data_to_write;
+        else if(last_fifo_reading & last_fifo_reading_wcrc)     lp_data_output = data_to_write & (32'hffff_ffff >> (packet_size_left_wocrc[1:0] * 8)) |
+                                                                                   ({16'b0, crc_result_async} << ((2'd2 - packet_size_left_wocrc[1:0]) * 8));
+        else if(last_fifo_reading & !last_fifo_reading_wcrc)    lp_data_output = data_to_write & (32'hffff_ffff >> ((17'd4 - packet_size_left) * 8)) | ( {16'b0, crc_result_async} << ((packet_size_left) * 8));
+        else if(!last_fifo_reading & last_fifo_reading_wcrc)    lp_data_output = {16'b0, crc_result_sync} >> ((2 - packet_size_left_wocrc) * 8) | 32'b0;
 
 crc_calculator
 (
@@ -278,7 +274,11 @@ logic data_is_cmd;  // 1 - current data is being taken from cmd path, 0 - from d
 
 assign input_data_2 = cmd_header_output;
 assign read_cmd = read_data && (data_is_cmd || ask_for_extra_data) || fill_data;
-assign input_data_1 = data_is_cmd ? cmd_header_output : lp_data_output;
+
+
+always @(`CLK_RST(clk, reset_n))
+    if(`RST(reset_n))       input_data_1 <= 32'b0;
+    else if(read_lp_data)   input_data_1 <= data_is_cmd ? cmd_header_output : lp_data_output;
 
 
 /********* packets stitching core *********/
