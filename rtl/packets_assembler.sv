@@ -149,7 +149,8 @@ logic send_vss;
 
 logic [7:0]     ecc_result;
 logic [31:0]    data_to_write;
-logic [15:0]    crc_result;
+logic [15:0]    crc_result_sync;
+logic [15:0]    crc_result_async;
 logic [1:0]     bytes_in_line;
 logic           clear_crc;
 logic           write_crc;
@@ -163,43 +164,12 @@ logic           read_lp_data;
 logic           packet_type_long;
 logic           packet_type_short;
 
-enum logic [1:0] {
-    SD_STATE_IDLE,
-    SD_STATE_SEND_HEADER,
-    SD_STATE_SEND_DATA
-} sd_state_current, sd_state_next;
 
-always @(`CLK_RST(clk, reset_n))
-    if(`RST(reset_n))   sd_state_current <= SD_STATE_IDLE;
-    else                sd_state_current <= sd_state_next;
-
-always_comb
-    begin
-        case (sd_state_current)
-            SD_STATE_IDLE:
-                sd_state_next = send_cmd_data ? SD_STATE_SEND_HEADER : SD_STATE_IDLE;
-
-            SD_STATE_SEND_HEADER:
-                sd_state_next = start_sp_sending ? (packet_type_long ? SD_STATE_SEND_DATA : (send_cmd_data ? SD_STATE_SEND_HEADER : SD_STATE_IDLE) : SD_STATE_SEND_HEADER);
-
-            SD_STATE_SEND_DATA:
-                sd_state_next = ldp_sending_done ? (send_cmd_data ? SD_STATE_SEND_HEADER : SD_STATE_IDLE) : SD_STATE_SEND_DATA;
-
-            default :
-                sd_state_next = SD_STATE_IDLE;
-        endcase
-    end
-
-assign send_header              = (sd_state_current == SD_STATE_SEND_HEADER) && write_available;
-assign send_rgb_data            = (sd_state_current == SD_STATE_SEND_DATA) && write_available;
-assign sd_next_state_send_data  = (sd_state_current == SD_STATE_SEND_HEADER) && (sd_state_next == SD_STATE_SEND_DATA);
-assign sd_next_state_send_data  = (sd_state_current == SD_STATE_SEND_HEADER) && (sd_state_next == SD_STATE_SEND_DATA);
 
 /********* packet header ecc appending *********/
 always_comb
     if(source_pix_fifo)         packet_header = current_periodic_cmd;
     else if(source_cmd_fifo)    packet_header = cmd_fifo_data;
-    else if(source_blank_gen)   packet_header = BLANK_CMD;
     else                        packet_header = 24'b0;
 
 assign packet_header_wecc = {packet_header, ecc_result};
@@ -223,34 +193,15 @@ logic [17:0]    data_size_left_wo_crc;
 assign start_lp_sending = read_header && packet_type_long;
 assign start_sp_sending = read_header && packet_type_short;
 
-always @(`CLK_RST(clk, reset_n))
-    if(`RST(reset_n))               current_packet_type <= 1'b0;
-    else if(start_lp_sending)       current_packet_type <= 1'b0;
-    else if(start_sp_sending)       current_packet_type <= 1'b0;
-
-assign last_lp_read = read_lp_data && (data_size_left <= 17'd4);
-assign add_crc      = read_lp_data && (data_size_left_wo_crc <= 17'd4);
-
-always @(`CLK_RST(clk, reset_n))
-    if(`RST(reset_n))           data_size_left <= 17'b0;
-    else if(start_lp_sending)   data_size_left <= {1'b0, packet_header[15:0]} + 16'd2;
-    else if(last_lp_read)       data_size_left <= 17'b0;
-    else if(read_lp_data)       data_size_left <= data_size_left - 17'd4;
-
-assign data_size_left_wo_crc = data_size_left - 17'd2;
-assign bytes_in_line = !(|data_size_left_wo_crc[1:0]) ? 2'd3 : data_size_left_wo_crc[1:0];
-
 logic packet_not_reserved;
 logic packet_decoder_error;
 
 assign packet_decoder_error = read_header && !packet_not_reserved;
 assign packet_not_reserved  = !(|packet_header[19:16]) && !(&packet_header[19:16]);
-assign packet_type_long     = !packet_header[19] || packet_header[19] && (!(|packet_header[21:20]) && !(|packet_header[18:16])) && packet_not_reserved;
-assign packet_type_short    = packet_header[19] && !(packet_header[19] && (!(|packet_header[21:20]) && !(|packet_header[18:16]))) && packet_not_reserved;
+assign packet_type_long     = (!packet_header[19] || packet_header[19] && (!(|packet_header[21:20]) && !(|packet_header[18:16]))) && packet_not_reserved;
+assign packet_type_short    = (packet_header[19] || !(packet_header[19] && (!(|packet_header[21:20]) && !(|packet_header[18:16])))) && packet_not_reserved;
 
 // CRC block input mux
-
-assign clear_crc = (sd_state_current != SD_STATE_SEND_DATA);
 
 always_comb
     if(source_pix_fifo)         data_to_write = pix_fifo_data;
@@ -258,28 +209,53 @@ always_comb
     else if(source_blank_gen)   data_to_write = BLANK_PATTERN;
     else                        data_to_write = 32'b0;
 
+/********* Fifo reading, crc adding *********/
+
+logic [16:0] packet_size_left;
+logic [15:0] packet_size_left_wocrc;
+
+assign packet_size_left_wocrc = (packet_size_left > 17'd2) ? (packet_size_left - 17'd2) : 16'b0;
+
+/********* latch long packet data size *********/
+always @(`CLK_RST(clk, reset_n))
+    if(`RST(reset_n))           packet_size_left <= 17'b0;
+    else if(write_data_size)    packet_size_left <= packet_header[15:0] + 2;
+    else if(read_data)          packet_size_left <= (packet_size_left >= 4) ? (packet_size_left - 17'd4) : 17'd0;
+
+assign bytes_in_line = (packet_size_left_wocrc >= 4) ? 2'd3 : (packet_size_left_wocrc[1:0] - 2'd1);
+
+logic last_fifo_reading;
+logic last_fifo_reading_wcrc;
+
+/********* check for the last read words *********/
+assign last_fifo_reading        = !(|packet_size_left_wocrc[15:2]) && |packet_size_left_wocrc[1:0] | (packet_size_left_wocrc == 16'd4);
+assign last_fifo_reading_wcrc   = !(|packet_size_left[16:2]) && |packet_size_left[1:0] | (packet_size_left == 17'd4);
+
+logic [31:0] lp_data_output;
+
+/********* latch data or data with crc or just crc to long packet output data register  *********/
+always @(`CLK_RST(clk, reset_n))
+    if(`RST(reset_n))                                           lp_data_output <= 32'b0;
+    if(read_data)
+        if(!last_fifo_reading & !last_fifo_reading_wcrc)        lp_data_output <= data_to_write;
+        else if(last_fifo_reading & last_fifo_reading_wcrc)     lp_data_output <= data_to_write & (32'hffff_ffff >> (packet_size_left_wocrc[1:0] * 8)) |
+                                                                                    ({16'b0, crc_result_async} << ((2'd2 - packet_size_left_wocrc[1:0]) * 8));
+        else if(last_fifo_reading & !last_fifo_reading_wcrc)    lp_data_output <= data_to_write & (32'hffff_ffff >> ((17'd4 - packet_size_left) * 8)) | ( {16'b0, crc_result_async} << ((packet_size_left) * 8));
+        else if(!last_fifo_reading & last_fifo_reading_wcrc)    lp_data_output <= {16'b0, crc_result_sync} >> ((2 - packet_size_left_wocrc) * 8) | 32'b0;
+
 crc_calculator
 (
     .clk                (clk            ),
     .reset_n            (reset_n        ),
-    .clear              (clear_crc      ),
-    .data_write         (read_lp_data   ),
+    .clear              (write_data_size),
+    .data_write         (read_data      ),
     .bytes_number       (bytes_in_line  ),
     .data_input         (data_to_write  ),
-    .crc_output_async   (),
-    .crc_output_sync    (crc_result     )
+    .crc_output_async   (crc_result_async),
+    .crc_output_sync    (crc_result_sync     )
 );
 
-always @(`CLK_RST(clk, reset_n))
-    if(`RST(reset_n))                   crc_val <= 16'b0;
-    else if(add_crc && !last_lp_read)   crc_val <= crc_result;
-
-logic [31:0] current_data;
-
-always_comb
-    if(sd_state_current == SD_STATE_SEND_HEADER)        current_data = packet_header;
-    else if(sd_state_current == SD_STATE_SEND_DATA)     current_data = data_to_write;
-    else                                                current_data = 32'b0;
+/********* Packets stitching *********/
 
 logic [31:0] output_data;
 logic [31:0] input_data_1;  // main data
@@ -318,7 +294,7 @@ always @(`CLK_RST(clk, reset_n))
         if(ask_for_extra_data && !extra_data_ok)            outp_data_size <= (data_size_left + offset_value);
         else                                                outp_data_size <= 3'd4;
 
-assign iface_last_word = outp_data_size < 3'd4;
+assign iface_last_word = read_data && ((outp_data_size < 3'd4) || (data_size_left == 0));
 
 always_comb
     case(outp_data_size):
@@ -338,3 +314,4 @@ always_comb
 
 endmodule
 `endif
+
