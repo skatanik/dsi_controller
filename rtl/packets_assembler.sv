@@ -21,10 +21,10 @@ module packets_assembler #(
         output  wire                            pix_fifo_read                   ,
 
     /********* cmd FIFO interface *********/
-        input   wire  [31:0]                    cmd_fifo_data                   ,
-        input   wire  [CMD_FIFO_DEPTH - 1:0]    cmd_fifo_usedw                  ,
-        input   wire                            cmd_fifo_empty                  ,
-        output  wire                            cmd_fifo_read                   ,
+        input   wire  [31:0]                    usr_fifo_data                   ,
+        input   wire  [CMD_FIFO_DEPTH - 1:0]    usr_fifo_usedw                  ,
+        input   wire                            usr_fifo_empty                  ,
+        output  wire                            usr_fifo_read                   ,
 
     /********* Control inputs *********/
         input   wire                            lpm_enable                      ,   // 1: go to LPM after sending commands. 0: send blank packet after sending command or data
@@ -147,7 +147,6 @@ localparam [31:0] BLANK_PATTERN = 32'h5555_5555;
 
 logic send_vss;
 
-logic [7:0]     ecc_result;
 logic [31:0]    data_to_write;
 logic [15:0]    crc_result_sync;
 logic [15:0]    crc_result_async;
@@ -155,7 +154,6 @@ logic [1:0]     bytes_in_line;
 logic           clear_crc;
 logic           write_crc;
 logic           source_cmd_fifo;
-logic           source_pix_fifo;
 logic           source_blank_gen;
 logic [23:0]    packet_header;
 logic [31:0]    packet_header_wecc;
@@ -163,26 +161,31 @@ logic           read_header;
 logic           read_lp_data;
 logic           packet_type_long;
 logic           packet_type_short;
-
+logic [7:0]     ecc_result_0;
+logic [7:0]     ecc_result_1;
 
 
 /********* packet header ecc appending *********/
 always_comb
-    if(source_pix_fifo)         packet_header = current_periodic_cmd;
-    else if(source_cmd_fifo)    packet_header = cmd_fifo_data;
-    else                        packet_header = 24'b0;
+    if(source_cmd_fifo)         packet_header = packet_header_usr_fifo;
+    else                        packet_header = packet_header_cmd;
 
-assign packet_header_wecc = {packet_header, ecc_result};
+assign packet_header_usr_fifo = {usr_fifo_data, ecc_result_0};
 
 ecc_calc ecc_0
 (
-    .data       (packet_header ),
-    .ecc_result (ecc_result    )
+    .data       (usr_fifo_data ),
+    .ecc_result (ecc_result_0    )
 );
 
-logic [31:0] cmd_header_output;
+assign packet_header_cmd = {cmd_fifo_data, ecc_result_1};
 
-assign   cmd_header_output = packet_header;
+ecc_calc ecc_1
+(
+    .data       (cmd_fifo_data ),
+    .ecc_result (ecc_result_1    )
+);
+
 
 /********* Packet type decoder *********/
 logic [16:0]    data_size_left;
@@ -206,11 +209,20 @@ assign packet_type_long     = (!packet_header[19] || packet_header[19] && (!(|pa
 assign packet_type_short    = (packet_header[19] || !(packet_header[19] && (!(|packet_header[21:20]) && !(|packet_header[18:16])))) && packet_not_reserved;
 
 // Data to write mux
+
+logic [2:0] data_source_vector;
+
+always @(`CLK_RST(clk, reset_n))
+    if(`RST(reset_n))               data_source_vector <= 3'b0;
+    else if(set_data_src_pix)       data_source_vector <= 3'b001;
+    else if(set_data_src_usr)       data_source_vector <= 3'b010;
+    else if(set_data_src_blank)     data_source_vector <= 3'b100;
+
 always_comb
-    if(source_pix_fifo)         data_to_write = pix_fifo_data;
-    else if(source_cmd_fifo)    data_to_write = cmd_fifo_data;
-    else if(source_blank_gen)   data_to_write = BLANK_PATTERN;
-    else                        data_to_write = 32'b0;
+    if(data_source_vector[0])       data_to_write = pix_fifo_data;
+    else if(data_source_vector[1])  data_to_write = cmd_fifo_data;
+    else if(data_source_vector[2])  data_to_write = BLANK_PATTERN;
+    else                            data_to_write = 32'b0;
 
 /********* Fifo reading, crc adding *********/
 
