@@ -284,13 +284,13 @@ logic        extra_data_ok;
 
 logic data_is_cmd;  // 1 - current data is being taken from cmd path, 0 - from data path
 
-assign input_data_2 = cmd_header_output;
+assign input_data_2 = packet_header_cmd;
 assign read_cmd = read_data && (data_is_cmd || ask_for_extra_data) || fill_data;
 
 
 always @(`CLK_RST(clk, reset_n))
     if(`RST(reset_n))       input_data_1 <= 32'b0;
-    else if(read_lp_data)   input_data_1 <= data_is_cmd ? cmd_header_output : lp_data_output;
+    else if(read_lp_data)   input_data_1 <= data_is_cmd ? packet_header : data_to_write;
 
 
 /********* packets stitching core *********/
