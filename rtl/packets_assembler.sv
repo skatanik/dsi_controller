@@ -146,6 +146,7 @@ several short packets can be send after regular data in each line. But after sen
 TO DO:
 1. read_data signal forming
 2. read_data for fifo's signal forming
+3. write fsm for cmd fifo
 
 *********/
 
