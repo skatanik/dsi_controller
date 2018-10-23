@@ -9,11 +9,13 @@ module packets_assembler #(
         input   wire                            rst_n                           ,
 
     /********* lanes controller iface *********/
-        output wire [31:0]                      iface_write_data                ,
-        output wire [4:0]                       iface_write_strb                ,
-        output wire                             iface_write_rqst                ,
-        output wire                             iface_last_word                 ,
-        input  wire                             iface_data_rqst                 ,
+        output  wire [31:0]                     iface_write_data                ,
+        output  wire [3:0]                      iface_write_strb                ,
+        output  wire                            iface_write_rqst                ,
+        output  wire                            iface_last_word                 ,
+        output  wire                            iface_lpm_en                    , //0 - hs, 1 - lp should be asserted at least one cycle before iface_write_rqst and disasserted one cycle after iface_last_word
+
+        input   wire                            iface_data_rqst                 ,
 
     /********* pixel FIFO interface *********/
         input   wire  [31:0]                    pix_fifo_data                   ,
@@ -39,6 +41,7 @@ module packets_assembler #(
         input   wire                            vfp_lines_number                ,
         input   wire                            vbp_pix_number                  ,
         input   wire                            vfp_pix_number                  ,
+        input   wire                            user_cmd_transmission_mode      , // 0: data from user fifo is sent in HS mode; 1: data from user fifo is sent in LP mode.
 
 );
 
@@ -119,35 +122,19 @@ always_ff @(`CLK_RST(clk, reset_n))
 
 /********************************************************************
                 Sending sequences
-After sending each periodical command we check whether there are any commands
-in command fifo. If yes then it is appended after current command. But every time we check
-the lenght of this command. If command size is too big to write at the current time,
-then this command will be sent next time. CMD fifo depth is less than horizontal line size.
-Sending is not possible in STATE_LPM. All command are sent in hs mode.
+FSM forms sequence of commands to be sent and put in in cmd_fifo. When streaming enabled logic fetch cmd from this fifo and switch mux accordingly. If after a command from
+cmd_fifo should be a user command from user_fifo then a corresponding flag should be set (cmd_fifo_out_ctrl[0]). every time fsm fills cmd_fifo it checks data in user_fifo.
+If there is a new cmd then fsm calculates right size of blanking packet and sets cmd_fifo_out_ctrl[0].
 ********************************************************************/
 
 /********************************************************************
                         Packets assembler (PA)
-Packets assembler at the right time strarts to send commands.
-If needed sends additional cmds from cmd fifo
-calculates right size of each packet (also blank packets if lpm_enable = 0).
-adds ECC and CRC, appropriate offset.
-Working when low power mode is enabled.
-PA works in interrupt mode when signals from counters signalize when PA must start next cmd or data sending.
-After sending obligatory cmd or data PA can append cmd from FIFO if size of this cmd is less than time to the next cmd sending.
-After sending data in HS mode PA allow lanes to get into LP mode. And then waits for the next signal from corresponding counter.
-Working when low power mode is disabled.
-PA starts to send sequences of packets in HS mode. In the end of every packet it calculates size of the next packet according to current state and counters values (time to line end).
-As when LP mode is off PA can append additional cmd to periodicaly sent cmd or data. After thet it will send blank packet with an appropriate size/
-several short packets can be send after regular data in each line. But after sending long packet transmission stopped until next line
-
 ********************************************************************/
 /*********
 TO DO:
 1. read_data signal forming
 2. read_data for fifo's signal forming
 3. write fsm for cmd fifo
-
 *********/
 
 
@@ -201,6 +188,9 @@ logic           cmd_fifo_packet_error;
 logic           usr_fifo_packet_long;
 logic           usr_fifo_packet_short;
 logic           usr_fifo_packet_error;
+
+logic [31:0]    packet_header_cmd;
+logic [31:0]    packet_header_usr_fifo;
 
 /********* packet header ecc appending *********/
 always_comb
@@ -275,10 +265,29 @@ logic           no_data_is_being_sent;
 assign packet_size_left_wocrc = (packet_size_left > 17'd2) ? (packet_size_left - 17'd2) : 16'b0;
 assign no_data_is_being_sent  = !(|packet_size_left);
 /********* latch long packet data size *********/
+
+logic [16:0] cmd_lp_size_wcrc;
+logic [16:0] usr_lp_size_wcrc;
+
+assign cmd_lp_size_wcrc = packet_header_cmd[23:8] + 17'd2;
+assign usr_lp_size_wcrc = packet_header_usr_fifo[23:8] + 17'd2;
+
 always @(`CLK_RST(clk, reset_n))
-    if(`RST(reset_n))           packet_size_left <= 17'b0;
-    else if(write_data_size)    packet_size_left <= packet_header[15:0] + 2;
-    else if(read_lp_data)       packet_size_left <= (packet_size_left >= 4) ? (packet_size_left - 17'd4) : 17'd0;
+    if(`RST(reset_n))                                                           packet_size_left <= 17'd0;
+    else if(streaming_en)                                                       packet_size_left <= 17'd0;
+    else if(!streaming_enable && read_data)
+        if(OUTPUT_MUX_CMD)                                                      packet_size_left <= usr_lp_size_wcrc;
+        else                                                                    packet_size_left <= (packet_size_left >= 4) ? (packet_size_left - 17'd4) : 17'd0;
+
+    else if(streaming_enable && read_data)
+        if(OUTPUT_MUX_CMD && CMD_MUX_CMD_FIFO && DATA_MUX_NULL)                 packet_size_left <= cmd_lp_size_wcrc;
+        else if(OUTPUT_MUX_CMD && CMD_MUX_USR_FIFO && DATA_MUX_NULL)            packet_size_left <= usr_lp_size_wcrc;
+        else if(DATA_MUX_USR_FIFO && last_data_read_from_fifo)                  packet_size_left <= cmd_lp_size_wcrc;
+
+        else if((DATA_MUX_PIX_FIFO || DATA_MUX_BLANK) && last_data_read_from_fifo)
+            if(next_cmd_from_usr_fifo)                                          packet_size_left <= usr_lp_size_wcrc;
+            else                                                                packet_size_left <= cmd_lp_size_wcrc;
+        else if((DATA_MUX_USR_FIFO || DATA_MUX_PIX_FIFO || DATA_MUX_BLANK))     packet_size_left <= (packet_size_left >= 4) ? (packet_size_left - 17'd4) : 17'd0;
 
 assign bytes_in_line = (packet_size_left_wocrc >= 4) ? 2'd3 : (packet_size_left_wocrc[1:0] - 2'd1);
 
@@ -317,7 +326,7 @@ crc_calculator
 /********* Muxes control *********/
 /********* Actually looks like FSM, but it is easier to understand *********/
 
-//  The hardest thing is situation when we need two data words at one clock (when ask_for_extra_data = 1)
+//  The worst thing is the situation when we need two data words at one clock (when ask_for_extra_data = 1)
 //  In this case we jump over one muxes state.
 // This signal can become 1 only after long packets because only these packets can have a variable length
 
@@ -325,54 +334,62 @@ crc_calculator
 logic [4:0] mux_ctrl_vec;
 logic next_cmd_from_usr_fifo;
 logic set_source_data_usr_fifo;
-logic set_source_cmd_usr_fifo;
+logic last_data_read_from_fifo;
 logic next_packet_from_usr_fifo;
+logic streaming_en;
+logic streaming_enable_delayed;
+
+always @(`CLK_RST(clk, reset_n))
+    if(`RST(reset_n))       streaming_enable_delayed <= 1'b0;
+    else                    streaming_enable_delayed <= streaming_enable;
+
+assign streaming_en = (streaming_enable_delayed ^ streaming_enable) & streaming_enable;
 
 assign next_packet_from_usr_fifo    = cmd_fifo_out_ctrl[0];
 assign set_source_data_usr_fifo     = usr_fifo_packet_long && CMD_MUX_USR_FIFO && OUTPUT_MUX_CMD && no_data_is_being_sent;
-assign set_source_cmd_usr_fifo      = !no_data_is_being_sent && last_fifo_reading_wcrc;
+assign last_data_read_from_fifo     = !no_data_is_being_sent && last_fifo_reading_wcrc;
 
 always @(`CLK_RST(clk, reset_n))
-    if(`RST(reset_n))                                                               mux_ctrl_vec <= {SET_DATA_MUX_NULL, SET_CMD_MUX_USR, SET_OUTP_MUX_CMD};
-    else if(streaming_en)                                                           mux_ctrl_vec <= {SET_DATA_MUX_NULL, SET_CMD_MUX_CMD, SET_OUTP_MUX_CMD};
+    if(`RST(reset_n))                                                                           mux_ctrl_vec <= {SET_DATA_MUX_NULL, SET_CMD_MUX_USR, SET_OUTP_MUX_CMD};
+    else if(streaming_en)                                                                       mux_ctrl_vec <= {SET_DATA_MUX_NULL, SET_CMD_MUX_CMD, SET_OUTP_MUX_CMD};
     else if(!streaming_enable && read_data)
-        if(set_source_data_usr_fifo)                                                mux_ctrl_vec <= {SET_DATA_MUX_USR, SET_CMD_MUX_USR, SET_OUTP_MUX_DATA};
-        else if(set_source_cmd_usr_fifo)                                            mux_ctrl_vec <= {SET_DATA_MUX_NULL, SET_CMD_MUX_USR, SET_OUTP_MUX_CMD};
+        if(set_source_data_usr_fifo)                                                            mux_ctrl_vec <= {SET_DATA_MUX_USR, SET_CMD_MUX_USR, SET_OUTP_MUX_DATA};
+        else if(last_data_read_from_fifo)                                                       mux_ctrl_vec <= {SET_DATA_MUX_NULL, SET_CMD_MUX_USR, SET_OUTP_MUX_CMD};
 
     else if(streaming_enable && read_data)
         if(OUTPUT_MUX_CMD && CMD_MUX_CMD_FIFO && DATA_MUX_NULL)
-            if(cmd_fifo_packet_short & !next_packet_from_usr_fifo)                  mux_ctrl_vec <= mux_ctrl_vec;
-            else if(cmd_fifo_packet_short & next_packet_from_usr_fifo)              mux_ctrl_vec <= {SET_DATA_MUX_NULL,     SET_CMD_MUX_USR, SET_OUTP_MUX_CMD};
-            else if(cmd_fifo_packet_long & lp_pix)                                  mux_ctrl_vec <= {SET_DATA_MUX_PIX,      SET_CMD_MUX_CMD, SET_OUTP_MUX_DATA};
-            else if(cmd_fifo_packet_long & lp_blank)                                mux_ctrl_vec <= {SET_DATA_MUX_BLANK,    SET_CMD_MUX_CMD, SET_OUTP_MUX_DATA};
+            if(cmd_fifo_packet_short & !next_packet_from_usr_fifo || cmd_fifo_empty)            mux_ctrl_vec <= mux_ctrl_vec;
+            else if(cmd_fifo_packet_short & next_packet_from_usr_fifo)                          mux_ctrl_vec <= {SET_DATA_MUX_NULL,     SET_CMD_MUX_USR, SET_OUTP_MUX_CMD};
+            else if(cmd_fifo_packet_long & lp_pix)                                              mux_ctrl_vec <= {SET_DATA_MUX_PIX,      SET_CMD_MUX_CMD, SET_OUTP_MUX_DATA};
+            else if(cmd_fifo_packet_long & lp_blank)                                            mux_ctrl_vec <= {SET_DATA_MUX_BLANK,    SET_CMD_MUX_CMD, SET_OUTP_MUX_DATA};
 
         else if(OUTPUT_MUX_CMD && CMD_MUX_USR_FIFO && DATA_MUX_NULL)
-            if(usr_fifo_packet_long)                                                mux_ctrl_vec <= {SET_DATA_MUX_USR,  SET_CMD_MUX_CMD, SET_OUTP_MUX_DATA};
-            else if(usr_fifo_packet_short)                                          mux_ctrl_vec <= {SET_DATA_MUX_NULL, SET_CMD_MUX_CMD, SET_OUTP_MUX_CMD};
+            if(usr_fifo_packet_long)                                                            mux_ctrl_vec <= {SET_DATA_MUX_USR,  SET_CMD_MUX_CMD, SET_OUTP_MUX_DATA};
+            else if(usr_fifo_packet_short)                                                      mux_ctrl_vec <= {SET_DATA_MUX_NULL, SET_CMD_MUX_CMD, SET_OUTP_MUX_CMD};
 
-        else if(DATA_MUX_USR_FIFO && set_source_cmd_usr_fifo)
-            if(ask_for_extra_data) // If we ask for extra data, then next muxes state we decod accroding to data in cmd fifo and not according to current muxes state
-                if(cmd_fifo_packet_short & !next_packet_from_usr_fifo)              mux_ctrl_vec <= {SET_DATA_MUX_NULL,     SET_CMD_MUX_CMD, SET_OUTP_MUX_CMD};;
-                else if(cmd_fifo_packet_short & next_packet_from_usr_fifo)          mux_ctrl_vec <= {SET_DATA_MUX_NULL,     SET_CMD_MUX_USR, SET_OUTP_MUX_CMD};
-                else if(cmd_fifo_packet_long & lp_pix)                              mux_ctrl_vec <= {SET_DATA_MUX_PIX,      SET_CMD_MUX_CMD, SET_OUTP_MUX_DATA};
-                else if(cmd_fifo_packet_long & lp_blank)                            mux_ctrl_vec <= {SET_DATA_MUX_BLANK,    SET_CMD_MUX_CMD, SET_OUTP_MUX_DATA};
+        else if(DATA_MUX_USR_FIFO && last_data_read_from_fifo)
+            if(ask_for_extra_data) // If we ask for extra data, then next muxes state we set accroding to data in cmd fifo and not according to current muxes state
+                else if(cmd_fifo_packet_short & !next_packet_from_usr_fifo || cmd_fifo_empty)   mux_ctrl_vec <= {SET_DATA_MUX_NULL,     SET_CMD_MUX_CMD, SET_OUTP_MUX_CMD};
+                else if(cmd_fifo_packet_short & next_packet_from_usr_fifo)                      mux_ctrl_vec <= {SET_DATA_MUX_NULL,     SET_CMD_MUX_USR, SET_OUTP_MUX_CMD};
+                else if(cmd_fifo_packet_long & lp_pix)                                          mux_ctrl_vec <= {SET_DATA_MUX_PIX,      SET_CMD_MUX_CMD, SET_OUTP_MUX_DATA};
+                else if(cmd_fifo_packet_long & lp_blank)                                        mux_ctrl_vec <= {SET_DATA_MUX_BLANK,    SET_CMD_MUX_CMD, SET_OUTP_MUX_DATA};
 
-            else                                                                    mux_ctrl_vec <= {SET_DATA_MUX_NULL, SET_CMD_MUX_CMD, SET_OUTP_MUX_CMD};
+            else                                                                                mux_ctrl_vec <= {SET_DATA_MUX_NULL, SET_CMD_MUX_CMD, SET_OUTP_MUX_CMD};
 
-        else if((DATA_MUX_PIX_FIFO || DATA_MUX_BLANK) && set_source_cmd_usr_fifo)
+        else if((DATA_MUX_PIX_FIFO || DATA_MUX_BLANK) && last_data_read_from_fifo)
             if(next_cmd_from_usr_fifo)
-                if(ask_for_extra_data) // If we ask for extra data, then next muxes state we decod accroding to data in cmd fifo and not according to current muxes state
-                    if(usr_fifo_packet_long)                                        mux_ctrl_vec <= {SET_DATA_MUX_USR,  SET_CMD_MUX_CMD, SET_OUTP_MUX_DATA};
-                    else if(usr_fifo_packet_short)                                  mux_ctrl_vec <= {SET_DATA_MUX_NULL, SET_CMD_MUX_CMD, SET_OUTP_MUX_CMD};
-                else                                                                mux_ctrl_vec <= {SET_DATA_MUX_NULL, SET_CMD_MUX_USR, SET_OUTP_MUX_CMD};
+                if(ask_for_extra_data) // If we ask for extra data, then next muxes state we set accroding to data in cmd fifo and not according to current muxes state
+                    if(usr_fifo_packet_long)                                                    mux_ctrl_vec <= {SET_DATA_MUX_USR,  SET_CMD_MUX_CMD, SET_OUTP_MUX_DATA};
+                    else if(usr_fifo_packet_short)                                              mux_ctrl_vec <= {SET_DATA_MUX_NULL, SET_CMD_MUX_CMD, SET_OUTP_MUX_CMD};
+                else                                                                            mux_ctrl_vec <= {SET_DATA_MUX_NULL, SET_CMD_MUX_USR, SET_OUTP_MUX_CMD};
 
-            else if(ask_for_extra_data) // If we ask for extra data, then next muxes state we decod accroding to data in cmd fifo and not according to current muxes state
-                if(cmd_fifo_packet_short & !next_packet_from_usr_fifo)              mux_ctrl_vec <= {SET_DATA_MUX_NULL,     SET_CMD_MUX_CMD, SET_OUTP_MUX_CMD};;
-                else if(cmd_fifo_packet_short & next_packet_from_usr_fifo)          mux_ctrl_vec <= {SET_DATA_MUX_NULL,     SET_CMD_MUX_USR, SET_OUTP_MUX_CMD};
-                else if(cmd_fifo_packet_long & lp_pix)                              mux_ctrl_vec <= {SET_DATA_MUX_PIX,      SET_CMD_MUX_CMD, SET_OUTP_MUX_DATA};
-                else if(cmd_fifo_packet_long & lp_blank)                            mux_ctrl_vec <= {SET_DATA_MUX_BLANK,    SET_CMD_MUX_CMD, SET_OUTP_MUX_DATA};
+            else if(ask_for_extra_data) // If we ask for extra data, then next muxes state we set accroding to data in cmd fifo and not according to current muxes state
+                if(cmd_fifo_packet_short & !next_packet_from_usr_fifo || cmd_fifo_empty)        mux_ctrl_vec <= {SET_DATA_MUX_NULL,     SET_CMD_MUX_CMD, SET_OUTP_MUX_CMD};
+                else if(cmd_fifo_packet_short & next_packet_from_usr_fifo)                      mux_ctrl_vec <= {SET_DATA_MUX_NULL,     SET_CMD_MUX_USR, SET_OUTP_MUX_CMD};
+                else if(cmd_fifo_packet_long & lp_pix)                                          mux_ctrl_vec <= {SET_DATA_MUX_PIX,      SET_CMD_MUX_CMD, SET_OUTP_MUX_DATA};
+                else if(cmd_fifo_packet_long & lp_blank)                                        mux_ctrl_vec <= {SET_DATA_MUX_BLANK,    SET_CMD_MUX_CMD, SET_OUTP_MUX_DATA};
 
-            else                                                                    mux_ctrl_vec <= {SET_DATA_MUX_NULL, SET_CMD_MUX_CMD, SET_OUTP_MUX_CMD};
+            else                                                                                mux_ctrl_vec <= {SET_DATA_MUX_NULL, SET_CMD_MUX_CMD, SET_OUTP_MUX_CMD};
 
 assign {data_source_vector, source_cmd_fifo, data_is_data} = mux_ctrl_vec;
 
@@ -381,6 +398,24 @@ always @(`CLK_RST(clk, reset_n))
     else if(read_data && OUTPUT_MUX_CMD && CMD_MUX_CMD_FIFO && next_packet_from_usr_fifo)   next_cmd_from_usr_fifo <= 1'b1;
     else if(read_data && OUTPUT_MUX_CMD && CMD_MUX_USR_FIFO)                                next_cmd_from_usr_fifo <= 1'b0;
 
+/********* Read signals forming *********/
+pix_fifo_read
+usr_fifo_read
+cmd_fifo_read
+
+logic iface_lpm_en_reg;
+
+assign iface_lpm_en = iface_lpm_en_reg;
+
+/*********
+when streaming_enable = 1
+ if user_cmd_transmission_mode = 1 and next_packet_from_usr_fifo then wait until lanes enter LP mode adn then set iface_lpm_en_reg and start sending data
+ else if user_cmd_transmission_mode = 0 and next_packet_from_usr_fifo then send data right after last packet in HS mode, thus iface_lpm_en_reg stays 0
+*********/
+always @(`CLK_RST(clk, reset_n))
+    if(`RST(reset_n))               iface_lpm_en_reg <= 1'b0;
+    else if(!streaming_enable)      iface_lpm_en_reg <= user_cmd_transmission_mode;
+    else 
 
 /********* Packets stitching *********/
 
@@ -397,15 +432,22 @@ logic        extra_data_ok;
 /********* input data muxes *********/
 
 always_comb
-    if(DATA_MUX_USR_FIFO && set_source_cmd_usr_fifo)                            input_data_2 = packet_header_cmd;
-    else if((DATA_MUX_PIX_FIFO || DATA_MUX_BLANK) && set_source_cmd_usr_fifo)
+    if(DATA_MUX_USR_FIFO && last_data_read_from_fifo)                           input_data_2 = packet_header_cmd;
+    else if((DATA_MUX_PIX_FIFO || DATA_MUX_BLANK) && last_data_read_from_fifo)
         if(next_cmd_from_usr_fifo)                                              input_data_2 = packet_header_usr_fifo;
         else                                                                    input_data_2 = packet_header_cmd;
     else                                                                        input_data_2 = 32'b0;
 
-assign read_cmd         = read_data && (data_is_data || ask_for_extra_data) || fill_data;
 assign input_data_1     = data_is_data ? data_to_write : packet_header;
-assign data_size_left   = packet_size_left;
+assign data_size_left   = OUTPUT_MUX_DATA ? packet_size_left : 17'd4;
+
+/********* extra_data_ok mux. according to current extra data source we check whether corresponding fifo is empty *********/
+always_comb
+    if(DATA_MUX_USR_FIFO && last_data_read_from_fifo)                               extra_data_ok = !cmd_fifo_empty;
+    else if((DATA_MUX_PIX_FIFO || DATA_MUX_BLANK) && last_data_read_from_fifo)
+        if(next_cmd_from_usr_fifo)                                                  extra_data_ok = !usr_fifo_empty;
+        else                                                                        extra_data_ok = !cmd_fifo_empty;
+    else                                                                            extra_data_ok = 1'b0;
 
 /********* packets stitching core *********/
 assign ask_for_extra_data = (data_size_left + offset_value) < 4 ;
