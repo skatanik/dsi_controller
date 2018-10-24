@@ -54,13 +54,17 @@ module packets_assembler #(
 ********************************************************************/
 enum logic [3:0]{
     STATE_IDLE,
-    STATE_SEND_CMD,
-    STATE_SEND_VSS,
-    STATE_SEND_HSS,     // send hss packet in HS mode then go to LP mode or send blank packet in HS mode
-    STATE_SEND_HBP,     // send hbp packet in HS mode or stay in LP mode
-    STATE_SEND_RGB,     // send rgb packet in HS mode, can be sent with appended cmd
-    STATE_SEND_HFP,     // send blank packet in HS mode or stay in LP mode
-    STATE_LPM
+    STATE_WRITE_VSS,
+    STATE_WRITE_VSS_BL,
+    STATE_WRITE_HSS_0,
+    STATE_WRITE_HSS_BL_0,
+    STATE_WRITE_HSS_1,
+    STATE_WRITE_HBP,
+    STATE_WRITE_RGB,
+    STATE_WRITE_HFP,
+    STATE_WRITE_HSS_2,
+    STATE_WRITE_HSS_BL_1,
+    STATE_WRITE_LPM
 }
 
 logic [3:0] state_current, state_next;
@@ -73,28 +77,41 @@ always_comb
     begin
         case (state_current)
             STATE_IDLE:
-                state_next = cmd_pending ? STATE_SEND_CMD : (streaming_enable ? STATE_SEND_VSS : STATE_IDLE);
+                state_next = (streaming_enable & usr_fifo_empty ? STATE_WRITE_VSS : STATE_IDLE);
 
-            STATE_SEND_CMD:
-                state_next = cmd_send_done ? STATE_IDLE : STATE_SEND_CMD;
+            STATE_WRITE_VSS:
+                state_next = !cmd_fifo_full ? STATE_WRITE_VSS_BL : STATE_WRITE_VSS;
 
-            STATE_SEND_VSS:
-                state_next = send_vss_done ? STATE_SEND_HSS : STATE_SEND_VSS;
+            STATE_WRITE_VSS_BL:
+                state_next = cmd_fifo_full ? STATE_WRITE_VSS_BL : ();
 
-            STATE_SEND_HSS:
-                state_next = send_hss_done & hss_up_counter_finished ? STATE_SEND_HBP : (send_hss_done & hss_down_counter_finished ? STATE_LPM : STATE_SEND_HSS);
+            STATE_WRITE_HSS_0:
+                state_next = 
 
-            STATE_SEND_HBP:
-                state_next = send_hbp_done ? STATE_SEND_RGB : STATE_SEND_HBP;
+            STATE_WRITE_HSS_BL_0:
+                state_next = 
 
-            STATE_SEND_RGB:
-                state_next = send_rgb_done ? STATE_SEND_HFP : STATE_SEND_RGB;
+            STATE_WRITE_HSS_1:
+                state_next = 
 
-            STATE_SEND_HFP:
-                state_next = send_hfp_done ? (active_lines_finished ? STATE_SEND_HSS : STATE_SEND_HBP) : STATE_SEND_HFP;
+            STATE_WRITE_HBP:
+                state_next = 
 
-            STATE_LPM:
-                state_next = lpm_done ? (streaming_enable ?  STATE_SEND_VSS : STATE_IDLE) : STATE_LPM;
+            STATE_WRITE_RGB:
+                state_next = 
+
+            STATE_WRITE_HFP:
+                state_next = 
+
+            STATE_WRITE_HSS_2:
+                state_next = 
+
+            STATE_WRITE_HSS_BL_1:
+                state_next = 
+
+            STATE_WRITE_LPM:
+                state_next = 
+
 
             default :
                 state_next = STATE_IDLE;
