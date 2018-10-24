@@ -416,11 +416,11 @@ logic cmd_fifo_new_data_avail;
 logic usr_fifo_empty_delayed;
 logic usr_fifo_new_data_avail;
 logic data_writing_in_progress;
-logic block_read_data;
-logic set_block_read_data_hs;
-logic reset_block_read_data_hs;
-logic set_block_read_data_lp;
-logic reset_block_read_data_lp;
+logic stop_read_data;
+logic set_stop_read_data_hs;
+logic reset_stop_read_data_hs;
+logic set_stop_read_data_lp;
+logic reset_stop_read_data_lp;
 logic lanes_controller_lines_active_delayed;
 logic lanes_controller_lines_activated;
 logic lanes_controller_lines_deactivated;
@@ -433,16 +433,16 @@ assign lanes_controller_lines_activated     = (lanes_controller_lines_active_del
 assign lanes_controller_lines_deactivated   = (lanes_controller_lines_active_delayed ^ lanes_controller_lines_active) & !lanes_controller_lines_active;
 
 always @(`CLK_RST(clk, reset_n))
-    if(`RST(reset_n))   usr_fifo_empty_delayed = 1'b0;
+    if(`RST(reset_n))   usr_fifo_empty_delayed <= 1'b0;
     else                usr_fifo_empty_delayed <= usr_fifo_empty;
 
 always @(`CLK_RST(clk, reset_n))
-    if(`RST(reset_n))   cmd_fifo_empty_delayed = 1'b0;
+    if(`RST(reset_n))   cmd_fifo_empty_delayed <= 1'b0;
     else                cmd_fifo_empty_delayed <= cmd_fifo_empty;
 
 assign cmd_fifo_new_data_avail                  = (cmd_fifo_empty_delayed ^ cmd_fifo_empty) & !cmd_fifo_empty;
 assign usr_fifo_new_data_avail                  = (usr_fifo_empty_delayed ^ usr_fifo_empty) & !usr_fifo_empty;
-assign set_filling_pipe_read_data_streaming     = reset_block_read_data_hs | reset_block_read_data_lp | cmd_fifo_new_data_avail;
+assign set_filling_pipe_read_data_streaming     = reset_stop_read_data_hs & OUTPUT_MUX_CMD & CMD_MUX_USR_FIFO | cmd_fifo_new_data_avail | streaming_en;
 
 always @(`CLK_RST(clk, reset_n))
     if(`RST(reset_n))                               filling_pipe_read_data <= 1'b0;
@@ -458,19 +458,19 @@ always @(`CLK_RST(clk, reset_n))
     else if(iface_write_rqst)   data_writing_in_progress <= 1'b1;
     else if(iface_last_word)    data_writing_in_progress <= 1'b0;
 
-assign set_block_read_data_hs       = (cmd_fifo_read || (pix_fifo_read || blank_read) & last_data_read_from_fifo) & user_cmd_transmission_mode & next_cmd_from_usr_fifo & lanes_controller_lines_active;
-assign reset_block_read_data_hs     = lanes_controller_lines_deactivated;
-assign set_block_read_data_lp       = !lanes_controller_lines_active & read_data & (OUTPUT_MUX_CMD & usr_fifo_packet_short | OUTPUT_MUX_DATA & last_data_read_from_fifo)
-assign reset_block_read_data_lp     = !lanes_controller_lines_active & iface_last_word;
+assign set_stop_read_data_hs       = (cmd_fifo_read || (pix_fifo_read || blank_read) & last_data_read_from_fifo) & user_cmd_transmission_mode & next_cmd_from_usr_fifo & lanes_controller_lines_active;
+assign reset_stop_read_data_hs     = lanes_controller_lines_deactivated;
+assign set_stop_read_data_lp       = !lanes_controller_lines_active & read_data & (OUTPUT_MUX_CMD & usr_fifo_packet_short | OUTPUT_MUX_DATA & last_data_read_from_fifo)
+assign reset_stop_read_data_lp     = !lanes_controller_lines_active & iface_last_word;
 
 always @(`CLK_RST(clk, reset_n))
-    if(`RST(reset_n))                                               block_read_data <= 1'b0;
-    else if(set_block_read_data_hs || set_block_read_data_lp)       block_read_data <= 1'b1;
-    else if(reset_block_read_data_hs || reset_block_read_data_lp)   block_read_data <= 1'b0;
+    if(`RST(reset_n))                                               stop_read_data <= 1'b0;
+    else if(set_stop_read_data_hs || set_stop_read_data_lp)         stop_read_data <= 1'b1;
+    else if(reset_stop_read_data_hs || reset_stop_read_data_lp)     stop_read_data <= 1'b0;
 
 always_comb
     if(streaming_enable)
-            read_data = filling_pipe_read_data | iface_data_rqst & data_writing_in_progress & !block_read_data;
+            read_data = filling_pipe_read_data | iface_data_rqst & data_writing_in_progress & !stop_read_data;
     else    read_data = filling_pipe_read_data | data_writing_in_progress & iface_data_rqst;
 
 
@@ -486,8 +486,8 @@ when streaming_enable = 1
 always @(`CLK_RST(clk, reset_n))
     if(`RST(reset_n))                               iface_lpm_en_reg <= 1'b0;
     else if(!streaming_enable)                      iface_lpm_en_reg <= user_cmd_transmission_mode;
-    else if(reset_block_read_data_hs)               iface_lpm_en_reg <= 1'b1;
-    else if(reset_block_read_data_lp & read_data)   iface_lpm_en_reg <= 1'b0;
+    else if(reset_stop_read_data_hs)                iface_lpm_en_reg <= 1'b1;
+    else if(reset_stop_read_data_lp & read_data)    iface_lpm_en_reg <= 1'b0;
 
 /********* Packets stitching *********/
 
