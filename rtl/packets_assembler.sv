@@ -57,8 +57,11 @@ logic           cmd_fifo_read;
 logic           cmd_fifo_write;
 logic [31:0]    cmd_fifo_data;
 logic [31:0]    cmd_fifo_data_in;
+logic           lp_pix;
+logic           lp_blank;
 
-
+assign lp_pix       = cmd_fifo_data[21:16] == 6'h3E;
+assign lp_blank     = cmd_fifo_data[21:16] == 6'h19;
 
 /********************************************************************
                         FSM declaration
@@ -77,9 +80,7 @@ enum logic [3:0]{
     STATE_WRITE_HSS_2,
     STATE_WRITE_HSS_BL_2,
     STATE_WRITE_LPM
-}
-
-logic [3:0] state_current, state_next;
+} state_current, state_next;
 
 always_ff @(`CLK_RST(clk, reset_n))
     if(`RST(reset_n))   state_current <= STATE_IDLE;
@@ -583,6 +584,7 @@ always @(`CLK_RST(clk, reset_n))
 
 assign iface_last_word  = read_data && ((outp_data_size < 3'd4) || (data_size_left == 0));
 assign iface_write_data = output_data;
+assign iface_write_rqst = !data_writing_in_progress & (&iface_write_strb);
 
 always_comb
     case(outp_data_size):
