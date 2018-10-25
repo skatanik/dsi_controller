@@ -61,9 +61,10 @@ enum logic [3:0]{
     STATE_WRITE_HSS_1,
     STATE_WRITE_HBP,
     STATE_WRITE_RGB,
+    STATE_WRITE_HSS_BL_1,
     STATE_WRITE_HFP,
     STATE_WRITE_HSS_2,
-    STATE_WRITE_HSS_BL_1,
+    STATE_WRITE_HSS_BL_2,
     STATE_WRITE_LPM
 }
 
@@ -80,37 +81,40 @@ always_comb
                 state_next = (streaming_enable & usr_fifo_empty ? STATE_WRITE_VSS : STATE_IDLE);
 
             STATE_WRITE_VSS:
-                state_next = !cmd_fifo_full ? STATE_WRITE_VSS_BL : STATE_WRITE_VSS;
+                state_next = !cmd_fifo_full ? STATE_WRITE_VSS_BL : STATE_WRITE_VSS;     // if lpm_enable = 1, then we don't write next cmd. Anyways if there is a cmd in usr_fifo, we should set a corresponding flag
 
-            STATE_WRITE_VSS_BL:
-                state_next = cmd_fifo_full ? STATE_WRITE_VSS_BL : ();
+            STATE_WRITE_VSS_BL:         // if lpm_enable = 1 then we wait for timeout and don't write anything, otherwise we write blank packet cmd and switch to the next state
+                state_next = lpm_enable ? (blank_timeout ? STATE_WRITE_HSS_0 : STATE_WRITE_VSS_BL) : (cmd_fifo_full ? STATE_WRITE_VSS_BL : STATE_WRITE_HSS_0);
 
-            STATE_WRITE_HSS_0:
-                state_next = 
+            STATE_WRITE_HSS_0:  // if lpm_enable = 1, then we don't write next cmd. But if there a cmd in usr_fifo, we should set a corresponding flag
+                state_next = cmd_fifo_full ? STATE_WRITE_HSS_0 : STATE_WRITE_HSS_BL_0;
 
             STATE_WRITE_HSS_BL_0:
-                state_next = 
+                state_next = lpm_enable ? (blank_timeout ? (last_hss_bl_0 ? STATE_WRITE_HSS_1 : STATE_WRITE_HSS_0) : STATE_WRITE_HSS_BL_0) : (cmd_fifo_full ? STATE_WRITE_HSS_BL_0 : (last_hss_bl_0 ? STATE_WRITE_HSS_1 : STATE_WRITE_HSS_0));
 
             STATE_WRITE_HSS_1:
-                state_next = 
+                state_next = cmd_fifo_full ? STATE_WRITE_HSS_1 : STATE_WRITE_HBP;
 
             STATE_WRITE_HBP:
-                state_next = 
+                state_next = lpm_enable ? (blank_timeout ? STATE_WRITE_RGB : STATE_WRITE_HBP) : (cmd_fifo_full ? STATE_WRITE_HBP : STATE_WRITE_RGB);
 
             STATE_WRITE_RGB:
-                state_next = 
-
-            STATE_WRITE_HFP:
-                state_next = 
-
-            STATE_WRITE_HSS_2:
-                state_next = 
+                state_next = cmd_fifo_full ? STATE_WRITE_RGB : STATE_WRITE_HFP;
 
             STATE_WRITE_HSS_BL_1:
-                state_next = 
+                state_next = lpm_enable ? (blank_timeout ? STATE_WRITE_HFP : STATE_WRITE_HSS_BL_1) : (cmd_fifo_full ? STATE_WRITE_HSS_BL_1 : STATE_WRITE_HFP);
 
-            STATE_WRITE_LPM:
-                state_next = 
+            STATE_WRITE_HFP:
+                state_next = lpm_enable ? (blank_timeout ? (last_pix_line ? STATE_WRITE_HSS_2 : STATE_WRITE_HSS_1) : STATE_WRITE_HFP) : (cmd_fifo_full ? STATE_WRITE_HFP : (last_pix_line ? STATE_WRITE_HSS_2 : STATE_WRITE_HSS_1));
+
+            STATE_WRITE_HSS_2:
+                state_next = cmd_fifo_full ? STATE_WRITE_HSS_2 : STATE_WRITE_HSS_BL_2;
+
+            STATE_WRITE_HSS_BL_2:
+                state_next = lpm_enable ? (blank_timeout ? (last_hss_bl_2 ? STATE_WRITE_LPM : STATE_WRITE_HSS_2) : STATE_WRITE_HSS_BL_2) : (cmd_fifo_full ? STATE_WRITE_HSS_BL_2 : (last_hss_bl_0 ? STATE_WRITE_LPM : STATE_WRITE_HSS_2));
+
+            STATE_WRITE_LPM:    // we dont write any cmd here, just wait for timeout
+                state_next = blank_timeout ? STATE_WRITE_VSS : STATE_WRITE_LPM;
 
 
             default :
