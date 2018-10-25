@@ -49,8 +49,12 @@ module packets_assembler #(
 `define CLK_RST(clk, rst_n)   posedge clk, negedge rst_n
 `define RST(rst_n)   !rst_n
 
-/********* CMD fifo signals *********/
+`define PACKET_BLANKING     6'h19
+`define PACKET_PPS24        6'h3E
+`define PACKET_VSS          6'h01
+`define PACKET_HSS          6'h21
 
+/********* CMD fifo signals *********/
 logic           cmd_fifo_full;
 logic           cmd_fifo_empty;
 logic           cmd_fifo_read;
@@ -60,25 +64,25 @@ logic [31:0]    cmd_fifo_data_in;
 logic           lp_pix;
 logic           lp_blank;
 
-assign lp_pix       = cmd_fifo_data[21:16] == 6'h3E;
-assign lp_blank     = cmd_fifo_data[21:16] == 6'h19;
+assign lp_pix       = cmd_fifo_data[21:16] == PACKET_PPS24;
+assign lp_blank     = cmd_fifo_data[21:16] == PACKET_BLANKING;
 
 /********************************************************************
                         FSM declaration
 ********************************************************************/
 enum logic [3:0]{
-    STATE_IDLE,
-    STATE_WRITE_VSS,
-    STATE_WRITE_VSS_BL,
-    STATE_WRITE_HSS_0,
-    STATE_WRITE_HSS_BL_0,
-    STATE_WRITE_HSS_1,
-    STATE_WRITE_HBP,
-    STATE_WRITE_RGB,
-    STATE_WRITE_HSS_BL_1,
-    STATE_WRITE_HFP,
-    STATE_WRITE_HSS_2,
-    STATE_WRITE_HSS_BL_2,
+    STATE_IDLE              ,
+    STATE_WRITE_VSS_BL      ,
+    STATE_WRITE_VSS_BL      ,
+    STATE_WRITE_HSS_0       ,
+    STATE_WRITE_HSS_BL_0    ,
+    STATE_WRITE_HSS_1       ,
+    STATE_WRITE_HBP         ,
+    STATE_WRITE_RGB         ,
+    STATE_WRITE_HSS_BL_1    ,
+    STATE_WRITE_HFP         ,
+    STATE_WRITE_HSS_2       ,
+    STATE_WRITE_HSS_BL_2    ,
     STATE_WRITE_LPM
 } state_current, state_next;
 
@@ -600,7 +604,6 @@ always_comb
         iface_write_strb = 4'b1111;
     default:
         iface_write_strb = 4'b0000;
-
-
+        
 endmodule
 `endif
