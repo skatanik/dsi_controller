@@ -49,6 +49,17 @@ module packets_assembler #(
 `define CLK_RST(clk, rst_n)   posedge clk, negedge rst_n
 `define RST(rst_n)   !rst_n
 
+/********* CMD fifo signals *********/
+
+logic           cmd_fifo_full;
+logic           cmd_fifo_empty;
+logic           cmd_fifo_read;
+logic           cmd_fifo_write;
+logic [31:0]    cmd_fifo_data;
+logic [31:0]    cmd_fifo_data_in;
+
+
+
 /********************************************************************
                         FSM declaration
 ********************************************************************/
@@ -114,8 +125,7 @@ always_comb
                 state_next = lpm_enable ? (blank_timeout ? (last_hss_bl_2 ? STATE_WRITE_LPM : STATE_WRITE_HSS_2) : STATE_WRITE_HSS_BL_2) : (cmd_fifo_full ? STATE_WRITE_HSS_BL_2 : (last_hss_bl_0 ? STATE_WRITE_LPM : STATE_WRITE_HSS_2));
 
             STATE_WRITE_LPM:    // we dont write any cmd here, just wait for timeout
-                state_next = blank_timeout ? STATE_WRITE_VSS : STATE_WRITE_LPM;
-
+                state_next = blank_timeout ? (streaming_enable ? STATE_WRITE_VSS : STATE_IDLE) : STATE_WRITE_LPM;
 
             default :
                 state_next = STATE_IDLE;
@@ -142,6 +152,8 @@ always_ff @(`CLK_RST(clk, reset_n))
     else if(!(|line_pix_counter) && state_current != STATE_IDLE)    line_pix_counter <= horizontal_full_resolution;
 
 
+
+
 /********************************************************************
                 Sending sequences
 FSM forms sequence of commands to be sent and put in in cmd_fifo. When streaming enabled logic fetch cmd from this fifo and switch mux accordingly. If after a command from
@@ -154,8 +166,6 @@ If there is a new cmd then fsm calculates right size of blanking packet and sets
 ********************************************************************/
 /*********
 TO DO:
-1. read_data signal forming
-2. read_data for fifo's signal forming
 3. write fsm for cmd fifo
 *********/
 
@@ -174,9 +184,9 @@ localparam [31:0]   BLANK_PATTERN           = 32'h5555_5555;
 `define             OUTPUT_MUX_CMD          !mux_ctrl_vec[0]
 `define             CMD_MUX_USR_FIFO        !mux_ctrl_vec[1]
 `define             CMD_MUX_CMD_FIFO        mux_ctrl_vec[1]
-`define             DATA_MUX_USR_FIFO       |(mux_ctrl_vec[4:2] & DATA_SOURCE_USR_CMD)
-`define             DATA_MUX_PIX_FIFO       |(mux_ctrl_vec[4:2] & DATA_SOURCE_PIX)
-`define             DATA_MUX_BLANK          |(mux_ctrl_vec[4:2] & DATA_SOURCE_BLANK)
+`define             DATA_MUX_USR_FIFO       |(mux_ctrl_vec[4:2] & SET_DATA_MUX_USR)
+`define             DATA_MUX_PIX_FIFO       |(mux_ctrl_vec[4:2] & SET_DATA_MUX_PIX)
+`define             DATA_MUX_BLANK          |(mux_ctrl_vec[4:2] & SET_DATA_MUX_BLANK)
 `define             DATA_MUX_NULL           !(|mux_ctrl_vec[4:2])
 
 logic send_vss;
@@ -219,19 +229,19 @@ always_comb
     if(source_cmd_fifo)         packet_header = packet_header_cmd;
     else                        packet_header = packet_header_usr_fifo;
 
-assign packet_header_usr_fifo = {usr_fifo_data, ecc_result_0};
+assign packet_header_usr_fifo = {usr_fifo_data[23:16], ecc_result_0};
 
 ecc_calc ecc_0
 (
-    .data       (usr_fifo_data ),
+    .data       (usr_fifo_data[23:16] ),
     .ecc_result (ecc_result_0    )
 );
 
-assign packet_header_cmd = {cmd_fifo_data, ecc_result_1};
+assign packet_header_cmd = {cmd_fifo_data[23:16], ecc_result_1};
 
 ecc_calc ecc_1
 (
-    .data       (cmd_fifo_data ),
+    .data       (cmd_fifo_data[23:16] ),
     .ecc_result (ecc_result_1    )
 );
 
@@ -250,21 +260,18 @@ assign start_sp_sending = read_header && packet_type_short;
 
 /********* header type decoding *********/
 function [2:0] packet_header_decoder;
+    input [7:0] data_id;
+    logic packet_decoder_error;
+    logic packet_not_reserved;
+    logic packet_type_long;
+    logic packet_type_short;
 
-input [7:0] data_id;
+    packet_decoder_error = !packet_not_reserved;
+    packet_not_reserved  = !(|data_id[3:0]) && !(&data_id[3:0]);
+    packet_type_long     = (!data_id[3] || data_id[3] && (!(|data_id[5:4]) && !(|data_id[2:0]))) && packet_not_reserved;
+    packet_type_short    = (data_id[3] || !(data_id[3] && (!(|data_id[5:4]) && !(|data_id[2:0])))) && packet_not_reserved;
 
-logic packet_decoder_error;
-logic packet_not_reserved;
-logic packet_type_long;
-logic packet_type_short;
-
-packet_decoder_error = !packet_not_reserved;
-packet_not_reserved  = !(|data_id[3:0]) && !(&data_id[3:0]);
-packet_type_long     = (!data_id[3] || data_id[3] && (!(|data_id[5:4]) && !(|data_id[2:0]))) && packet_not_reserved;
-packet_type_short    = (data_id[3] || !(data_id[3] && (!(|data_id[5:4]) && !(|data_id[2:0])))) && packet_not_reserved;
-
-packet_header_decoder = {packet_decoder_error, packet_type_long, packet_type_short};
-
+    packet_header_decoder = {packet_decoder_error, packet_type_long, packet_type_short};
 endfunction
 
 assign {cmd_fifo_packet_error, cmd_fifo_packet_long, cmd_fifo_packet_short} = packet_header_decoder(cmd_fifo_data[23:16]);
@@ -273,10 +280,10 @@ assign {usr_fifo_packet_error, usr_fifo_packet_long, usr_fifo_packet_short} = pa
 // Data to write mux
 
 always_comb
-    if(data_source_vector & DATA_SOURCE_PIX)            data_to_write = pix_fifo_data;
-    else if(data_source_vector & DATA_SOURCE_USR_CMD)   data_to_write = cmd_fifo_data;
-    else if(data_source_vector & DATA_SOURCE_BLANK)     data_to_write = BLANK_PATTERN;
-    else                                                data_to_write = 32'b0;
+    if(DATA_MUX_PIX_FIFO)           data_to_write = pix_fifo_data;
+    else if(DATA_MUX_USR_FIFO)      data_to_write = usr_fifo_data;
+    else if(DATA_MUX_BLANK)         data_to_write = BLANK_PATTERN;
+    else                            data_to_write = 32'b0;
 
 /********* Fifo reading, crc adding *********/
 
@@ -547,7 +554,7 @@ assign ask_for_extra_data = (data_size_left + offset_value) < 4 ;
 
 always @(`CLK_RST(clk, reset_n))
     if(`RST(reset_n))                           output_data <= 32'b0;
-     else if(iface_last_word & read_data)       output_data <= 32'b0;
+    else if(iface_last_word & read_data)        output_data <= 32'b0;
     else if(read_data)
         if(ask_for_extra_data)                  output_data <= (input_data_1 << (offset_value * 8)) | temp_buffer | (input_data_2 << ((data_size_left + offset_value) * 8));
         else                                    output_data <= (input_data_1 << (offset_value * 8)) | temp_buffer;
@@ -574,7 +581,8 @@ always @(`CLK_RST(clk, reset_n))
         if(ask_for_extra_data && !extra_data_ok)            outp_data_size <= (data_size_left + offset_value);
         else                                                outp_data_size <= 3'd4;
 
-assign iface_last_word = read_data && ((outp_data_size < 3'd4) || (data_size_left == 0));
+assign iface_last_word  = read_data && ((outp_data_size < 3'd4) || (data_size_left == 0));
+assign iface_write_data = output_data;
 
 always_comb
     case(outp_data_size):
