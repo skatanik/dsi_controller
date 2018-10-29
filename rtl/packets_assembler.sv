@@ -5,44 +5,43 @@ module packets_assembler #(
     CMD_FIFO_DEPTH      = 10
     )(
     /********* Clock signals *********/
-        input   wire                            clk_sys                         ,
-        input   wire                            rst_n                           ,
+        input   wire                            clk_sys                             ,
+        input   wire                            rst_n                               ,
 
     /********* lanes controller iface *********/
-        output  wire [31:0]                     iface_write_data                ,
-        output  wire [3:0]                      iface_write_strb                ,
-        output  wire                            iface_write_rqst                ,
-        output  wire                            iface_last_word                 ,
-        output  wire                            iface_lpm_en                    , //0 - hs, 1 - lp should be asserted at least one cycle before iface_write_rqst and disasserted one cycle after iface_last_word
+        output  wire [31:0]                     iface_write_data                    ,
+        output  wire [3:0]                      iface_write_strb                    ,
+        output  wire                            iface_write_rqst                    ,
+        output  wire                            iface_last_word                     ,
+        output  wire                            iface_lpm_en                        , //0 - hs, 1 - lp should be asserted at least one cycle before iface_write_rqst and disasserted one cycle after iface_last_word
 
-        input   wire                            iface_data_rqst                 ,
-        input   wire                            lanes_controller_lines_active   ,
+        input   wire                            iface_data_rqst                     ,
+        input   wire                            lanes_controller_lines_active       ,
 
     /********* pixel FIFO interface *********/
-        input   wire  [31:0]                    pix_fifo_data                   ,
-        input   wire                            pix_fifo_empty                  ,
-        output  wire                            pix_fifo_read                   ,
+        input   wire  [31:0]                    pix_fifo_data                       ,
+        input   wire                            pix_fifo_empty                      ,
+        output  wire                            pix_fifo_read                       ,
 
     /********* cmd FIFO interface *********/
-        input   wire  [31:0]                    usr_fifo_data                   ,
-        input   wire  [CMD_FIFO_DEPTH - 1:0]    usr_fifo_usedw                  ,
-        input   wire                            usr_fifo_empty                  ,
-        output  wire                            usr_fifo_read                   ,
+        input   wire  [31:0]                    usr_fifo_data                       ,
+        input   wire  [CMD_FIFO_DEPTH - 1:0]    usr_fifo_usedw                      ,
+        input   wire                            usr_fifo_empty                      ,
+        output  wire                            usr_fifo_read                       ,
 
     /********* Control inputs *********/
-        input   wire                            lpm_enable                      ,   // 1: go to LPM after sending commands. 0: send blank packet after sending command or data
+        input   wire                            lpm_enable                          ,   // 1: go to LPM after sending commands. 0: send blank packet after sending command or data
+        input   wire                            user_cmd_transmission_mode          , // 0: data from user fifo is sent in HS mode; 1: data from user fifo is sent in LP mode.
 
     /********* timings registers *********/
-        input   wire                            horizontal_full_resolution      ,
-        input   wire                            horizontal_active_resolution    ,
-        input   wire                            vertical_full_resolution        ,
-        input   wire                            vertical_active_resolution      ,
-        input   wire                            vsa_lines_number                ,
-        input   wire                            vbp_lines_number                ,
-        input   wire                            vfp_lines_number                ,
-        input   wire                            vbp_pix_number                  ,
-        input   wire                            vfp_pix_number                  ,
-        input   wire                            user_cmd_transmission_mode      , // 0: data from user fifo is sent in HS mode; 1: data from user fifo is sent in LP mode.
+        input   wire [15:0]                     horizontal_line_length              ,
+        input   wire [15:0]                     horizontal_front_porch              ,
+        input   wire [15:0]                     horizontal_back_porch               ,
+        input   wire [15:0]                     pixels_in_line_number               ,
+        input   wire [15:0]                     vertical_active_lines_number        ,
+        input   wire [15:0]                     vertical_lines_number               ,
+        input   wire [15:0]                     vertical_front_porch_lines_number   ,
+        input   wire [15:0]                     vertical_back_porch_lines_number    ,
 
 );
 
@@ -234,19 +233,19 @@ always_comb
     if(source_cmd_fifo)         packet_header = packet_header_cmd;
     else                        packet_header = packet_header_usr_fifo;
 
-assign packet_header_usr_fifo = {usr_fifo_data[23:16], ecc_result_0};
+assign packet_header_usr_fifo = {usr_fifo_data[23:16], usr_fifo_data[7:0], usr_fifo_data[15:8], ecc_result_0};
 
 ecc_calc ecc_0
 (
-    .data       (usr_fifo_data[23:16] ),
+    .data       (usr_fifo_data[23:0] ),
     .ecc_result (ecc_result_0    )
 );
 
-assign packet_header_cmd = {cmd_fifo_data[23:16], ecc_result_1};
+assign packet_header_cmd = {cmd_fifo_data[23:16], cmd_fifo_data[7:0], cmd_fifo_data[15:8], ecc_result_1};
 
 ecc_calc ecc_1
 (
-    .data       (cmd_fifo_data[23:16] ),
+    .data       (cmd_fifo_data[23:0] ),
     .ecc_result (ecc_result_1    )
 );
 
@@ -303,8 +302,8 @@ assign no_data_is_being_sent  = !(|packet_size_left);
 logic [16:0] cmd_lp_size_wcrc;
 logic [16:0] usr_lp_size_wcrc;
 
-assign cmd_lp_size_wcrc = packet_header_cmd[23:8] + 17'd2;
-assign usr_lp_size_wcrc = packet_header_usr_fifo[23:8] + 17'd2;
+assign cmd_lp_size_wcrc = cmd_fifo_data[15:0] + 17'd2;
+assign usr_lp_size_wcrc = usr_fifo_data[15:0] + 17'd2;
 
 always @(`CLK_RST(clk, reset_n))
     if(`RST(reset_n))                                                           packet_size_left <= 17'd0;
@@ -587,7 +586,17 @@ always @(`CLK_RST(clk, reset_n))
         else                                                outp_data_size <= 3'd4;
 
 assign iface_last_word  = read_data && ((outp_data_size < 3'd4) || (data_size_left == 0));
-assign iface_write_data = output_data;
+//assign iface_write_data = output_data;
+
+// reverse bit order in bytes
+genvar i, j;
+generate
+    for (i = 0; i < 4; i = i + 1) begin
+        for(j = 0; j < 8; j = j + 1)
+            assign iface_write_data[i*8 + j] = output_data[i*8 + 7 - j];
+    end
+endgenerate
+
 assign iface_write_rqst = !data_writing_in_progress & (&iface_write_strb);
 
 always_comb
@@ -604,6 +613,7 @@ always_comb
         iface_write_strb = 4'b1111;
     default:
         iface_write_strb = 4'b0000;
-        
+
+
 endmodule
 `endif
