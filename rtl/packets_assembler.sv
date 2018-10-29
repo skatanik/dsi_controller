@@ -34,14 +34,14 @@ module packets_assembler #(
         input   wire                            user_cmd_transmission_mode          , // 0: data from user fifo is sent in HS mode; 1: data from user fifo is sent in LP mode.
 
     /********* timings registers *********/
-        input   wire [15:0]                     horizontal_line_length              ,
-        input   wire [15:0]                     horizontal_front_porch              ,
-        input   wire [15:0]                     horizontal_back_porch               ,
-        input   wire [15:0]                     pixels_in_line_number               ,
-        input   wire [15:0]                     vertical_active_lines_number        ,
-        input   wire [15:0]                     vertical_lines_number               ,
-        input   wire [15:0]                     vertical_front_porch_lines_number   ,
-        input   wire [15:0]                     vertical_back_porch_lines_number    ,
+        input   wire [15:0]                     horizontal_line_length              ,   // length in clk
+        input   wire [15:0]                     horizontal_front_porch              ,   // length in clk
+        input   wire [15:0]                     horizontal_back_porch               ,   // length in clk
+        input   wire [15:0]                     pixels_in_line_number               ,   // length in pixels
+        input   wire [15:0]                     vertical_active_lines_number        ,   // length in clk
+        input   wire [15:0]                     vertical_lines_number               ,   // length in clk
+        input   wire [15:0]                     vertical_front_porch_lines_number   ,   // length in clk
+        input   wire [15:0]                     vertical_back_porch_lines_number    ,   // length in clk
 
 );
 
@@ -58,14 +58,21 @@ logic           cmd_fifo_full;
 logic           cmd_fifo_empty;
 logic           cmd_fifo_read;
 logic           cmd_fifo_write;
-logic [31:0]    cmd_fifo_data;
-logic [31:0]    cmd_fifo_data_in;
+logic [32:0]    cmd_fifo_data;
+logic [32:0]    cmd_fifo_data_in;
+logic           cmd_fifo_out_ctrl; // next muxes ctrl signals state. cmd_fifo_out_ctrl = 1, next cmd from usr fifo, 0 - from cmd fifo
+logic           cmd_fifo_in_ctrl; // next muxes ctrl signals state. cmd_fifo_out_ctrl = 1, next cmd from usr fifo, 0 - from cmd fifo
 logic           lp_pix;
 logic           lp_blank;
 logic           blank_timeout;
 logic           last_hss_bl_0;
 logic           last_pix_line;
 logic           last_hss_bl_2;
+logic           usr_fifo_packet_long;
+logic           usr_fifo_packet_short;
+logic           usr_fifo_packet_error;
+
+assign cmd_fifo_out_ctrl = cmd_fifo_data[32];
 
 assign lp_pix       = cmd_fifo_data[21:16] == PACKET_PPS24;
 assign lp_blank     = cmd_fifo_data[21:16] == PACKET_BLANKING;
@@ -154,6 +161,7 @@ logic [15:0]    blank_timer;
 logic           blank_counter_start;
 logic           blank_counter_active;
 logic [15:0]    blank_counter_init_val;
+logic [15:0]    blank_packet_size;
 
 always_ff @(`CLK_RST(clk, reset_n))
     if(`RST(reset_n))               blank_timer <= 16'b0;
@@ -169,6 +177,8 @@ assign blank_timeout = blank_counter_active & (!(|blank_timer));
 
 logic state_write_hs_packet;
 logic state_write_lp_hs_packet;
+logic state_usr_cmd_allowed;
+logic set_usr_fifo_packet_read; // flag shows that a packet in usr_fifo should be writeen after current cmd.
 
 assign state_write_hs_packet =  (state_current == STATE_WRITE_VSS)      |
                                 (state_current == STATE_WRITE_HSS_0)    |
@@ -183,68 +193,109 @@ assign state_write_lp_hs_packet =   (state_current == STATE_WRITE_VSS_BL)   |
                                     (state_current == STATE_WRITE_HFP)      |
                                     (state_current == STATE_WRITE_HSS_BL_2);
 
+assign state_usr_cmd_allowed =  (state_current == STATE_WRITE_VSS)      |
+                                (state_current == STATE_WRITE_HSS_0)    |
+                                (state_current == STATE_WRITE_RGB)      |
+                                (state_current == STATE_WRITE_HSS_2);
+
 assign cmd_fifo_write = !cmd_fifo_full & (state_write_sp | state_write_lp_hs_packet & !lpm_enable);
 
 /********* CMD fifo data mux *********/
 
-logic [23:0] cmd_packet_header_prefifo;
-logic [15:0] lp_length;
+logic [23:0]    cmd_packet_header_prefifo;
+logic [15:0]    usr_packet_length;
+logic           usr_fifo_wait_next_read;
+
+assign cmd_fifo_in_ctrl     = state_usr_cmd_allowed & set_usr_fifo_packet_read;
+assign usr_packet_length    = usr_fifo_packet_long & !usr_fifo_packet_error ? (16'd6 + usr_fifo_data[15:0]) : 16'd4;
 
 always_comb
     begin
         case (state_current)
             STATE_IDLE:
-                cmd_packet_header_prefifo = 32'b0;
+                cmd_packet_header_prefifo = 24'b0;
 
             STATE_WRITE_VSS:
                 cmd_packet_header_prefifo = {{2'b0, PACKET_VSS}, 16'b0};
 
-            STATE_WRITE_VSS_BL:         // if lpm_enable = 1 then we wait for timeout and don't write anything, otherwise we write blank packet cmd and switch to the next state
-                cmd_packet_header_prefifo = lpm_enable ? 32'b0 : ;
+            STATE_WRITE_VSS_BL:
+                cmd_packet_header_prefifo = lpm_enable ? 24'b0 : {{2'b0, PACKET_BLANKING}, blank_packet_size};
 
-            STATE_WRITE_HSS_0:  // if lpm_enable = 1, then we don't write next cmd. But if there a cmd in usr_fifo, we should set a corresponding flag
+            STATE_WRITE_HSS_0:
                 cmd_packet_header_prefifo = {{2'b0, PACKET_HSS}, 16'b0};
 
             STATE_WRITE_HSS_BL_0:
-                cmd_packet_header_prefifo = lpm_enable ? 32'b0 : ;
+                cmd_packet_header_prefifo = lpm_enable ? 24'b0 : {{2'b0, PACKET_BLANKING}, blank_packet_size};
 
             STATE_WRITE_HSS_1:
                 cmd_packet_header_prefifo = {{2'b0, PACKET_HSS}, 16'b0};
 
             STATE_WRITE_HBP:
-                cmd_packet_header_prefifo = lpm_enable ? 32'b0 : ;
+                cmd_packet_header_prefifo = lpm_enable ? 24'b0 : {{2'b0, PACKET_BLANKING}, horizontal_back_porch};
 
             STATE_WRITE_RGB:
                 cmd_packet_header_prefifo = {{2'b0, PACKET_PPS24}, pixels_in_line_number};
 
             STATE_WRITE_HSS_BL_1:
-                cmd_packet_header_prefifo = lpm_enable ? 32'b0 : ;
+                cmd_packet_header_prefifo = lpm_enable ? 24'b0 : {{2'b0, PACKET_BLANKING}, blank_packet_size};
 
             STATE_WRITE_HFP:
-                cmd_packet_header_prefifo = lpm_enable ? 32'b0 : ;
+                cmd_packet_header_prefifo = lpm_enable ? 24'b0 : {{2'b0, PACKET_BLANKING}, horizontal_front_porch};
 
             STATE_WRITE_HSS_2:
                 cmd_packet_header_prefifo = {{2'b0, PACKET_HSS}, 16'b0};
 
             STATE_WRITE_HSS_BL_2:
-                cmd_packet_header_prefifo = lpm_enable ? 32'b0 : ;
+                cmd_packet_header_prefifo = lpm_enable ? 24'b0 : {{2'b0, PACKET_BLANKING}, blank_packet_size};
 
             STATE_WRITE_LPM:    // we dont write any cmd here, just wait for timeout
-                cmd_packet_header_prefifo = ;
+                cmd_packet_header_prefifo = 24'b0;
 
             default :
-                cmd_packet_header_prefifo = 32'b0;
+                cmd_packet_header_prefifo = 24'b0;
 
         endcase
     end
 
-assign cmd_fifo_data = {8'b0, cmd_packet_header_prefifo};
+always_ff @(`CLK_RST(clk, reset_n))
+    if(`RST(reset_n))       blank_packet_size <= 16'd0;
+    else if(cmd_fifo_data_in && cmd_fifo_write && !lpm_enable)
+         case (state_current)
+            STATE_WRITE_VSS:
+                blank_packet_size <= (horizontal_line_length - 16'd1)*4 - cmd_fifo_data_in ? (!user_cmd_transmission_mode ? usr_packet_length : (usr_packet_length * 8 + LP_PACKET_SIZE) * LP_BAUD_TIME) : 16'd0;
+
+            STATE_WRITE_HSS_0:
+                blank_packet_size <= (horizontal_line_length - 16'd1)*4 - cmd_fifo_data_in ? (!user_cmd_transmission_mode ? usr_packet_length : (usr_packet_length * 8 + LP_PACKET_SIZE) * LP_BAUD_TIME) : 16'd0;
+
+            STATE_WRITE_RGB:
+                blank_packet_size <= (horizontal_line_length - 16'd1 - horizontal_front_porch - horizontal_back_porch)*4 - pixels_in_line_number * 3 - cmd_fifo_data_in ? (!user_cmd_transmission_mode ? usr_packet_length : (usr_packet_length * 8 + LP_PACKET_SIZE) * LP_BAUD_TIME) : 16'd0;
+
+            STATE_WRITE_HSS_2:
+                blank_packet_size <= (horizontal_line_length - 16'd1)*4 - cmd_fifo_data_in ? (!user_cmd_transmission_mode ? usr_packet_length : (usr_packet_length * 8 + LP_PACKET_SIZE) * LP_BAUD_TIME) : 16'd0 - last_hss_bl_2 ? (LPM_SIZE * LP_BAUD_TIME) : 16'b0;
+
+            default :
+                blank_packet_size <= 24'b0;
+        endcase
+    else if(lpm_enable)     blank_packet_size <= 16'd0;
+
+ // if lpm_enable than no blanking packet, else horizontal_line_length - vss packet and minus usr_packet size, that depends on transmittion mode HS or LP
+
+
+// cmd_fifo_in_ctrl - tells mux fsm that there is a data in the usr fifo to read after current cmd
+assign cmd_fifo_data_in = {cmd_fifo_in_ctrl, 8'b0, cmd_packet_header_prefifo};
+
+always_ff @(`CLK_RST(clk, reset_n))
+    if(`RST(reset_n))                                   usr_fifo_wait_next_read <= 1'b0;
+    else if(cmd_fifo_write & set_usr_fifo_packet_read)  usr_fifo_wait_next_read <= 1'b1;
+    else if(usr_fifo_read & usr_fifo_wait_next_read)    usr_fifo_wait_next_read <= 1'b0;
+
+assign set_usr_fifo_packet_read = !usr_fifo_empty & !usr_fifo_wait_next_read;
 
 /********************************************************************
                 Sending sequences
 FSM forms sequence of commands to be sent and put in in cmd_fifo. When streaming enabled logic fetch cmd from this fifo and switch mux accordingly. If after a command from
-cmd_fifo should be a user command from user_fifo then a corresponding flag should be set (cmd_fifo_out_ctrl[0]). every time fsm fills cmd_fifo it checks data in user_fifo.
-If there is a new cmd then fsm calculates right size of blanking packet and sets cmd_fifo_out_ctrl[0]. If there is need to get to LP mode FSM stops to fill cmd_fifo
+cmd_fifo should be a user command from user_fifo then a corresponding flag should be set (cmd_fifo_out_ctrl). every time fsm fills cmd_fifo it checks data in user_fifo.
+If there is a new cmd then fsm calculates right size of blanking packet and sets cmd_fifo_out_ctrl. If there is need to get to LP mode FSM stops to fill cmd_fifo
 ********************************************************************/
 
 /********************************************************************
@@ -253,6 +304,7 @@ If there is a new cmd then fsm calculates right size of blanking packet and sets
 /*********
 TO DO:
 3. write fsm for cmd fifo
+4. add EoT packet to fsm
 *********/
 
 
@@ -292,20 +344,11 @@ logic           packet_type_short;
 logic [7:0]     ecc_result_0;
 logic [7:0]     ecc_result_1;
 
-logic [31:0]    cmd_fifo_out;
-logic [2:0]     cmd_fifo_out_ctrl; // next muxes ctrl signals state. cmd_fifo_out_ctrl[0] = 1, next cmd from usr fifo, 0 - from cmd fifo
-logic           cmd_fifo_read;
-logic           cmd_fifo_not_empty;
-
 logic           data_is_data;  // 0 - current data is being taken from cmd path, 1 - from data path
 
 logic           cmd_fifo_packet_long;
 logic           cmd_fifo_packet_short;
 logic           cmd_fifo_packet_error;
-
-logic           usr_fifo_packet_long;
-logic           usr_fifo_packet_short;
-logic           usr_fifo_packet_error;
 
 logic [31:0]    packet_header_cmd;
 logic [31:0]    packet_header_usr_fifo;
@@ -462,7 +505,7 @@ always @(`CLK_RST(clk, reset_n))
 
 assign streaming_en = (streaming_enable_delayed ^ streaming_enable) & streaming_enable;
 
-assign next_packet_from_usr_fifo    = cmd_fifo_out_ctrl[0];
+assign next_packet_from_usr_fifo    = cmd_fifo_out_ctrl;
 assign set_source_data_usr_fifo     = usr_fifo_packet_long && CMD_MUX_USR_FIFO && OUTPUT_MUX_CMD && no_data_is_being_sent;
 assign last_data_read_from_fifo     = !no_data_is_being_sent && last_fifo_reading_wcrc;
 
