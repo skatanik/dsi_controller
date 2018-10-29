@@ -62,6 +62,10 @@ logic [31:0]    cmd_fifo_data;
 logic [31:0]    cmd_fifo_data_in;
 logic           lp_pix;
 logic           lp_blank;
+logic           blank_timeout;
+logic           last_hss_bl_0;
+logic           last_pix_line;
+logic           last_hss_bl_2;
 
 assign lp_pix       = cmd_fifo_data[21:16] == PACKET_PPS24;
 assign lp_blank     = cmd_fifo_data[21:16] == PACKET_BLANKING;
@@ -88,6 +92,11 @@ enum logic [3:0]{
 always_ff @(`CLK_RST(clk, reset_n))
     if(`RST(reset_n))   state_current <= STATE_IDLE;
     else                state_current <= state_next;
+
+/*
+blank_timeout counter when lpm_enable = 1 should start counting only after cmd_fifo_empty = 1
+
+*/
 
 always_comb
     begin
@@ -141,22 +150,95 @@ always_comb
 /********************************************************************
                 Timing counters
 ********************************************************************/
-// lines counters
-logic []    vsa_lines_counter;
-logic []    vbp_lines_counter;
-logic []    active_lines_counter;
-logic []    vfp_lines_counter;
-
-// pix counters
-logic []    line_pix_counter; // line pixels counter
+logic [15:0]    blank_timer;
+logic           blank_counter_start;
+logic           blank_counter_active;
+logic [15:0]    blank_counter_init_val;
 
 always_ff @(`CLK_RST(clk, reset_n))
-    if(`RST(reset_n))                                               line_pix_counter <= 'b0;
-    else if(state_current == STATE_IDLE && streaming_enable)        line_pix_counter <= horizontal_full_resolution;
-    else if(!(|line_pix_counter) && state_current != STATE_IDLE)    line_pix_counter <= horizontal_full_resolution;
+    if(`RST(reset_n))               blank_timer <= 16'b0;
+    else if(blank_counter_start)    blank_timer <= blank_counter_init_val;
+    else if(|blank_timer)           blank_timer <= blank_timer - 16'd1;
 
+always_ff @(`CLK_RST(clk, reset_n))
+    if(`RST(reset_n))           blank_counter_active <= 1'b0;
+    else if(|blank_timer)       blank_counter_active <= 1'b1;
+    else if(!(|blank_timer))    blank_counter_active <= 1'b0;
 
+assign blank_timeout = blank_counter_active & (!(|blank_timer));
 
+logic state_write_hs_packet;
+logic state_write_lp_hs_packet;
+
+assign state_write_hs_packet =  (state_current == STATE_WRITE_VSS)      |
+                                (state_current == STATE_WRITE_HSS_0)    |
+                                (state_current == STATE_WRITE_HSS_1)    |
+                                (state_current == STATE_WRITE_RGB)      |
+                                (state_current == STATE_WRITE_HSS_2);
+
+assign state_write_lp_hs_packet =   (state_current == STATE_WRITE_VSS_BL)   |
+                                    (state_current == STATE_WRITE_HSS_BL_0) |
+                                    (state_current == STATE_WRITE_HBP)      |
+                                    (state_current == STATE_WRITE_HSS_BL_1) |
+                                    (state_current == STATE_WRITE_HFP)      |
+                                    (state_current == STATE_WRITE_HSS_BL_2);
+
+assign cmd_fifo_write = !cmd_fifo_full & (state_write_sp | state_write_lp_hs_packet & !lpm_enable);
+
+/********* CMD fifo data mux *********/
+
+logic [23:0] cmd_packet_header_prefifo;
+logic [15:0] lp_length;
+
+always_comb
+    begin
+        case (state_current)
+            STATE_IDLE:
+                cmd_packet_header_prefifo = 32'b0;
+
+            STATE_WRITE_VSS:
+                cmd_packet_header_prefifo = {{2'b0, PACKET_VSS}, 16'b0};
+
+            STATE_WRITE_VSS_BL:         // if lpm_enable = 1 then we wait for timeout and don't write anything, otherwise we write blank packet cmd and switch to the next state
+                cmd_packet_header_prefifo = lpm_enable ? 32'b0 : ;
+
+            STATE_WRITE_HSS_0:  // if lpm_enable = 1, then we don't write next cmd. But if there a cmd in usr_fifo, we should set a corresponding flag
+                cmd_packet_header_prefifo = {{2'b0, PACKET_HSS}, 16'b0};
+
+            STATE_WRITE_HSS_BL_0:
+                cmd_packet_header_prefifo = lpm_enable ? 32'b0 : ;
+
+            STATE_WRITE_HSS_1:
+                cmd_packet_header_prefifo = {{2'b0, PACKET_HSS}, 16'b0};
+
+            STATE_WRITE_HBP:
+                cmd_packet_header_prefifo = lpm_enable ? 32'b0 : ;
+
+            STATE_WRITE_RGB:
+                cmd_packet_header_prefifo = {{2'b0, PACKET_PPS24}, pixels_in_line_number};
+
+            STATE_WRITE_HSS_BL_1:
+                cmd_packet_header_prefifo = lpm_enable ? 32'b0 : ;
+
+            STATE_WRITE_HFP:
+                cmd_packet_header_prefifo = lpm_enable ? 32'b0 : ;
+
+            STATE_WRITE_HSS_2:
+                cmd_packet_header_prefifo = {{2'b0, PACKET_HSS}, 16'b0};
+
+            STATE_WRITE_HSS_BL_2:
+                cmd_packet_header_prefifo = lpm_enable ? 32'b0 : ;
+
+            STATE_WRITE_LPM:    // we dont write any cmd here, just wait for timeout
+                cmd_packet_header_prefifo = ;
+
+            default :
+                cmd_packet_header_prefifo = 32'b0;
+
+        endcase
+    end
+
+assign cmd_fifo_data = {8'b0, cmd_packet_header_prefifo};
 
 /********************************************************************
                 Sending sequences
@@ -237,7 +319,7 @@ assign packet_header_usr_fifo = {usr_fifo_data[23:16], usr_fifo_data[7:0], usr_f
 
 ecc_calc ecc_0
 (
-    .data       (usr_fifo_data[23:0] ),
+    .data       ({usr_fifo_data[23:16], usr_fifo_data[7:0], usr_fifo_data[15:8]} ),
     .ecc_result (ecc_result_0    )
 );
 
@@ -245,7 +327,7 @@ assign packet_header_cmd = {cmd_fifo_data[23:16], cmd_fifo_data[7:0], cmd_fifo_d
 
 ecc_calc ecc_1
 (
-    .data       (cmd_fifo_data[23:0] ),
+    .data       ({cmd_fifo_data[23:16], cmd_fifo_data[7:0], cmd_fifo_data[15:8]} ),
     .ecc_result (ecc_result_1    )
 );
 
