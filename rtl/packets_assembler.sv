@@ -352,6 +352,9 @@ always_ff @(`CLK_RST(clk, reset_n))
             STATE_WRITE_HSS_0:
                 blank_packet_size <= (horizontal_line_length - 16'd1)*4 - cmd_fifo_data_in ? (!user_cmd_transmission_mode ? usr_packet_length : (usr_packet_length * 8 + LP_PACKET_SIZE) * LP_BAUD_TIME) : 16'd0;
 
+            STATE_WRITE_HSS_1: // hbp before rgb data
+                blank_packet_size <= (horizontal_line_length - 16'd1)*4 - cmd_fifo_data_in ? (!user_cmd_transmission_mode ? usr_packet_length : (usr_packet_length * 8 + LP_PACKET_SIZE) * LP_BAUD_TIME) : 16'd0;
+
             STATE_WRITE_RGB:
                 blank_packet_size <= (horizontal_line_length - 16'd1 - horizontal_front_porch - horizontal_back_porch)*4 - pixels_in_line_number * 3 - cmd_fifo_data_in ? (!user_cmd_transmission_mode ? usr_packet_length : (usr_packet_length * 8 + LP_PACKET_SIZE) * LP_BAUD_TIME) : 16'd0;
 
