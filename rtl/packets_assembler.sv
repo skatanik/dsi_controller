@@ -179,10 +179,47 @@ always_comb
                 Timing counters
 ********************************************************************/
 logic [15:0]    blank_timer;
-logic           blank_counter_start;
+logic           blank_counter_start; // write me!
 logic           blank_counter_active;
 logic [15:0]    blank_counter_init_val;
 logic [15:0]    blank_packet_size;
+
+assign blank_counter_start = !(|blank_timer) & lpm_enable & cmd_fifo_empty &
+                                ((state_current == STATE_WRITE_VSS_BL)      |
+                                (state_current == STATE_WRITE_HSS_BL_0)     |
+                                (state_current == STATE_WRITE_HBP)          |
+                                (state_current == STATE_WRITE_HSS_BL_1)     |
+                                (state_current == STATE_WRITE_HFP)          |
+                                (state_current == STATE_WRITE_HSS_BL_2)     |
+                                (state_current == STATE_WRITE_LPM))         ;
+
+always_comb
+    case(state_current)
+    STATE_WRITE_VSS_BL:
+        blank_counter_init_val =
+
+    STATE_WRITE_HSS_BL_0:
+        blank_counter_init_val =
+
+    STATE_WRITE_HBP:
+        blank_counter_init_val =
+
+    STATE_WRITE_HSS_BL_1:
+        blank_counter_init_val =
+
+    STATE_WRITE_HFP:
+        blank_counter_init_val =
+
+    STATE_WRITE_HSS_BL_2:
+        blank_counter_init_val =
+
+    STATE_WRITE_LPM:
+        blank_counter_init_val =
+
+    default:
+        blank_counter_init_val =
+
+    endcase
 
 always_ff @(`CLK_RST(clk, reset_n))
     if(`RST(reset_n))               blank_timer <= 16'b0;
