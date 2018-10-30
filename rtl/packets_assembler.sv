@@ -40,7 +40,6 @@ module packets_assembler #(
         input   wire [15:0]                     horizontal_back_porch               ,   // length in clk
         input   wire [15:0]                     pixels_in_line_number               ,   // length in pixels
         input   wire [15:0]                     vertical_active_lines_number        ,   // length in clk
-        input   wire [15:0]                     vertical_lines_number               ,   // length in clk
         input   wire [15:0]                     vertical_front_porch_lines_number   ,   // length in clk
         input   wire [15:0]                     vertical_back_porch_lines_number    ,   // length in clk
 
@@ -119,7 +118,7 @@ always_comb
                 state_next = (streaming_enable & usr_fifo_empty ? STATE_WRITE_VSS : STATE_IDLE);
 
             STATE_WRITE_VSS:
-                state_next = !cmd_fifo_full ? (enable_EoT_sending ? STATE_WRITE_VSS_EOT : STATE_WRITE_VSS_BL) : STATE_WRITE_VSS;     // if lpm_enable = 1, then we don't write next cmd. Anyways if there is a cmd in usr_fifo, we should set a corresponding flag
+                state_next = !cmd_fifo_full ? (enable_EoT_sending & lpm_enable ? STATE_WRITE_VSS_EOT : STATE_WRITE_VSS_BL) : STATE_WRITE_VSS;     // if lpm_enable = 1, then we don't write next cmd. Anyways if there is a cmd in usr_fifo, we should set a corresponding flag
 
             STATE_WRITE_VSS_EOT:
                 state_next = !cmd_fifo_full ? STATE_WRITE_VSS_BL : STATE_WRITE_VSS_EOT;
@@ -128,7 +127,7 @@ always_comb
                 state_next = lpm_enable ? (blank_timeout ? STATE_WRITE_HSS_0 : STATE_WRITE_VSS_BL) : (cmd_fifo_full ? STATE_WRITE_VSS_BL : STATE_WRITE_HSS_0);
 
             STATE_WRITE_HSS_0:  // if lpm_enable = 1, then we don't write next cmd. But if there a cmd in usr_fifo, we should set a corresponding flag
-                state_next = !cmd_fifo_full ? (enable_EoT_sending ? STATE_WRITE_HSS_0_EOT : STATE_WRITE_HSS_BL_0) : STATE_WRITE_HSS_0;
+                state_next = !cmd_fifo_full ? (enable_EoT_sending & lpm_enable ? STATE_WRITE_HSS_0_EOT : STATE_WRITE_HSS_BL_0) : STATE_WRITE_HSS_0;
 
             STATE_WRITE_HSS_0_EOT:
                 state_next = !cmd_fifo_full ? STATE_WRITE_HSS_BL_0 : STATE_WRITE_HSS_0_EOT;
@@ -137,7 +136,7 @@ always_comb
                 state_next = lpm_enable ? (blank_timeout ? (last_hss_bl_0 ? STATE_WRITE_HSS_1 : STATE_WRITE_HSS_0) : STATE_WRITE_HSS_BL_0) : (cmd_fifo_full ? STATE_WRITE_HSS_BL_0 : (last_hss_bl_0 ? STATE_WRITE_HSS_1 : STATE_WRITE_HSS_0));
 
             STATE_WRITE_HSS_1:
-                state_next = !cmd_fifo_full ? (enable_EoT_sending ? STATE_WRITE_HSS_1_EOT : STATE_WRITE_HBP) : STATE_WRITE_HSS_1;
+                state_next = !cmd_fifo_full ? (enable_EoT_sending & lpm_enable ? STATE_WRITE_HSS_1_EOT : STATE_WRITE_HBP) : STATE_WRITE_HSS_1;
 
             STATE_WRITE_HSS_1_EOT:
                 state_next = !cmd_fifo_full ? STATE_WRITE_HBP : STATE_WRITE_HSS_1_EOT;
@@ -146,7 +145,7 @@ always_comb
                 state_next = lpm_enable ? (blank_timeout ? STATE_WRITE_RGB : STATE_WRITE_HBP) : (cmd_fifo_full ? STATE_WRITE_HBP : STATE_WRITE_RGB);
 
             STATE_WRITE_RGB:
-                state_next = !cmd_fifo_full ? (enable_EoT_sending ? STATE_WRITE_RGB_EOT : STATE_WRITE_HSS_BL_1) : STATE_WRITE_RGB;
+                state_next = !cmd_fifo_full ? (enable_EoT_sending & lpm_enable ? STATE_WRITE_RGB_EOT : STATE_WRITE_HSS_BL_1) : STATE_WRITE_RGB;
 
             STATE_WRITE_RGB_EOT:
                 state_next = !cmd_fifo_full ? STATE_WRITE_HSS_BL_1 : STATE_WRITE_RGB_EOT;
@@ -158,7 +157,7 @@ always_comb
                 state_next = lpm_enable ? (blank_timeout ? (last_pix_line ? STATE_WRITE_HSS_2 : STATE_WRITE_HSS_1) : STATE_WRITE_HFP) : (cmd_fifo_full ? STATE_WRITE_HFP : (last_pix_line ? STATE_WRITE_HSS_2 : STATE_WRITE_HSS_1));
 
             STATE_WRITE_HSS_2:
-                state_next = !cmd_fifo_full ? (enable_EoT_sending ? STATE_WRITE_HSS_2_EOT : STATE_WRITE_HSS_BL_2) : STATE_WRITE_HSS_2;
+                state_next = !cmd_fifo_full ? (enable_EoT_sending & lpm_enable ? STATE_WRITE_HSS_2_EOT : STATE_WRITE_HSS_BL_2) : STATE_WRITE_HSS_2;
 
             STATE_WRITE_HSS_2_EOT:
                 state_next = !cmd_fifo_full ? STATE_WRITE_HSS_BL_2 : STATE_WRITE_HSS_2_EOT;
@@ -200,7 +199,7 @@ assign blank_timeout = blank_counter_active & (!(|blank_timer));
 logic state_write_hs_packet;
 logic state_write_lp_hs_packet;
 logic state_usr_cmd_allowed;
-logic usr_fifo_packet_pending; // flag shows that a packet in usr_fifo should be writeen after current cmd.
+logic usr_fifo_packet_pending; // flag shows that a packet in usr_fifo should be written after current cmd.
 
 assign state_write_hs_packet =  (state_current == STATE_WRITE_VSS)          |
                                 (state_current == STATE_WRITE_HSS_0)        |
@@ -338,6 +337,29 @@ always_ff @(`CLK_RST(clk, reset_n))
 
 assign usr_fifo_packet_pending = !usr_fifo_empty & !usr_fifo_wait_next_read;
 
+logic [15:0] pix_lines_counter;
+logic [15:0] vbp_lines_counter;
+logic [15:0] vfp_lines_counter;
+
+always_ff @(`CLK_RST(clk, reset_n))
+    if(`RST(reset_n))                                                                       vbp_lines_counter <= 16'd0;
+    else if(state_next == STATE_WRITE_VSS)                                                  vbp_lines_counter <= vertical_back_porch_lines_number - 16'd1;
+    else if(state_next == STATE_WRITE_HSS_0  && state_current == STATE_WRITE_HSS_BL_0)      vbp_lines_counter <= vbp_lines_counter - 16'd1;
+
+always_ff @(`CLK_RST(clk, reset_n))
+    if(`RST(reset_n))                                                                       pix_lines_counter <= 16'd0;
+    else if(state_next == STATE_WRITE_HSS_1  && state_current == STATE_WRITE_HSS_BL_0)      pix_lines_counter <= vertical_active_lines_number - 16'd1;
+    else if(state_next == STATE_WRITE_HSS_1  && state_current == STATE_WRITE_HFP)           pix_lines_counter <= pix_lines_counter - 16'd1;
+
+always_ff @(`CLK_RST(clk, reset_n))
+    if(`RST(reset_n))                                                                       vfp_lines_counter <= 16'd0;
+    else if(state_next == STATE_WRITE_HSS_2  && state_current == STATE_WRITE_HFP)           vfp_lines_counter <= vertical_active_lines_number - 16'd1;
+    else if(state_next == STATE_WRITE_HSS_2  && state_current == STATE_WRITE_HSS_BL_2)      vfp_lines_counter <= vfp_lines_counter - 16'd1;
+
+assign last_hss_bl_0 = (state_current == STATE_WRITE_HSS_BL_0)  & !(|pix_lines_counter);
+assign last_pix_line = (state_current == STATE_WRITE_RGB)       & !(|vbp_lines_counter);
+assign last_hss_bl_2 = (state_current == STATE_WRITE_HSS_BL_2)  & !(|vfp_lines_counter);
+
 /********************************************************************
                 Sending sequences
 FSM forms sequence of commands to be sent and put in in cmd_fifo. When streaming enabled logic fetch cmd from this fifo and switch mux accordingly. If after a command from
@@ -351,7 +373,7 @@ If there is a new cmd then fsm calculates right size of blanking packet and sets
 /*********
 TO DO:
 3. write fsm for cmd fifo
-4. add EoT packet to fsm
+4. finish blank packets length calculating
 *********/
 
 
