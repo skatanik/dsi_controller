@@ -157,7 +157,7 @@ always_comb
                 state_next = lpm_enable ? (blank_timeout ? (last_pix_line ? STATE_WRITE_HSS_2 : STATE_WRITE_HSS_1) : STATE_WRITE_HFP) : (cmd_fifo_full ? STATE_WRITE_HFP : (last_pix_line ? STATE_WRITE_HSS_2 : STATE_WRITE_HSS_1));
 
             STATE_WRITE_HSS_2:
-                state_next = !cmd_fifo_full ? (enable_EoT_sending & lpm_enable ? STATE_WRITE_HSS_2_EOT : STATE_WRITE_HSS_BL_2) : STATE_WRITE_HSS_2;
+                state_next = !cmd_fifo_full ? (enable_EoT_sending & (lpm_enable | last_hss_bl_2) ? STATE_WRITE_HSS_2_EOT : STATE_WRITE_HSS_BL_2) : STATE_WRITE_HSS_2;
 
             STATE_WRITE_HSS_2_EOT:
                 state_next = !cmd_fifo_full ? STATE_WRITE_HSS_BL_2 : STATE_WRITE_HSS_2_EOT;
