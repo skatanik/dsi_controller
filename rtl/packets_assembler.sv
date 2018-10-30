@@ -184,7 +184,7 @@ logic           blank_counter_active;
 logic [15:0]    blank_counter_init_val;
 logic [15:0]    blank_packet_size;
 
-assign blank_counter_start = !(|blank_timer) & lpm_enable & cmd_fifo_empty &
+assign blank_counter_start = !(|blank_timer) & lpm_enable & cmd_fifo_empty & (usr_fifo_empty || !usr_fifo_wait_next_read) &
                                 ((state_current == STATE_WRITE_VSS_BL)      |
                                 (state_current == STATE_WRITE_HSS_BL_0)     |
                                 (state_current == STATE_WRITE_HBP)          |
@@ -193,31 +193,33 @@ assign blank_counter_start = !(|blank_timer) & lpm_enable & cmd_fifo_empty &
                                 (state_current == STATE_WRITE_HSS_BL_2)     |
                                 (state_current == STATE_WRITE_LPM))         ;
 
-always_comb
-    case(state_current)
-    STATE_WRITE_VSS_BL:
-        blank_counter_init_val =
+always_ff @(`CLK_RST(clk, reset_n))
+    if(`RST(reset_n))       blank_counter_init_val <= 16'd0;
+    else if(state_current != state_next)
+        case(state_current)
+        STATE_WRITE_VSS_BL:
+            blank_counter_init_val =
 
-    STATE_WRITE_HSS_BL_0:
-        blank_counter_init_val =
+        STATE_WRITE_HSS_BL_0:
+            blank_counter_init_val =
 
-    STATE_WRITE_HBP:
-        blank_counter_init_val =
+        STATE_WRITE_HBP:
+            blank_counter_init_val =
 
-    STATE_WRITE_HSS_BL_1:
-        blank_counter_init_val =
+        STATE_WRITE_HSS_BL_1:
+            blank_counter_init_val =
 
-    STATE_WRITE_HFP:
-        blank_counter_init_val =
+        STATE_WRITE_HFP:
+            blank_counter_init_val =
 
-    STATE_WRITE_HSS_BL_2:
-        blank_counter_init_val =
+        STATE_WRITE_HSS_BL_2:
+            blank_counter_init_val =
 
-    STATE_WRITE_LPM:
-        blank_counter_init_val =
+        STATE_WRITE_LPM:
+            blank_counter_init_val =
 
-    default:
-        blank_counter_init_val =
+        default:
+            blank_counter_init_val =
 
     endcase
 
@@ -342,7 +344,7 @@ always_comb
 
 always_ff @(`CLK_RST(clk, reset_n))
     if(`RST(reset_n))       blank_packet_size <= 16'd0;
-    else if(cmd_fifo_data_in && cmd_fifo_write && !lpm_enable)
+    else if(cmd_fifo_write && !lpm_enable)
          case (state_current)
             STATE_WRITE_VSS:
                 blank_packet_size <= (horizontal_line_length - 16'd1)*4 - cmd_fifo_data_in ? (!user_cmd_transmission_mode ? usr_packet_length : (usr_packet_length * 8 + LP_PACKET_SIZE) * LP_BAUD_TIME) : 16'd0;
