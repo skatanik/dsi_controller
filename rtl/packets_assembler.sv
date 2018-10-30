@@ -202,16 +202,16 @@ logic state_write_lp_hs_packet;
 logic state_usr_cmd_allowed;
 logic usr_fifo_packet_pending; // flag shows that a packet in usr_fifo should be writeen after current cmd.
 
-assign state_write_hs_packet =  (state_current == STATE_WRITE_VSS)      |
-                                (state_current == STATE_WRITE_HSS_0)    |
-                                (state_current == STATE_WRITE_HSS_1)    |
-                                (state_current == STATE_WRITE_RGB)      |
-                                (state_current == STATE_WRITE_HSS_2)    |
-                                (tate_current == STATE_WRITE_VSS_EOT)   |
-                                (tate_current == STATE_WRITE_HSS_0_EOT) |
-                                (tate_current == STATE_WRITE_HSS_1_EOT) |
-                                (tate_current == STATE_WRITE_RGB_EOT)   |
-                                (tate_current == STATE_WRITE_HSS_2_EOT) ;
+assign state_write_hs_packet =  (state_current == STATE_WRITE_VSS)          |
+                                (state_current == STATE_WRITE_HSS_0)        |
+                                (state_current == STATE_WRITE_HSS_1)        |
+                                (state_current == STATE_WRITE_RGB)          |
+                                (state_current == STATE_WRITE_HSS_2)        |
+                                (state_current == STATE_WRITE_VSS_EOT)      |
+                                (state_current == STATE_WRITE_HSS_0_EOT)    |
+                                (state_current == STATE_WRITE_HSS_1_EOT)    |
+                                (state_current == STATE_WRITE_RGB_EOT)      |
+                                (state_current == STATE_WRITE_HSS_2_EOT)    ;
 
 assign state_write_lp_hs_packet =   (state_current == STATE_WRITE_VSS_BL)   |
                                     (state_current == STATE_WRITE_HSS_BL_0) |
@@ -220,10 +220,15 @@ assign state_write_lp_hs_packet =   (state_current == STATE_WRITE_VSS_BL)   |
                                     (state_current == STATE_WRITE_HFP)      |
                                     (state_current == STATE_WRITE_HSS_BL_2);
 
-assign state_usr_cmd_allowed =  (state_current == STATE_WRITE_VSS)      |
-                                (state_current == STATE_WRITE_HSS_0)    |
-                                (state_current == STATE_WRITE_RGB)      |
-                                (state_current == STATE_WRITE_HSS_2);
+assign state_usr_cmd_allowed =  (state_current == STATE_WRITE_VSS)        & (!enable_EoT_sending | enable_EoT_sending & !user_cmd_transmission_mode)  |
+                                (state_current == STATE_WRITE_HSS_0)      & (!enable_EoT_sending | enable_EoT_sending & !user_cmd_transmission_mode)  |
+                                (state_current == STATE_WRITE_RGB)        & (!enable_EoT_sending | enable_EoT_sending & !user_cmd_transmission_mode)  |
+                                (state_current == STATE_WRITE_HSS_2)      & (!enable_EoT_sending | enable_EoT_sending & !user_cmd_transmission_mode)  |
+                                (state_current == STATE_WRITE_VSS_EOT)    & user_cmd_transmission_mode  |
+                                (state_current == STATE_WRITE_HSS_0_EOT)  & user_cmd_transmission_mode  |
+                                (state_current == STATE_WRITE_HSS_1_EOT)  & user_cmd_transmission_mode  |
+                                (state_current == STATE_WRITE_RGB_EOT)    & user_cmd_transmission_mode  |
+                                (state_current == STATE_WRITE_HSS_2_EOT)  & user_cmd_transmission_mode  ;
 
 assign cmd_fifo_write = !cmd_fifo_full & (state_write_hs_packet | state_write_lp_hs_packet & !lpm_enable);
 
