@@ -5,8 +5,8 @@ module packets_assembler #(
     CMD_FIFO_DEPTH      = 10
     )(
     /********* Clock signals *********/
-        input   wire                            clk_sys                             ,
-        input   wire                            rst_n                               ,
+        input   wire                            clk                                 ,
+        input   wire                            reset_n                             ,
 
     /********* lanes controller iface *********/
         output  wire [31:0]                     iface_write_data                    ,
@@ -33,6 +33,7 @@ module packets_assembler #(
         input   wire                            lpm_enable                          ,   // 1: go to LPM after sending commands. 0: send blank packet after sending command or data
         input   wire                            user_cmd_transmission_mode          , // 0: data from user fifo is sent in HS mode; 1: data from user fifo is sent in LP mode.
         input   wire                            enable_EoT_sending                  ,
+        input   wire                            streaming_enable                    ,
 
     /********* timings registers *********/
         input   wire [15:0]                     horizontal_line_length              ,   // length in clk
@@ -42,9 +43,12 @@ module packets_assembler #(
         input   wire [15:0]                     vertical_active_lines_number        ,   // length in lines
         input   wire [15:0]                     vertical_front_porch_lines_number   ,   // length in lines
         input   wire [15:0]                     vertical_back_porch_lines_number    ,   // length in lines
-        input   wire [15:0]                     lpm_length                          ,   // length in clk
+        input   wire [15:0]                     lpm_length                              // length in clk
 
 );
+
+`define LP_PACKET_SIZE  16'b0
+`define LP_BAUD_TIME    16'b0
 
 `define CLK_RST(clk, rst_n)   posedge clk, negedge rst_n
 `define RST(rst_n)   !rst_n
@@ -73,11 +77,18 @@ logic           last_hss_bl_2;
 logic           usr_fifo_packet_long;
 logic           usr_fifo_packet_short;
 logic           usr_fifo_packet_error;
+logic [4:0]     mux_ctrl_vec;
+logic           set_source_data_usr_fifo;
+logic           last_data_read_from_fifo;
+logic           next_packet_from_usr_fifo;
+logic           streaming_enable_delayed;
+logic           ask_for_extra_data;
+logic           read_data;
 
 assign cmd_fifo_out_ctrl = cmd_fifo_data[32];
 
-assign lp_pix       = cmd_fifo_data[21:16] == PACKET_PPS24;
-assign lp_blank     = cmd_fifo_data[21:16] == PACKET_BLANKING;
+assign lp_pix       = cmd_fifo_data[21:16] == `PACKET_PPS24;
+assign lp_blank     = cmd_fifo_data[21:16] == `PACKET_BLANKING;
 
 /********************************************************************
                         FSM declaration
@@ -182,6 +193,7 @@ logic           blank_counter_start; // write me!
 logic           blank_counter_active;
 logic [15:0]    blank_counter_init_val;
 logic [15:0]    blank_packet_size;
+logic           usr_fifo_wait_next_read;
 
 assign blank_counter_start = !(|blank_timer) & lpm_enable & cmd_fifo_empty & (usr_fifo_empty || !usr_fifo_wait_next_read) &
                                 ((state_current == STATE_WRITE_VSS_BL)      |
@@ -193,7 +205,7 @@ assign blank_counter_start = !(|blank_timer) & lpm_enable & cmd_fifo_empty & (us
                                 (state_current == STATE_WRITE_LPM))         ;
 
 logic [15:0]    usr_packet_length;
-logic [15:0]    usr_packet_length_in_clk
+logic [15:0]    usr_packet_length_in_clk;
 
 assign usr_packet_length            = usr_fifo_packet_long & !usr_fifo_packet_error ? (16'd6 + usr_fifo_data[15:0]) : 16'd4;
 assign usr_packet_length_in_clk     = user_cmd_transmission_mode ? {2'b0, usr_packet_length[15:2]} : 16'd0;
@@ -278,7 +290,6 @@ assign cmd_fifo_write = !cmd_fifo_full & (state_write_hs_packet | state_write_lp
 /********* CMD fifo data mux *********/
 
 logic [23:0]    cmd_packet_header_prefifo;
-logic           usr_fifo_wait_next_read;
 
 assign cmd_fifo_in_ctrl     = state_usr_cmd_allowed & usr_fifo_packet_pending;
 
@@ -289,52 +300,52 @@ always_comb
                 cmd_packet_header_prefifo = 24'b0;
 
             STATE_WRITE_VSS:
-                cmd_packet_header_prefifo = {{2'b0, PACKET_VSS}, 16'b0};
+                cmd_packet_header_prefifo = {{2'b0, `PACKET_VSS}, 16'b0};
 
-            STATE_WRITE_VSS_EOT
-                cmd_packet_header_prefifo =  {{2'b0, PACKET_EOT}, 16'b0};
+            STATE_WRITE_VSS_EOT:
+                cmd_packet_header_prefifo = {{2'b0, `PACKET_EOT}, 16'b0};
 
             STATE_WRITE_VSS_BL:
-                cmd_packet_header_prefifo = lpm_enable ? 24'b0 : {{2'b0, PACKET_BLANKING}, blank_packet_size};
+                cmd_packet_header_prefifo = lpm_enable ? 24'b0 : {{2'b0, `PACKET_BLANKING}, blank_packet_size};
 
             STATE_WRITE_HSS_0:
-                cmd_packet_header_prefifo = {{2'b0, PACKET_HSS}, 16'b0};
+                cmd_packet_header_prefifo = {{2'b0, `PACKET_HSS}, 16'b0};
 
-            STATE_WRITE_HSS_0_EOT
-                cmd_packet_header_prefifo = {{2'b0, PACKET_EOT}, 16'b0};
+            STATE_WRITE_HSS_0_EOT:
+                cmd_packet_header_prefifo = {{2'b0, `PACKET_EOT}, 16'b0};
 
             STATE_WRITE_HSS_BL_0:
-                cmd_packet_header_prefifo = lpm_enable ? 24'b0 : {{2'b0, PACKET_BLANKING}, blank_packet_size};
+                cmd_packet_header_prefifo = lpm_enable ? 24'b0 : {{2'b0, `PACKET_BLANKING}, blank_packet_size};
 
             STATE_WRITE_HSS_1:
-                cmd_packet_header_prefifo = {{2'b0, PACKET_HSS}, 16'b0};
+                cmd_packet_header_prefifo = {{2'b0, `PACKET_HSS}, 16'b0};
 
-            STATE_WRITE_HSS_1_EOT
-                cmd_packet_header_prefifo = {{2'b0, PACKET_EOT}, 16'b0};
+            STATE_WRITE_HSS_1_EOT:
+                cmd_packet_header_prefifo = {{2'b0, `PACKET_EOT}, 16'b0};
 
             STATE_WRITE_HBP:
-                cmd_packet_header_prefifo = lpm_enable ? 24'b0 : {{2'b0, PACKET_BLANKING}, horizontal_back_porch};
+                cmd_packet_header_prefifo = lpm_enable ? 24'b0 : {{2'b0, `PACKET_BLANKING}, horizontal_back_porch};
 
             STATE_WRITE_RGB:
-                cmd_packet_header_prefifo = {{2'b0, PACKET_PPS24}, (pixels_in_line_number * 3)};
+                cmd_packet_header_prefifo = {{2'b0, `PACKET_PPS24}, (pixels_in_line_number * 3)};
 
-            STATE_WRITE_RGB_EOT
-                cmd_packet_header_prefifo = {{2'b0, PACKET_EOT}, 16'b0};
+            STATE_WRITE_RGB_EOT:
+                cmd_packet_header_prefifo = {{2'b0, `PACKET_EOT}, 16'b0};
 
             STATE_WRITE_HSS_BL_1:
-                cmd_packet_header_prefifo = lpm_enable ? 24'b0 : {{2'b0, PACKET_BLANKING}, blank_packet_size};
+                cmd_packet_header_prefifo = lpm_enable ? 24'b0 : {{2'b0, `PACKET_BLANKING}, blank_packet_size};
 
             STATE_WRITE_HFP:
-                cmd_packet_header_prefifo = lpm_enable ? 24'b0 : {{2'b0, PACKET_BLANKING}, horizontal_front_porch};
+                cmd_packet_header_prefifo = lpm_enable ? 24'b0 : {{2'b0, `PACKET_BLANKING}, horizontal_front_porch};
 
             STATE_WRITE_HSS_2:
-                cmd_packet_header_prefifo = {{2'b0, PACKET_HSS}, 16'b0};
+                cmd_packet_header_prefifo = {{2'b0, `PACKET_HSS}, 16'b0};
 
-            STATE_WRITE_HSS_2_EOT
-                cmd_packet_header_prefifo = {{2'b0, PACKET_EOT}, 16'b0};
+            STATE_WRITE_HSS_2_EOT:
+                cmd_packet_header_prefifo = {{2'b0, `PACKET_EOT}, 16'b0};
 
             STATE_WRITE_HSS_BL_2:
-                cmd_packet_header_prefifo = lpm_enable ? 24'b0 : {{2'b0, PACKET_BLANKING}, blank_packet_size};
+                cmd_packet_header_prefifo = lpm_enable ? 24'b0 : {{2'b0, `PACKET_BLANKING}, blank_packet_size};
 
             STATE_WRITE_LPM:    // we dont write any cmd here, just wait for timeout
                 cmd_packet_header_prefifo = 24'b0;
@@ -347,7 +358,7 @@ always_comb
 
 logic [15:0] usr_data_size; // in bytes
 
-assign usr_data_size = cmd_fifo_in_ctrl ? (!user_cmd_transmission_mode ? usr_packet_length : (usr_packet_length * 8 + LP_PACKET_SIZE) * LP_BAUD_TIME) : 16'd0;
+assign usr_data_size = cmd_fifo_in_ctrl ? (!user_cmd_transmission_mode ? usr_packet_length : (usr_packet_length * 8 + `LP_PACKET_SIZE) * `LP_BAUD_TIME) : 16'd0;
 
 always_ff @(`CLK_RST(clk, reset_n))
     if(`RST(reset_n))       blank_packet_size <= 16'd0;
@@ -427,22 +438,22 @@ TO DO:
 
 localparam [31:0]   BLANK_PATTERN           = 32'h5555_5555;
 
-`define             SET_OUTP_MUX_DATA       1'b1
-`define             SET_OUTP_MUX_CMD        1'b0
-`define             SET_CMD_MUX_CMD         1'b1
-`define             SET_CMD_MUX_USR         1'b0
-`define             SET_DATA_MUX_USR        3'b010
-`define             SET_DATA_MUX_PIX        3'b001
-`define             SET_DATA_MUX_BLANK      3'b100
-`define             SET_DATA_MUX_NULL       3'b000
-`define             OUTPUT_MUX_DATA         mux_ctrl_vec[0]
-`define             OUTPUT_MUX_CMD          !mux_ctrl_vec[0]
-`define             CMD_MUX_USR_FIFO        !mux_ctrl_vec[1]
-`define             CMD_MUX_CMD_FIFO        mux_ctrl_vec[1]
-`define             DATA_MUX_USR_FIFO       |(mux_ctrl_vec[4:2] & SET_DATA_MUX_USR)
-`define             DATA_MUX_PIX_FIFO       |(mux_ctrl_vec[4:2] & SET_DATA_MUX_PIX)
-`define             DATA_MUX_BLANK          |(mux_ctrl_vec[4:2] & SET_DATA_MUX_BLANK)
-`define             DATA_MUX_NULL           !(|mux_ctrl_vec[4:2])
+`define SET_OUTP_MUX_DATA       1'b1
+`define SET_OUTP_MUX_CMD        1'b0
+`define SET_CMD_MUX_CMD         1'b1
+`define SET_CMD_MUX_USR         1'b0
+`define SET_DATA_MUX_USR        3'b010
+`define SET_DATA_MUX_PIX        3'b001
+`define SET_DATA_MUX_BLANK      3'b100
+`define SET_DATA_MUX_NULL       3'b000
+`define OUTPUT_MUX_DATA         mux_ctrl_vec[0]
+`define OUTPUT_MUX_CMD          !mux_ctrl_vec[0]
+`define CMD_MUX_USR_FIFO        !mux_ctrl_vec[1]
+`define CMD_MUX_CMD_FIFO        mux_ctrl_vec[1]
+`define DATA_MUX_USR_FIFO       |(mux_ctrl_vec[4:2] & `SET_DATA_MUX_USR)
+`define DATA_MUX_PIX_FIFO       |(mux_ctrl_vec[4:2] & `SET_DATA_MUX_PIX)
+`define DATA_MUX_BLANK          |(mux_ctrl_vec[4:2] & `SET_DATA_MUX_BLANK)
+`define DATA_MUX_NULL           !(|mux_ctrl_vec[4:2])
 
 logic send_vss;
 
@@ -472,7 +483,7 @@ logic [31:0]    packet_header_usr_fifo;
 
 /********* packet header ecc appending *********/
 always_comb
-    if(source_cmd_fifo)         packet_header = packet_header_cmd;
+    if(`CMD_MUX_CMD_FIFO)       packet_header = packet_header_cmd;
     else                        packet_header = packet_header_usr_fifo;
 
 assign packet_header_usr_fifo = {usr_fifo_data[23:16], usr_fifo_data[7:0], usr_fifo_data[15:8], ecc_result_0};
@@ -526,9 +537,9 @@ assign {usr_fifo_packet_error, usr_fifo_packet_long, usr_fifo_packet_short} = pa
 // Data to write mux
 
 always_comb
-    if(DATA_MUX_PIX_FIFO)           data_to_write = pix_fifo_data;
-    else if(DATA_MUX_USR_FIFO)      data_to_write = usr_fifo_data;
-    else if(DATA_MUX_BLANK)         data_to_write = BLANK_PATTERN;
+    if(`DATA_MUX_PIX_FIFO)          data_to_write = pix_fifo_data;
+    else if(`DATA_MUX_USR_FIFO)     data_to_write = usr_fifo_data;
+    else if(`DATA_MUX_BLANK)        data_to_write = BLANK_PATTERN;
     else                            data_to_write = 32'b0;
 
 /********* Fifo reading, crc adding *********/
@@ -541,8 +552,10 @@ assign packet_size_left_wocrc = (packet_size_left > 17'd2) ? (packet_size_left -
 assign no_data_is_being_sent  = !(|packet_size_left);
 /********* latch long packet data size *********/
 
-logic [16:0] cmd_lp_size_wcrc;
-logic [16:0] usr_lp_size_wcrc;
+logic [16:0]    cmd_lp_size_wcrc;
+logic [16:0]    usr_lp_size_wcrc;
+logic           streaming_en;
+logic           next_cmd_from_usr_fifo;
 
 assign cmd_lp_size_wcrc = cmd_fifo_data[15:0] + 17'd2;
 assign usr_lp_size_wcrc = usr_fifo_data[15:0] + 17'd2;
@@ -551,18 +564,18 @@ always @(`CLK_RST(clk, reset_n))
     if(`RST(reset_n))                                                           packet_size_left <= 17'd0;
     else if(streaming_en)                                                       packet_size_left <= 17'd0;
     else if(!streaming_enable && read_data)
-        if(OUTPUT_MUX_CMD)                                                      packet_size_left <= usr_lp_size_wcrc;
+        if(`OUTPUT_MUX_CMD)                                                     packet_size_left <= usr_lp_size_wcrc;
         else                                                                    packet_size_left <= (packet_size_left >= 4) ? (packet_size_left - 17'd4) : 17'd0;
 
     else if(streaming_enable && read_data)
-        if(OUTPUT_MUX_CMD && CMD_MUX_CMD_FIFO && DATA_MUX_NULL)                 packet_size_left <= cmd_lp_size_wcrc;
-        else if(OUTPUT_MUX_CMD && CMD_MUX_USR_FIFO && DATA_MUX_NULL)            packet_size_left <= usr_lp_size_wcrc;
-        else if(DATA_MUX_USR_FIFO && last_data_read_from_fifo)                  packet_size_left <= cmd_lp_size_wcrc;
+        if(`OUTPUT_MUX_CMD && `CMD_MUX_CMD_FIFO && `DATA_MUX_NULL)              packet_size_left <= cmd_lp_size_wcrc;
+        else if(`OUTPUT_MUX_CMD && `CMD_MUX_USR_FIFO && `DATA_MUX_NULL)         packet_size_left <= usr_lp_size_wcrc;
+        else if(`DATA_MUX_USR_FIFO && last_data_read_from_fifo)                 packet_size_left <= cmd_lp_size_wcrc;
 
-        else if((DATA_MUX_PIX_FIFO || DATA_MUX_BLANK) && last_data_read_from_fifo)
+        else if((`DATA_MUX_PIX_FIFO || `DATA_MUX_BLANK) && last_data_read_from_fifo)
             if(next_cmd_from_usr_fifo)                                          packet_size_left <= usr_lp_size_wcrc;
             else                                                                packet_size_left <= cmd_lp_size_wcrc;
-        else if((DATA_MUX_USR_FIFO || DATA_MUX_PIX_FIFO || DATA_MUX_BLANK))     packet_size_left <= (packet_size_left >= 4) ? (packet_size_left - 17'd4) : 17'd0;
+        else if((`DATA_MUX_USR_FIFO || `DATA_MUX_PIX_FIFO || `DATA_MUX_BLANK))  packet_size_left <= (packet_size_left >= 4) ? (packet_size_left - 17'd4) : 17'd0;
 
 assign bytes_in_line = (packet_size_left_wocrc >= 4) ? 2'd3 : (packet_size_left_wocrc[1:0] - 2'd1);
 
@@ -586,13 +599,13 @@ always_comb
     else if(last_fifo_reading & !last_fifo_reading_wcrc)    lp_data_output = data_to_write_masked & (32'hffff_ffff >> ((17'd4 - packet_size_left) * 8)) | ( {16'b0, crc_result_async} << ((packet_size_left) * 8));
     else if(!last_fifo_reading & last_fifo_reading_wcrc)    lp_data_output = {16'b0, crc_result_sync} >> ((2 - packet_size_left_wocrc) * 8) | 32'b0;
 
-assign read_lp_data = read_data && (OUTPUT_MUX_DATA);
+assign read_lp_data = read_data && (`OUTPUT_MUX_DATA);
 
 crc_calculator
 (
     .clk                (clk                    ),
     .reset_n            (reset_n                ),
-    .clear              (OUTPUT_MUX_CMD         ),
+    .clear              (`OUTPUT_MUX_CMD         ),
     .data_write         (read_lp_data           ),
     .bytes_number       (bytes_in_line          ),
     .data_input         (data_to_write_masked   ),
@@ -607,15 +620,6 @@ crc_calculator
 //  In this case we jump over one muxes state.
 // This signal can become 1 only after long packets because only these packets can have a variable length
 
-
-logic [4:0] mux_ctrl_vec;
-logic next_cmd_from_usr_fifo;
-logic set_source_data_usr_fifo;
-logic last_data_read_from_fifo;
-logic next_packet_from_usr_fifo;
-logic streaming_en;
-logic streaming_enable_delayed;
-
 always @(`CLK_RST(clk, reset_n))
     if(`RST(reset_n))       streaming_enable_delayed <= 1'b0;
     else                    streaming_enable_delayed <= streaming_enable;
@@ -623,65 +627,63 @@ always @(`CLK_RST(clk, reset_n))
 assign streaming_en = (streaming_enable_delayed ^ streaming_enable) & streaming_enable;
 
 assign next_packet_from_usr_fifo    = cmd_fifo_out_ctrl;
-assign set_source_data_usr_fifo     = usr_fifo_packet_long && CMD_MUX_USR_FIFO && OUTPUT_MUX_CMD && no_data_is_being_sent;
+assign set_source_data_usr_fifo     = usr_fifo_packet_long && `CMD_MUX_USR_FIFO && `OUTPUT_MUX_CMD && no_data_is_being_sent;
 assign last_data_read_from_fifo     = !no_data_is_being_sent && last_fifo_reading_wcrc;
 
 always @(`CLK_RST(clk, reset_n))
-    if(`RST(reset_n))                                                                           mux_ctrl_vec <= {SET_DATA_MUX_NULL, SET_CMD_MUX_USR, SET_OUTP_MUX_CMD};
-    else if(streaming_en)                                                                       mux_ctrl_vec <= {SET_DATA_MUX_NULL, SET_CMD_MUX_CMD, SET_OUTP_MUX_CMD};
+    if(`RST(reset_n))                                                                           mux_ctrl_vec <= {`SET_DATA_MUX_NULL, `SET_CMD_MUX_USR, `SET_OUTP_MUX_CMD};
+    else if(streaming_en)                                                                       mux_ctrl_vec <= {`SET_DATA_MUX_NULL, `SET_CMD_MUX_CMD, `SET_OUTP_MUX_CMD};
     else if(!streaming_enable && read_data)
-        if(set_source_data_usr_fifo)                                                            mux_ctrl_vec <= {SET_DATA_MUX_USR, SET_CMD_MUX_USR, SET_OUTP_MUX_DATA};
-        else if(last_data_read_from_fifo)                                                       mux_ctrl_vec <= {SET_DATA_MUX_NULL, SET_CMD_MUX_USR, SET_OUTP_MUX_CMD};
+        if(set_source_data_usr_fifo)                                                            mux_ctrl_vec <= {`SET_DATA_MUX_USR, `SET_CMD_MUX_USR, `SET_OUTP_MUX_DATA};
+        else if(last_data_read_from_fifo)                                                       mux_ctrl_vec <= {`SET_DATA_MUX_NULL, `SET_CMD_MUX_USR, `SET_OUTP_MUX_CMD};
 
     else if(streaming_enable && read_data)
-        if(OUTPUT_MUX_CMD && CMD_MUX_CMD_FIFO && DATA_MUX_NULL)
+        if(`OUTPUT_MUX_CMD && `CMD_MUX_CMD_FIFO && `DATA_MUX_NULL)
             if(cmd_fifo_packet_short && !next_packet_from_usr_fifo || cmd_fifo_empty)           mux_ctrl_vec <= mux_ctrl_vec;
-            else if(cmd_fifo_packet_short && next_packet_from_usr_fifo)                         mux_ctrl_vec <= {SET_DATA_MUX_NULL,     SET_CMD_MUX_USR, SET_OUTP_MUX_CMD};
-            else if(cmd_fifo_packet_long && lp_pix)                                             mux_ctrl_vec <= {SET_DATA_MUX_PIX,      SET_CMD_MUX_CMD, SET_OUTP_MUX_DATA};
-            else if(cmd_fifo_packet_long && lp_blank)                                           mux_ctrl_vec <= {SET_DATA_MUX_BLANK,    SET_CMD_MUX_CMD, SET_OUTP_MUX_DATA};
+            else if(cmd_fifo_packet_short && next_packet_from_usr_fifo)                         mux_ctrl_vec <= {`SET_DATA_MUX_NULL,     `SET_CMD_MUX_USR, `SET_OUTP_MUX_CMD};
+            else if(cmd_fifo_packet_long && lp_pix)                                             mux_ctrl_vec <= {`SET_DATA_MUX_PIX,      `SET_CMD_MUX_CMD, `SET_OUTP_MUX_DATA};
+            else if(cmd_fifo_packet_long && lp_blank)                                           mux_ctrl_vec <= {`SET_DATA_MUX_BLANK,    `SET_CMD_MUX_CMD, `SET_OUTP_MUX_DATA};
 
-        else if(OUTPUT_MUX_CMD && CMD_MUX_USR_FIFO && DATA_MUX_NULL)
-            if(usr_fifo_packet_long)                                                            mux_ctrl_vec <= {SET_DATA_MUX_USR,  SET_CMD_MUX_CMD, SET_OUTP_MUX_DATA};
-            else if(usr_fifo_packet_short)                                                      mux_ctrl_vec <= {SET_DATA_MUX_NULL, SET_CMD_MUX_CMD, SET_OUTP_MUX_CMD};
+        else if(`OUTPUT_MUX_CMD && `CMD_MUX_USR_FIFO && `DATA_MUX_NULL)
+            if(usr_fifo_packet_long)                                                            mux_ctrl_vec <= {`SET_DATA_MUX_USR,  `SET_CMD_MUX_CMD, `SET_OUTP_MUX_DATA};
+            else if(usr_fifo_packet_short)                                                      mux_ctrl_vec <= {`SET_DATA_MUX_NULL, `SET_CMD_MUX_CMD, `SET_OUTP_MUX_CMD};
 
-        else if(DATA_MUX_USR_FIFO && last_data_read_from_fifo)
+        else if(`DATA_MUX_USR_FIFO && last_data_read_from_fifo)
             if(ask_for_extra_data) // If we ask for extra data, then next muxes state we set accroding to data in cmd fifo and not according to current muxes state
-                else if(cmd_fifo_packet_short && !next_packet_from_usr_fifo || cmd_fifo_empty)  mux_ctrl_vec <= {SET_DATA_MUX_NULL,     SET_CMD_MUX_CMD, SET_OUTP_MUX_CMD};
-                else if(cmd_fifo_packet_short && next_packet_from_usr_fifo)                     mux_ctrl_vec <= {SET_DATA_MUX_NULL,     SET_CMD_MUX_USR, SET_OUTP_MUX_CMD};
-                else if(cmd_fifo_packet_long && lp_pix)                                         mux_ctrl_vec <= {SET_DATA_MUX_PIX,      SET_CMD_MUX_CMD, SET_OUTP_MUX_DATA};
-                else if(cmd_fifo_packet_long && lp_blank)                                       mux_ctrl_vec <= {SET_DATA_MUX_BLANK,    SET_CMD_MUX_CMD, SET_OUTP_MUX_DATA};
+                if(cmd_fifo_packet_short && !next_packet_from_usr_fifo || cmd_fifo_empty)       mux_ctrl_vec <= {`SET_DATA_MUX_NULL,     `SET_CMD_MUX_CMD, `SET_OUTP_MUX_CMD};
+                else if(cmd_fifo_packet_short && next_packet_from_usr_fifo)                     mux_ctrl_vec <= {`SET_DATA_MUX_NULL,     `SET_CMD_MUX_USR, `SET_OUTP_MUX_CMD};
+                else if(cmd_fifo_packet_long && lp_pix)                                         mux_ctrl_vec <= {`SET_DATA_MUX_PIX,      `SET_CMD_MUX_CMD, `SET_OUTP_MUX_DATA};
+                else if(cmd_fifo_packet_long && lp_blank)                                       mux_ctrl_vec <= {`SET_DATA_MUX_BLANK,    `SET_CMD_MUX_CMD, `SET_OUTP_MUX_DATA};
 
-            else                                                                                mux_ctrl_vec <= {SET_DATA_MUX_NULL, SET_CMD_MUX_CMD, SET_OUTP_MUX_CMD};
+            else                                                                                mux_ctrl_vec <= {`SET_DATA_MUX_NULL, `SET_CMD_MUX_CMD, `SET_OUTP_MUX_CMD};
 
-        else if((DATA_MUX_PIX_FIFO || DATA_MUX_BLANK) && last_data_read_from_fifo)
+        else if((`DATA_MUX_PIX_FIFO || `DATA_MUX_BLANK) && last_data_read_from_fifo)
             if(next_cmd_from_usr_fifo)
                 if(ask_for_extra_data) // If we ask for extra data, then next muxes state we set accroding to data in cmd fifo and not according to current muxes state
-                    if(usr_fifo_packet_long)                                                    mux_ctrl_vec <= {SET_DATA_MUX_USR,  SET_CMD_MUX_CMD, SET_OUTP_MUX_DATA};
-                    else if(usr_fifo_packet_short)                                              mux_ctrl_vec <= {SET_DATA_MUX_NULL, SET_CMD_MUX_CMD, SET_OUTP_MUX_CMD};
-                else                                                                            mux_ctrl_vec <= {SET_DATA_MUX_NULL, SET_CMD_MUX_USR, SET_OUTP_MUX_CMD};
+                    if(usr_fifo_packet_long)                                                    mux_ctrl_vec <= {`SET_DATA_MUX_USR,  `SET_CMD_MUX_CMD, `SET_OUTP_MUX_DATA};
+                    else if(usr_fifo_packet_short)                                              mux_ctrl_vec <= {`SET_DATA_MUX_NULL, `SET_CMD_MUX_CMD, `SET_OUTP_MUX_CMD};
+                else                                                                            mux_ctrl_vec <= {`SET_DATA_MUX_NULL, `SET_CMD_MUX_USR, `SET_OUTP_MUX_CMD};
 
             else if(ask_for_extra_data) // If we ask for extra data, then next muxes state we set accroding to data in cmd fifo and not according to current muxes state
-                if(cmd_fifo_packet_short && !next_packet_from_usr_fifo || cmd_fifo_empty)       mux_ctrl_vec <= {SET_DATA_MUX_NULL,     SET_CMD_MUX_CMD, SET_OUTP_MUX_CMD};
-                else if(cmd_fifo_packet_short && next_packet_from_usr_fifo)                     mux_ctrl_vec <= {SET_DATA_MUX_NULL,     SET_CMD_MUX_USR, SET_OUTP_MUX_CMD};
-                else if(cmd_fifo_packet_long && lp_pix)                                         mux_ctrl_vec <= {SET_DATA_MUX_PIX,      SET_CMD_MUX_CMD, SET_OUTP_MUX_DATA};
-                else if(cmd_fifo_packet_long && lp_blank)                                       mux_ctrl_vec <= {SET_DATA_MUX_BLANK,    SET_CMD_MUX_CMD, SET_OUTP_MUX_DATA};
+                if(cmd_fifo_packet_short && !next_packet_from_usr_fifo || cmd_fifo_empty)       mux_ctrl_vec <= {`SET_DATA_MUX_NULL,     `SET_CMD_MUX_CMD, `SET_OUTP_MUX_CMD};
+                else if(cmd_fifo_packet_short && next_packet_from_usr_fifo)                     mux_ctrl_vec <= {`SET_DATA_MUX_NULL,     `SET_CMD_MUX_USR, `SET_OUTP_MUX_CMD};
+                else if(cmd_fifo_packet_long && lp_pix)                                         mux_ctrl_vec <= {`SET_DATA_MUX_PIX,      `SET_CMD_MUX_CMD, `SET_OUTP_MUX_DATA};
+                else if(cmd_fifo_packet_long && lp_blank)                                       mux_ctrl_vec <= {`SET_DATA_MUX_BLANK,    `SET_CMD_MUX_CMD, `SET_OUTP_MUX_DATA};
 
-            else                                                                                mux_ctrl_vec <= {SET_DATA_MUX_NULL, SET_CMD_MUX_CMD, SET_OUTP_MUX_CMD};
-
-assign {data_source_vector, source_cmd_fifo, data_is_data} = mux_ctrl_vec;
+            else                                                                                mux_ctrl_vec <= {`SET_DATA_MUX_NULL, `SET_CMD_MUX_CMD, `SET_OUTP_MUX_CMD};
 
 always @(`CLK_RST(clk, reset_n))
     if(`RST(reset_n))                                                                       next_cmd_from_usr_fifo <= 1'b0;
-    else if(read_data && OUTPUT_MUX_CMD && CMD_MUX_CMD_FIFO && next_packet_from_usr_fifo)   next_cmd_from_usr_fifo <= 1'b1;
-    else if(read_data && OUTPUT_MUX_CMD && CMD_MUX_USR_FIFO)                                next_cmd_from_usr_fifo <= 1'b0;
+    else if(read_data && `OUTPUT_MUX_CMD && `CMD_MUX_CMD_FIFO && next_packet_from_usr_fifo) next_cmd_from_usr_fifo <= 1'b1;
+    else if(read_data && `OUTPUT_MUX_CMD && `CMD_MUX_USR_FIFO)                              next_cmd_from_usr_fifo <= 1'b0;
 
 /********* Read signals forming *********/
-logic blank_read
+logic blank_read;
 
-assign blank_read       = read_data && OUTPUT_MUX_DATA && DATA_MUX_BLANK;
-assign pix_fifo_read    = read_lp_data & DATA_MUX_PIX_FIFO & !pix_fifo_empty;
-assign usr_fifo_read    = (read_lp_data & DATA_MUX_USR_FIFO || read_data & CMD_MUX_USR_FIFO) & !usr_fifo_empty;
-assign cmd_fifo_read    = read_data & CMD_MUX_CMD_FIFO & OUTPUT_MUX_CMD & !cmd_fifo_empty;
+assign blank_read       = read_data && `OUTPUT_MUX_DATA && `DATA_MUX_BLANK;
+assign pix_fifo_read    = read_lp_data & `DATA_MUX_PIX_FIFO & !pix_fifo_empty;
+assign usr_fifo_read    = (read_lp_data & `DATA_MUX_USR_FIFO || read_data & `CMD_MUX_USR_FIFO) & !usr_fifo_empty;
+assign cmd_fifo_read    = read_data & `CMD_MUX_CMD_FIFO & `OUTPUT_MUX_CMD & !cmd_fifo_empty;
 
 logic filling_pipe_read_data;
 logic set_filling_pipe_read_data_streaming;
@@ -716,7 +718,7 @@ always @(`CLK_RST(clk, reset_n))
 
 assign cmd_fifo_new_data_avail                  = (cmd_fifo_empty_delayed ^ cmd_fifo_empty) & !cmd_fifo_empty;
 assign usr_fifo_new_data_avail                  = (usr_fifo_empty_delayed ^ usr_fifo_empty) & !usr_fifo_empty;
-assign set_filling_pipe_read_data_streaming     = reset_stop_read_data_hs & OUTPUT_MUX_CMD & CMD_MUX_USR_FIFO | cmd_fifo_new_data_avail | streaming_en;
+assign set_filling_pipe_read_data_streaming     = reset_stop_read_data_hs & `OUTPUT_MUX_CMD & `CMD_MUX_USR_FIFO | cmd_fifo_new_data_avail | streaming_en;
 
 always @(`CLK_RST(clk, reset_n))
     if(`RST(reset_n))                               filling_pipe_read_data <= 1'b0;
@@ -734,7 +736,7 @@ always @(`CLK_RST(clk, reset_n))
 
 assign set_stop_read_data_hs       = (cmd_fifo_read || (pix_fifo_read || blank_read) & last_data_read_from_fifo) & user_cmd_transmission_mode & next_cmd_from_usr_fifo & lanes_controller_lines_active;
 assign reset_stop_read_data_hs     = lanes_controller_lines_deactivated;
-assign set_stop_read_data_lp       = !lanes_controller_lines_active & read_data & (OUTPUT_MUX_CMD & usr_fifo_packet_short | OUTPUT_MUX_DATA & last_data_read_from_fifo)
+assign set_stop_read_data_lp       = !lanes_controller_lines_active & read_data & (`OUTPUT_MUX_CMD & usr_fifo_packet_short | `OUTPUT_MUX_DATA & last_data_read_from_fifo);
 assign reset_stop_read_data_lp     = !lanes_controller_lines_active & iface_last_word;
 
 always @(`CLK_RST(clk, reset_n))
@@ -770,27 +772,25 @@ logic [31:0] input_data_1;  // main data
 logic [31:0] input_data_2;  // extra data
 logic [31:0] temp_buffer;
 logic [2:0]  offset_value;
-logic [15:0] data_size_left;
-logic        ask_for_extra_data;
 logic [2:0]  outp_data_size;
 logic        extra_data_ok;
 
 /********* input data muxes *********/
 
 always_comb
-    if(DATA_MUX_USR_FIFO && last_data_read_from_fifo)                           input_data_2 = packet_header_cmd;
-    else if((DATA_MUX_PIX_FIFO || DATA_MUX_BLANK) && last_data_read_from_fifo)
+    if(`DATA_MUX_USR_FIFO && last_data_read_from_fifo)                           input_data_2 = packet_header_cmd;
+    else if((`DATA_MUX_PIX_FIFO || `DATA_MUX_BLANK) && last_data_read_from_fifo)
         if(next_cmd_from_usr_fifo)                                              input_data_2 = packet_header_usr_fifo;
         else                                                                    input_data_2 = packet_header_cmd;
     else                                                                        input_data_2 = 32'b0;
 
-assign input_data_1     = data_is_data ? lp_data_output : packet_header;
-assign data_size_left   = OUTPUT_MUX_DATA ? packet_size_left : 17'd4;
+assign input_data_1     = `OUTPUT_MUX_DATA ? lp_data_output : packet_header;
+assign data_size_left   = `OUTPUT_MUX_DATA ? packet_size_left : 17'd4;
 
 /********* extra_data_ok mux. according to current extra data source we check whether corresponding fifo is empty *********/
 always_comb
-    if(DATA_MUX_USR_FIFO && last_data_read_from_fifo)                               extra_data_ok = !cmd_fifo_empty;
-    else if((DATA_MUX_PIX_FIFO || DATA_MUX_BLANK) && last_data_read_from_fifo)
+    if(`DATA_MUX_USR_FIFO && last_data_read_from_fifo)                               extra_data_ok = !cmd_fifo_empty;
+    else if((`DATA_MUX_PIX_FIFO || `DATA_MUX_BLANK) && last_data_read_from_fifo)
         if(next_cmd_from_usr_fifo)                                                  extra_data_ok = !usr_fifo_empty;
         else                                                                        extra_data_ok = !cmd_fifo_empty;
     else                                                                            extra_data_ok = 1'b0;
@@ -842,7 +842,7 @@ endgenerate
 assign iface_write_rqst = !data_writing_in_progress & (&iface_write_strb);
 
 always_comb
-    case(outp_data_size):
+    case(outp_data_size)
     3'd0:
         iface_write_strb = 4'b0000;
     3'd1:
@@ -855,7 +855,7 @@ always_comb
         iface_write_strb = 4'b1111;
     default:
         iface_write_strb = 4'b0000;
-
+    endcase // outp_data_size
 
 endmodule
 `endif
