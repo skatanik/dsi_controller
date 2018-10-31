@@ -313,7 +313,7 @@ always_comb
                 cmd_packet_header_prefifo = lpm_enable ? 24'b0 : {{2'b0, PACKET_BLANKING}, horizontal_back_porch};
 
             STATE_WRITE_RGB:
-                cmd_packet_header_prefifo = {{2'b0, PACKET_PPS24}, pixels_in_line_number};
+                cmd_packet_header_prefifo = {{2'b0, PACKET_PPS24}, (pixels_in_line_number * 3)};
 
             STATE_WRITE_RGB_EOT
                 cmd_packet_header_prefifo = {{2'b0, PACKET_EOT}, 16'b0};
@@ -342,24 +342,28 @@ always_comb
         endcase
     end
 
+logic [15:0] usr_data_size; // in bytes
+
+assign usr_data_size = cmd_fifo_in_ctrl ? (!user_cmd_transmission_mode ? usr_packet_length : (usr_packet_length * 8 + LP_PACKET_SIZE) * LP_BAUD_TIME) : 16'd0;
+
 always_ff @(`CLK_RST(clk, reset_n))
     if(`RST(reset_n))       blank_packet_size <= 16'd0;
     else if(cmd_fifo_write && !lpm_enable)
          case (state_current)
             STATE_WRITE_VSS:
-                blank_packet_size <= (horizontal_line_length - 16'd1)*4 - cmd_fifo_data_in ? (!user_cmd_transmission_mode ? usr_packet_length : (usr_packet_length * 8 + LP_PACKET_SIZE) * LP_BAUD_TIME) : 16'd0;
+                blank_packet_size <= (horizontal_line_length - 16'd1 - {15'b0, enable_EoT_sending & user_cmd_transmission_mode})*4 - usr_data_size;
 
             STATE_WRITE_HSS_0:
-                blank_packet_size <= (horizontal_line_length - 16'd1)*4 - cmd_fifo_data_in ? (!user_cmd_transmission_mode ? usr_packet_length : (usr_packet_length * 8 + LP_PACKET_SIZE) * LP_BAUD_TIME) : 16'd0;
+                blank_packet_size <= (horizontal_line_length - 16'd1 - {15'b0, enable_EoT_sending & user_cmd_transmission_mode})*4 - usr_data_size;
 
             STATE_WRITE_HSS_1: // hbp before rgb data
-                blank_packet_size <= (horizontal_line_length - 16'd1)*4 - cmd_fifo_data_in ? (!user_cmd_transmission_mode ? usr_packet_length : (usr_packet_length * 8 + LP_PACKET_SIZE) * LP_BAUD_TIME) : 16'd0;
+                blank_packet_size <= horizontal_back_porch - 16'd6;
 
             STATE_WRITE_RGB:
-                blank_packet_size <= (horizontal_line_length - 16'd1 - horizontal_front_porch - horizontal_back_porch)*4 - pixels_in_line_number * 3 - cmd_fifo_data_in ? (!user_cmd_transmission_mode ? usr_packet_length : (usr_packet_length * 8 + LP_PACKET_SIZE) * LP_BAUD_TIME) : 16'd0;
+                blank_packet_size <= (horizontal_line_length - 16'd1 - {15'b0, enable_EoT_sending & user_cmd_transmission_mode})*4 - horizontal_front_porch - horizontal_back_porch - 16'd12 - pixels_in_line_number * 3 - 16'd6 - usr_data_size;
 
             STATE_WRITE_HSS_2:
-                blank_packet_size <= (horizontal_line_length - 16'd1)*4 - cmd_fifo_data_in ? (!user_cmd_transmission_mode ? usr_packet_length : (usr_packet_length * 8 + LP_PACKET_SIZE) * LP_BAUD_TIME) : 16'd0 - last_hss_bl_2 ? (LPM_SIZE * LP_BAUD_TIME) : 16'b0;
+                blank_packet_size <= (horizontal_line_length - 16'd1 - {15'b0, enable_EoT_sending & user_cmd_transmission_mode})*4 - usr_data_size - last_hss_bl_2 ? (LPM_SIZE * LP_BAUD_TIME)*4 : 16'b0;
 
             default :
                 blank_packet_size <= 24'b0;
