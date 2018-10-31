@@ -109,7 +109,6 @@ always_ff @(`CLK_RST(clk, reset_n))
 
 /*
 blank_timeout counter when lpm_enable = 1 should start counting only after cmd_fifo_empty = 1
-
 */
 
 always_comb
@@ -174,7 +173,6 @@ always_comb
 
         endcase
     end
-
 
 /********************************************************************
                 Timing counters
@@ -423,8 +421,7 @@ If there is a new cmd then fsm calculates right size of blanking packet and sets
 ********************************************************************/
 /*********
 TO DO:
-3. write fsm for cmd fifo
-4. finish blank packets length calculating
+1. add cmd_fifo
 *********/
 
 
