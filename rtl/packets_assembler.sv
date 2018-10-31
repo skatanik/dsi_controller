@@ -36,12 +36,13 @@ module packets_assembler #(
 
     /********* timings registers *********/
         input   wire [15:0]                     horizontal_line_length              ,   // length in clk
-        input   wire [15:0]                     horizontal_front_porch              ,   // length in clk
-        input   wire [15:0]                     horizontal_back_porch               ,   // length in clk
+        input   wire [15:0]                     horizontal_front_porch              ,   // length in pixels
+        input   wire [15:0]                     horizontal_back_porch               ,   // length in pixels
         input   wire [15:0]                     pixels_in_line_number               ,   // length in pixels
-        input   wire [15:0]                     vertical_active_lines_number        ,   // length in clk
-        input   wire [15:0]                     vertical_front_porch_lines_number   ,   // length in clk
-        input   wire [15:0]                     vertical_back_porch_lines_number    ,   // length in clk
+        input   wire [15:0]                     vertical_active_lines_number        ,   // length in lines
+        input   wire [15:0]                     vertical_front_porch_lines_number   ,   // length in lines
+        input   wire [15:0]                     vertical_back_porch_lines_number    ,   // length in lines
+        input   wire [15:0]                     lpm_length                          ,   // length in clk
 
 );
 
@@ -193,33 +194,39 @@ assign blank_counter_start = !(|blank_timer) & lpm_enable & cmd_fifo_empty & (us
                                 (state_current == STATE_WRITE_HSS_BL_2)     |
                                 (state_current == STATE_WRITE_LPM))         ;
 
+logic [15:0]    usr_packet_length;
+logic [15:0]    usr_packet_length_in_clk
+
+assign usr_packet_length            = usr_fifo_packet_long & !usr_fifo_packet_error ? (16'd6 + usr_fifo_data[15:0]) : 16'd4;
+assign usr_packet_length_in_clk     = user_cmd_transmission_mode ? {2'b0, usr_packet_length[15:2]} : 16'd0;
+
 always_ff @(`CLK_RST(clk, reset_n))
     if(`RST(reset_n))       blank_counter_init_val <= 16'd0;
     else if(state_current != state_next)
         case(state_current)
-        STATE_WRITE_VSS_BL:
-            blank_counter_init_val =
+        STATE_WRITE_VSS:
+            blank_counter_init_val <= horizontal_line_length - 16'd1 - {15'b0, enable_EoT_sending} - usr_packet_length_in_clk;
 
-        STATE_WRITE_HSS_BL_0:
-            blank_counter_init_val =
+        STATE_WRITE_HSS_0:
+            blank_counter_init_val <= horizontal_line_length - 16'd1 - {15'b0, enable_EoT_sending} - usr_packet_length_in_clk;
 
-        STATE_WRITE_HBP:
-            blank_counter_init_val =
+        STATE_WRITE_HSS_1:
+            blank_counter_init_val <= {2'b0, horizontal_back_porch[15:2]} - {15'b0, enable_EoT_sending};
+
+        STATE_WRITE_RGB:
+            blank_counter_init_val <= horizontal_line_length - 16'd1 - {14'b0, enable_EoT_sending, 1'b0} - ((pixels_in_line_number * 3) >> 2) - 16'd2 - usr_packet_length_in_clk - {2'b0, horizontal_front_porch[15:2]};
 
         STATE_WRITE_HSS_BL_1:
-            blank_counter_init_val =
+            blank_counter_init_val <= {2'b0, horizontal_front_porch[15:2]};
 
-        STATE_WRITE_HFP:
-            blank_counter_init_val =
+        STATE_WRITE_HSS_2:
+            blank_counter_init_val <= horizontal_line_length - 16'd1 - {15'b0, enable_EoT_sending} - usr_packet_length_in_clk;
 
         STATE_WRITE_HSS_BL_2:
-            blank_counter_init_val =
-
-        STATE_WRITE_LPM:
-            blank_counter_init_val =
+            blank_counter_init_val <= lpm_length;
 
         default:
-            blank_counter_init_val =
+            blank_counter_init_val <= 16'd0;
 
     endcase
 
@@ -273,11 +280,9 @@ assign cmd_fifo_write = !cmd_fifo_full & (state_write_hs_packet | state_write_lp
 /********* CMD fifo data mux *********/
 
 logic [23:0]    cmd_packet_header_prefifo;
-logic [15:0]    usr_packet_length;
 logic           usr_fifo_wait_next_read;
 
 assign cmd_fifo_in_ctrl     = state_usr_cmd_allowed & usr_fifo_packet_pending;
-assign usr_packet_length    = usr_fifo_packet_long & !usr_fifo_packet_error ? (16'd6 + usr_fifo_data[15:0]) : 16'd4;
 
 always_comb
     begin
@@ -363,7 +368,7 @@ always_ff @(`CLK_RST(clk, reset_n))
                 blank_packet_size <= (horizontal_line_length - 16'd1 - {15'b0, enable_EoT_sending & user_cmd_transmission_mode})*4 - horizontal_front_porch - horizontal_back_porch - 16'd12 - pixels_in_line_number * 3 - 16'd6 - usr_data_size;
 
             STATE_WRITE_HSS_2:
-                blank_packet_size <= (horizontal_line_length - 16'd1 - {15'b0, enable_EoT_sending & user_cmd_transmission_mode})*4 - usr_data_size - last_hss_bl_2 ? (LPM_SIZE * LP_BAUD_TIME)*4 : 16'b0;
+                blank_packet_size <= (horizontal_line_length - 16'd1 - {15'b0, enable_EoT_sending & user_cmd_transmission_mode})*4 - usr_data_size - last_hss_bl_2 ? (lpm_length)*4 : 16'b0;
 
             default :
                 blank_packet_size <= 24'b0;
