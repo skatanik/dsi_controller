@@ -2,7 +2,7 @@
 `define DSI_PACKETS_ASSEMBLER
 
 module packets_assembler #(
-    CMD_FIFO_DEPTH      = 10
+    USR_FIFO_DEPTH      = 10
     )(
     /********* Clock signals *********/
         input   wire                            clk                                 ,
@@ -25,7 +25,7 @@ module packets_assembler #(
 
     /********* cmd FIFO interface *********/
         input   wire  [31:0]                    usr_fifo_data                       ,
-        input   wire  [CMD_FIFO_DEPTH - 1:0]    usr_fifo_usedw                      ,
+        input   wire  [USR_FIFO_DEPTH - 1:0]    usr_fifo_usedw                      ,
         input   wire                            usr_fifo_empty                      ,
         output  wire                            usr_fifo_read                       ,
 
