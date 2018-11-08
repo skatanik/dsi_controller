@@ -2,19 +2,18 @@ module dsi_hs_lane #(
     parameter MODE = 0  // 0 - lane, 1 - clk
     )(
     input wire          clk_sys             , // serial data clock
-    input wire          clk_serdes          , // logic clock = clk_hs/8
-    input wire          clk_latch           , // clk_sys, duty cycle 15%
     input wire          rst_n               ,
 
     input wire          start_rqst          ,
     input wire          fin_rqst            ,
     input wire [7:0]    inp_data            ,
 
-    output logic        data_rqst           ,
-    output logic        active              ,
-    output logic        fin_ack             ,        // shows that in the next clock block will finish trail sequence
+    output wire        data_rqst           ,
+    output wire        active              ,
+    output wire        fin_ack             ,        // shows that in the next clock block will finish trail sequence
 
-    output logic        serial_hs_output
+    output wire [7:0]  hs_output            ,
+    output             hs_enable            ,
 
     );
 
@@ -115,18 +114,8 @@ wire serdes_out;
 
 assign serdes_enable = (state_current != STATE_IDLE); // or (state_next != STATE_IDLE)
 
-altlvds altlvds_inst_0 (
-    .tx_enable ( clk_latch ),
-    .tx_in ( serdes_data ),
-    .tx_inclock ( clk_serdes ),
-    .tx_out ( serdes_out )
-    );
-
-hs_buff hs_buff_inst_d0 (
-    .datain ( serdes_out ),
-    .oe ( serdes_enable ),
-    .dataout ( serial_hs_output )
-    );
+assign hs_output = serdes_data;
+assign hs_enable = serdes_enable;
 
 // Timeouts
 localparam [7:0] TX_HS_GO_TIMEOUT_VAL = 2; // 145 ns + 10*UI THS-zero
