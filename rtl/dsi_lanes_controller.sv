@@ -2,9 +2,6 @@ module dsi_lanes_controller
     (
         /********* Clock signals *********/
         input wire          clk_sys                 , // serial data clock
-        input wire          clk_serdes              , // logic clock = clk_hs/8
-        input wire          clk_serdes_clk          , // logic clock = clk_hs/8 + 90dgr phase shift
-        input wire          clk_latch               , // clk_sys, duty cycle 15%
         input wire          rst_n                   ,
 
         /********* Fifo signals *********/
@@ -28,16 +25,22 @@ module dsi_lanes_controller
         output wire         lines_active            ,
 
         /********* Lanes *********/
-        output wire [3:0]   hs_lane_output          ,
+        output wire [31:0]  hs_lane_output          ,
+        output wire [3:0]   hs_lane_enable          ,
         output wire [3:0]   LP_p_output             ,
         output wire [3:0]   LP_n_output             ,
 
         /********* Clock output *********/
         output wire         clock_LP_p_output       ,
         output wire         clock_LP_n_output       ,
-        output wire         clock_hs_output
+        output wire [7:0]   clock_hs_output         ,
+        output wire         clock_hs_enable
 
     );
+
+// logic clock = clk_hs/8
+// logic clock = clk_hs/8 + 90dgr phase shift
+// clk_sys, duty cycle 15%
 
 /********************************************************************
    On the power on module has all lines output buffers off. At first it is needed to set  lines_enable signal, then when lines_ready signal is got
@@ -57,7 +60,7 @@ logic [3:0]     dsi_start_rqst;
 logic [3:0]     dsi_fin_rqst;
 logic [3:0]     dsi_data_rqst;
 logic [3:0]     dsi_active;
-logic [3:0]     dsi_serial_hs_output;
+logic [31:0]    dsi_serial_hs_output;
 logic [3:0]     dsi_LP_p_output;
 logic [3:0]     dsi_LP_n_output;
 logic [31:0]    dsi_inp_data;
@@ -75,8 +78,6 @@ logic [7:0]     lp_data_byte;
 
 dsi_lane_full dsi_lane_0(
         .clk_sys            (clk_sys                            ), // serial data clock
-        .clk_serdes         (clk_serdes                         ), // logic clock = clk_hs/8
-        .clk_latch          (clk_latch                          ), // clk_sys, duty cycle 15%
         .rst_n              (rst_n                              ),
 
         .mode_lp            (iface_lpm_en                       ),
@@ -90,7 +91,7 @@ dsi_lane_full dsi_lane_0(
         .active             (dsi_active[0]                      ),
         .lines_enable       (dsi_lines_enable[0]                ),
 
-        .serial_hs_output   (dsi_serial_hs_output[0]            ),
+        .serial_hs_output   (dsi_serial_hs_output[7:0]          ),
         .LP_p_output        (dsi_LP_p_output[0]                 ),
         .LP_n_output        (dsi_LP_n_output[0]                 )
     );
@@ -121,24 +122,23 @@ genvar i;
 generate
 for(i = 1; i < 4; i = i + 1)
     dsi_lane_full dsi_lane(
-        .clk_sys            (clk_sys                            ), // serial data clock
-        .clk_serdes         (clk_serdes                         ), // logic clock = clk_hs/8
-        .clk_latch          (clk_latch                          ), // clk_sys, duty cycle 15%
-        .rst_n              (rst_n                              ),
+        .clk_sys            (clk_sys                                ), // serial data clock
+        .rst_n              (rst_n                                  ),
 
-        .mode_lp            (1'b0                               ),
+        .mode_lp            (1'b0                                   ),
 
-        .start_rqst         (dsi_start_rqst[i]                  ),
-        .fin_rqst           (dsi_fin_rqst[i]                    ),  // change to data_rqst <= (state_next == STATE_TX_ACTIVE);
-        .inp_data           (dsi_inp_data[i*8 + 7 : i*8]        ),
+        .start_rqst         (dsi_start_rqst[i]                      ),
+        .fin_rqst           (dsi_fin_rqst[i]                        ),  // change to data_rqst <= (state_next == STATE_TX_ACTIVE);
+        .inp_data           (dsi_inp_data[i*8 + 7 : i*8]            ),
 
-        .data_rqst          (dsi_data_rqst[i]                   ),
-        .active             (dsi_active[i]                      ),
-        .lines_enable       (dsi_lines_enable[i]                ),
+        .data_rqst          (dsi_data_rqst[i]                       ),
+        .active             (dsi_active[i]                          ),
+        .lines_enable       (dsi_lines_enable[i]                    ),
 
-        .serial_hs_output   (dsi_serial_hs_output[i]            ),
-        .LP_p_output        (dsi_LP_p_output[i]                 ),
-        .LP_n_output        (dsi_LP_n_output[i]                 )
+        .hs_output          (dsi_serial_hs_output[i*8 + 7 : i*8]    ),
+        .hs_enable          (hs_lane_enable[i]                      ),
+        .LP_p_output        (dsi_LP_p_output[i]                     ),
+        .LP_n_output        (dsi_LP_n_output[i]                     )
     );
 endgenerate
 
@@ -147,19 +147,17 @@ assign lines_active = |dsi_active;
 /********************************************************************
         CLK lane
 ********************************************************************/
-logic     dsi_start_rqst_clk;
-logic     dsi_fin_rqst_clk;
-logic     dsi_active_clk;
-logic     dsi_serial_hs_output_clk;
-logic     dsi_LP_p_output_clk;
-logic     dsi_LP_n_output_clk;
+logic       dsi_start_rqst_clk;
+logic       dsi_fin_rqst_clk;
+logic       dsi_active_clk;
+logic[7:0]  dsi_serial_hs_output_clk;
+logic       dsi_LP_p_output_clk;
+logic       dsi_LP_n_output_clk;
 
 dsi_lane_full #(
     .MODE(1)
     ) dsi_lane_clk(
         .clk_sys            (clk_sys                        ), // serial data clock
-        .clk_serdes         (clk_serdes_clk                 ), // logic clock = clk_hs/8
-        .clk_latch          (clk_latch                      ), // clk_sys, duty cycle 15%
         .rst_n              (rst_n                          ),
 
         .start_rqst         (dsi_start_rqst_clk             ),
@@ -170,7 +168,8 @@ dsi_lane_full #(
 
         .active             (dsi_active_clk                 ),
 
-        .serial_hs_output   (dsi_serial_hs_output_clk       ),
+        .hs_output          (dsi_serial_hs_output_clk       ),
+        .hs_enable          (clock_hs_enable                ),
         .LP_p_output        (dsi_LP_p_output_clk            ),
         .LP_n_output        (dsi_LP_n_output_clk            )
     );

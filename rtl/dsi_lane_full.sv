@@ -15,7 +15,8 @@ module dsi_lane_full #(
     output logic        data_rqst           ,
     output logic        active              ,
 
-    output logic        serial_hs_output    ,
+    output logic [7:0]  hs_output           ,
+    output logic        hs_enable           ,
     output logic        LP_p_output         ,
     output logic        LP_n_output
 );
@@ -256,11 +257,12 @@ dsi_hs_lane  #(
     .fin_rqst               (fin_rqst           ),
     .inp_data               (inp_data           ),
 
-    .data_rqst              (hs_data_rqst          ),
+    .data_rqst              (hs_data_rqst       ),
     .active                 (hs_lane_active     ),
     .fin_ack                (hs_fin_ack         ),
 
-    .serial_hs_output       (serial_hs_output   )
+    .hs_output              (hs_output          ),
+    .hs_enable              (hs_enable          )
 
     );
 
