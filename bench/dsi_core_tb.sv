@@ -290,7 +290,8 @@ end
 typedef logic [8:0] data_byte;
 
 mailbox #(data_byte) data_stream_mailbox;
-semaphore data_stream_semaphore = new(1);
+semaphore data_stream_semaphore;
+semaphore lp_recv_sem;
 
 
 /********* LP receiver task *********/
@@ -299,7 +300,12 @@ logic lp_clk;
 
 assign lp_clk = #0.1 LP_p_output[0] ^ LP_n_output[0];
 
-semaphore lp_recv_sem = new(1);
+initial
+begin
+lp_recv_sem = new(1);
+data_stream_semaphore = new(1);
+data_stream_mailbox = new(1);
+end
 
 logic state_idle;
 
@@ -370,10 +376,140 @@ lp_recv_sem.put(1);
 endtask: LP_receiver
 
 /********* hs receiver task *********/
+localparam [7:0] SYNC_SEQUENCE = 8'b00011101;
+
+typedef enum logic [2:0]
+{
+    LR_WAIT_LP00,
+    LR_WAIT_SYNC,
+    LR_RECEIVE_DATA,
+} lr_state;
+
+semaphore lr_semp[0:3];
+semaphore lr_semaphore[0:3];
+mailbox lr_byte_mailbox[0:3];
+
+initial
+begin
+
+for (int i = 0; i < 4; i = i + 1) begin
+    lr_semp[i] = new(1);
+    lr_semaphore[i] = new(1);
+    lr_byte_mailbox[i] = new(1);
+end
+
+end
+
+task automatic lane_receiver;
+input logic [7:0] data_lane;
+input logic LP_p;
+input logic LP_n;
+input logic [1:0] number;
+
+lr_state current_state;
+logic [7:0] data_byte;
+
+lr_semp[number].get(1);
+
+current_state = LR_WAIT_LP00;
+data_byte = 0;
+
+while(1)
+begin
+    case(current_state)
+
+    LR_WAIT_LP00:
+        begin
+            @(posedge lp_clk);
+             if(!(LP_p | LP_n))
+                current_state = LR_WAIT_SYNC;
+        end
+
+    LR_WAIT_SYNC:
+        @(posedge clk_sys);
+        if(data_lane == SYNC_SEQUENCE)
+            current_state = LR_RECEIVE_DATA;
+
+    LR_RECEIVE_DATA:
+        @(posedge clk_sys);
+        data_byte = data_lane;
+        #0.1;
+        if(!(LP_n & LP_p))
+        begin
+            lr_semaphore[number].get(1);
+            lr_byte_mailbox[number].put(recv_lp_shift_reg);
+            lr_semaphore[number].put(1);
+        end
+        else
+            break;
+    endcase // current_state
+
+end
+
+lr_semp[number].put(1);
+
+endtask : lane_receiver
+
+initial
+begin
+
+wait(rst_n);
+fork
+    lane_receiver(hs_lane_output[7:0], LP_p_output[0], LP_n_output[0], 2'd0);
+    lane_receiver(hs_lane_output[15:8], LP_p_output[1], LP_n_output[1], 2'd1);
+    lane_receiver(hs_lane_output[23:16], LP_p_output[2], LP_n_output[2], 2'd2);
+    lane_receiver(hs_lane_output[31:24], LP_p_output[3], LP_n_output[3], 2'd3);
+join_any
+end
+
+
 task automatic HS_receiver;
 
+logic [7:0] data_byte;
+int bytes_number;
+logic status;
 
+status = 0;
+bytes_number = 0;
+
+while(bytes_number == 0)
+    lr_byte_mailbox[0].num(bytes_number);
+
+while(!status)
+begin
+for (int i = 0; i < 4; i = i + 1) begin
+    lr_byte_mailbox[i].num(bytes_number);
+    if(bytes_number != 0)
+    begin
+        lr_semaphore[i].get(1);
+        lr_byte_mailbox[i].get(data_byte);
+        lr_semaphore[i].put(1);
+
+        data_stream_semaphore.get(1);
+        data_stream_mailbox.put({1'b1, data_byte});
+        data_stream_semaphore.put(1);
+    end
+    else
+    begin
+        status = 1;
+        break;
+    end
+end
+
+@(posedge clk_sys);
+#0.2;
+
+end
 
 endtask : HS_receiver
+
+initial
+begin
+
+wait(rst_n);
+fork
+    HS_receiver;
+join
+end
 
 endmodule
