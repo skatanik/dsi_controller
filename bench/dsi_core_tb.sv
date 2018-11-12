@@ -512,4 +512,39 @@ fork
 join
 end
 
+typedef struct
+{
+    logic speed_mode,
+    logic [5:0] header_id,
+    logic [15:0] data_size,
+    logic ecc_status,
+    logic [7:0] data_array [],
+    logic crc_status
+} packet_data_type;
+
+int data_size_in_stream_queue;
+
+task data_stream_parser;
+
+data_size_in_stream_queue = 0;
+
+while(data_size_in_stream_queue < 4)
+    data_stream_mailbox.num(data_size_in_stream_queue);
+
+
+
+
+
+
+endtask : data_stream_parser
+
+function logic [7:0] inverse_byte;
+
+input logic [7:0] data_byte;
+
+for(int i = 0; i < 8; i = i + 1)
+    inverse_byte[i] = data_byte[7-i];
+
+endfunction : inverse_byte
+
 endmodule
