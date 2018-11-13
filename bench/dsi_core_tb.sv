@@ -528,6 +528,7 @@ task data_stream_parser;
 
 logic [31:0] header;
 logic [7:0] next_byte;
+logic [2:0] packet_type;
 packet_data_type new_packet;
 
 data_size_in_stream_queue = 0;
@@ -544,7 +545,26 @@ end
 new_packet.header_id = header[29:24];
 new_packet.data_size = {header[15:8], header[23:16]};
 
+if(calc_ecc(header[31:8]) != header[7:0])
+    new_packet.ecc_status = 0;
+else
+    new_packet.ecc_status = 1;
 
+if(new_packet.ecc_status == 1)
+begin
+    packet_type = packet_header_decoder({2'b0, new_packet.header_id});
+
+    if(packet_type[2])
+    begin
+        $display("Header error");
+        $stop;
+    end
+    else if(packet_type[1])
+    begin
+        new_packet.data_array = new(new_packet.data_size)
+
+    end
+end
 
 endtask : data_stream_parser
 
@@ -556,5 +576,38 @@ for(int i = 0; i < 8; i = i + 1)
     inverse_byte[i] = data_byte[7-i];
 
 endfunction : inverse_byte
+
+function logic [7:0] calc_ecc;
+
+input logic [23:0] data;
+
+logic [7:0] ecc_result;
+
+ecc_result[0]    = ^{data[2:0], data[5:4], data[7], data[11:10], data[13], data[16], data[23:20]};
+ecc_result[1]    = ^{data[1:0], data[4:3], data[6], data[8], data[10], data[12], data[14], data[17], data[23:20]};
+ecc_result[2]    = ^{data[0], data[3:2], data[6:5], data[9], data[12:11], data[15], data[18], data[22:20] };
+ecc_result[3]    = ^{data[3:1], data[9:7], data[15:13], data[21:19], data[23]};
+ecc_result[4]    = ^{data[9:4], data[20:16], data[23:22]};
+ecc_result[5]    = ^{data[19:10], data[23:21]};
+ecc_result[7:6]  = 2'b0;
+
+calc_ecc = ecc_result;
+
+endfunction : calc_ecc
+
+function logic [2:0] packet_header_decoder;
+    input logic [7:0] data_id;
+    logic packet_decoder_error;
+    logic packet_not_reserved;
+    logic packet_type_long;
+    logic packet_type_short;
+
+    packet_decoder_error = !packet_not_reserved;
+    packet_not_reserved  = !(|data_id[3:0]) && !(&data_id[3:0]);
+    packet_type_long     = (!data_id[3] || data_id[3] && (!(|data_id[5:4]) && !(|data_id[2:0]))) && packet_not_reserved;
+    packet_type_short    = (data_id[3] || !(data_id[3] && (!(|data_id[5:4]) && !(|data_id[2:0])))) && packet_not_reserved;
+
+    packet_header_decoder = {packet_decoder_error, packet_type_long, packet_type_short};
+endfunction
 
 endmodule
