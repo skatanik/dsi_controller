@@ -670,7 +670,27 @@ endfunction
 function print_packet;
     input packet_data_type data_packet;
 
-    $display("",);
+    $display("/***************** New Packet *********************/");
+    $display("Packet ID %x", data_packet.header_id);
+    if(data_packet.ecc_status)
+        $display("ECC correct");
+    else $display("ECC error");
+
+    if(data_packet.packet_type)
+    begin
+        $display("Packet Long");
+        $display("Data size: ",data_packet.data_size);
+        if(data_packet.crc_status)
+            $display("CRC correct");
+        else $display("CRC error");
+    end
+    else
+    begin
+        $display("Packet Short");
+         $display("Packet Args: ", data_packet.data_size);
+    end
+
+    $display("/*****************************************/");
 
 endfunction : print_packet
 
