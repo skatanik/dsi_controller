@@ -519,7 +519,8 @@ typedef struct
     logic [15:0] data_size,
     logic ecc_status,
     logic [7:0] data_array [],
-    logic crc_status
+    logic crc_status,
+    logic packet_type
 } packet_data_type;
 
 int data_size_in_stream_queue;
@@ -530,7 +531,10 @@ logic [31:0] header;
 logic [7:0] next_byte;
 logic [2:0] packet_type;
 packet_data_type new_packet;
+logic [15:0] crc_old;
+logic [15:0] crc_got;
 
+crc_old = 16'hFFFF;
 data_size_in_stream_queue = 0;
 
 while(data_size_in_stream_queue < 4)
@@ -561,9 +565,34 @@ begin
     end
     else if(packet_type[1])
     begin
-        new_packet.data_array = new(new_packet.data_size)
+        new_packet.packet_type = 1;
+        new_packet.data_array = new(new_packet.data_size);
 
+        data_size_in_stream_queue = 0;
+        while(data_size_in_stream_queue < new_packet.data_size + 2)
+            data_stream_mailbox.num(data_size_in_stream_queue);
+
+        for (int i = 0; i < new_packet.data_size; i = i + 1) begin
+            data_stream_mailbox.get(next_byte);
+            crc_old = calc_crc(next_byte, crc_old);
+
+            new_packet.data_array[i] = inverse_byte(next_byte);
+        end
+
+        data_stream_mailbox.get(next_byte);
+        crc_got[15:8] = next_byte;
+        data_stream_mailbox.get(next_byte);
+        crc_got[7:0] = next_byte;
+
+        if(crc_old == crc_got)
+            new_packet.crc_status = 1;
+        else
+            new_packet.crc_status = 0;
     end
+    else
+        new_packet.packet_type = 0;
+
+    print_packet(new_packet);
 end
 
 endtask : data_stream_parser
@@ -595,6 +624,34 @@ calc_ecc = ecc_result;
 
 endfunction : calc_ecc
 
+function [15:0] calc_crc;
+
+    input logic [7:0] data_in;
+    input logic [15:0] crc_in;
+
+    logic [15:0] crc_res;
+
+    crc_res[0] = crc_in[8] ^ crc_in[12] ^ data_in[0] ^ data_in[4];
+    crc_res[1] = crc_in[9] ^ crc_in[13] ^ data_in[1] ^ data_in[5];
+    crc_res[2] = crc_in[10] ^ crc_in[14] ^ data_in[2] ^ data_in[6];
+    crc_res[3] = crc_in[11] ^ crc_in[15] ^ data_in[3] ^ data_in[7];
+    crc_res[4] = crc_in[12] ^ data_in[4];
+    crc_res[5] = crc_in[8] ^ crc_in[12] ^ crc_in[13] ^ data_in[0] ^ data_in[4] ^ data_in[5];
+    crc_res[6] = crc_in[9] ^ crc_in[13] ^ crc_in[14] ^ data_in[1] ^ data_in[5] ^ data_in[6];
+    crc_res[7] = crc_in[10] ^ crc_in[14] ^ crc_in[15] ^ data_in[2] ^ data_in[6] ^ data_in[7];
+    crc_res[8] = crc_in[0] ^ crc_in[11] ^ crc_in[15] ^ data_in[3] ^ data_in[7];
+    crc_res[9] = crc_in[1] ^ crc_in[12] ^ data_in[4];
+    crc_res[10] = crc_in[2] ^ crc_in[13] ^ data_in[5];
+    crc_res[11] = crc_in[3] ^ crc_in[14] ^ data_in[6];
+    crc_res[12] = crc_in[4] ^ crc_in[8] ^ crc_in[12] ^ crc_in[15] ^ data_in[0] ^ data_in[4] ^ data_in[7];
+    crc_res[13] = crc_in[5] ^ crc_in[9] ^ crc_in[13] ^ data_in[1] ^ data_in[5];
+    crc_res[14] = crc_in[6] ^ crc_in[10] ^ crc_in[14] ^ data_in[2] ^ data_in[6];
+    crc_res[15] = crc_in[7] ^ crc_in[11] ^ crc_in[15] ^ data_in[3] ^ data_in[7];
+
+    calc_crc = crc_res;
+
+endfunction : calc_crc
+
 function logic [2:0] packet_header_decoder;
     input logic [7:0] data_id;
     logic packet_decoder_error;
@@ -609,5 +666,12 @@ function logic [2:0] packet_header_decoder;
 
     packet_header_decoder = {packet_decoder_error, packet_type_long, packet_type_short};
 endfunction
+
+function print_packet;
+    input packet_data_type data_packet;
+
+    $display("",);
+
+endfunction : print_packet
 
 endmodule
