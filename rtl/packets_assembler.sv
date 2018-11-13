@@ -2,7 +2,7 @@
 `define DSI_PACKETS_ASSEMBLER
 
 module packets_assembler #(
-    USR_FIFO_DEPTH      = 10
+    CMD_FIFO_DEPTH      = 10
     )(
     /********* Clock signals *********/
         input   wire                            clk                                 ,
@@ -25,7 +25,7 @@ module packets_assembler #(
 
     /********* cmd FIFO interface *********/
         input   wire  [31:0]                    usr_fifo_data                       ,
-        input   wire  [USR_FIFO_DEPTH - 1:0]    usr_fifo_usedw                      ,
+        input   wire  [CMD_FIFO_DEPTH - 1:0]    usr_fifo_usedw                      ,
         input   wire                            usr_fifo_empty                      ,
         output  wire                            usr_fifo_read                       ,
 
@@ -490,7 +490,7 @@ assign packet_header_usr_fifo = {usr_fifo_data[23:16], usr_fifo_data[7:0], usr_f
 
 ecc_calc ecc_0
 (
-    .data       ({usr_fifo_data[23:16], usr_fifo_data[7:0], usr_fifo_data[15:8]} ),
+    .data       ({usr_fifo_data[23:16], usr_fifo_data[7:0], usr_fifo_data[15:8]} ),         // add bit inversion
     .ecc_result (ecc_result_0    )
 );
 
@@ -498,7 +498,7 @@ assign packet_header_cmd = {cmd_fifo_data[23:16], cmd_fifo_data[7:0], cmd_fifo_d
 
 ecc_calc ecc_1
 (
-    .data       ({cmd_fifo_data[23:16], cmd_fifo_data[7:0], cmd_fifo_data[15:8]} ),
+    .data       ({cmd_fifo_data[23:16], cmd_fifo_data[7:0], cmd_fifo_data[15:8]} ),         // add bit inversion
     .ecc_result (ecc_result_1    )
 );
 
@@ -537,8 +537,8 @@ assign {usr_fifo_packet_error, usr_fifo_packet_long, usr_fifo_packet_short} = pa
 // Data to write mux
 
 always_comb
-    if(`DATA_MUX_PIX_FIFO)          data_to_write = pix_fifo_data;
-    else if(`DATA_MUX_USR_FIFO)     data_to_write = usr_fifo_data;
+    if(`DATA_MUX_PIX_FIFO)          data_to_write = pix_fifo_data;  // add bit inversion
+    else if(`DATA_MUX_USR_FIFO)     data_to_write = usr_fifo_data;  // add bit inversion
     else if(`DATA_MUX_BLANK)        data_to_write = BLANK_PATTERN;
     else                            data_to_write = 32'b0;
 
