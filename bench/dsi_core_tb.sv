@@ -526,13 +526,23 @@ int data_size_in_stream_queue;
 
 task data_stream_parser;
 
+logic [31:0] header;
+logic [7:0] next_byte;
+packet_data_type new_packet;
+
 data_size_in_stream_queue = 0;
 
 while(data_size_in_stream_queue < 4)
     data_stream_mailbox.num(data_size_in_stream_queue);
 
+for(int i = 0; i < 4; i = i + 1)
+begin
+    data_stream_mailbox.get(next_byte);
+    header[8*i + 7: i*8] = inverse_byte(next_byte);
+end
 
-
+new_packet.header_id = header[29:24];
+new_packet.data_size = {header[15:8], header[23:16]};
 
 
 
