@@ -516,8 +516,8 @@ assign start_lp_sending = read_header && packet_type_long;
 assign start_sp_sending = read_header && packet_type_short;
 
 /********* header type decoding *********/
-function [2:0] packet_header_decoder;
-    input [7:0] data_id;
+function logic [2:0] packet_header_decoder;
+    input logic [7:0] data_id;
     logic packet_decoder_error;
     logic packet_not_reserved;
     logic packet_type_long;
