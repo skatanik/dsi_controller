@@ -454,12 +454,15 @@ initial
 begin
 
 wait(rst_n);
-fork
-    lane_receiver(hs_lane_output[7:0], LP_p_output[0], LP_n_output[0], 2'd0);
-    lane_receiver(hs_lane_output[15:8], LP_p_output[1], LP_n_output[1], 2'd1);
-    lane_receiver(hs_lane_output[23:16], LP_p_output[2], LP_n_output[2], 2'd2);
-    lane_receiver(hs_lane_output[31:24], LP_p_output[3], LP_n_output[3], 2'd3);
-join_any
+forever
+begin
+    fork
+        lane_receiver(hs_lane_output[7:0], LP_p_output[0], LP_n_output[0], 2'd0);
+        lane_receiver(hs_lane_output[15:8], LP_p_output[1], LP_n_output[1], 2'd1);
+        lane_receiver(hs_lane_output[23:16], LP_p_output[2], LP_n_output[2], 2'd2);
+        lane_receiver(hs_lane_output[31:24], LP_p_output[3], LP_n_output[3], 2'd3);
+    join_any
+end
 end
 
 
@@ -507,9 +510,12 @@ initial
 begin
 
 wait(rst_n);
-fork
-    HS_receiver;
-join
+forever
+begin
+    fork
+        HS_receiver;
+    join
+end
 end
 
 typedef struct
@@ -596,6 +602,18 @@ begin
 end
 
 endtask : data_stream_parser
+
+initial
+begin
+
+wait(rst_n);
+forever
+begin
+    fork
+        data_stream_parser;
+    join
+end
+end
 
 function logic [7:0] inverse_byte;
 
