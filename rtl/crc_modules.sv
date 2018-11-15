@@ -19,7 +19,7 @@ module byte_crc
     (
         input  wire [7:0]   data_in,
 
-        input  wire [15:0]  crc_in
+        input  wire [15:0]  crc_in,
         output wire [15:0]  crc_res
     );
 
@@ -29,24 +29,28 @@ module byte_crc
 //-----------------------------------------------------------------------------
 
 // Next code was generated using http://outputlogic.com/
-    always @*
+logic [15:0] crc_res_r;
+
+assign crc_res = crc_res_r;
+
+    always_comb
     begin
-        crc_res[0] = crc_in[8] ^ crc_in[12] ^ data_in[0] ^ data_in[4];
-        crc_res[1] = crc_in[9] ^ crc_in[13] ^ data_in[1] ^ data_in[5];
-        crc_res[2] = crc_in[10] ^ crc_in[14] ^ data_in[2] ^ data_in[6];
-        crc_res[3] = crc_in[11] ^ crc_in[15] ^ data_in[3] ^ data_in[7];
-        crc_res[4] = crc_in[12] ^ data_in[4];
-        crc_res[5] = crc_in[8] ^ crc_in[12] ^ crc_in[13] ^ data_in[0] ^ data_in[4] ^ data_in[5];
-        crc_res[6] = crc_in[9] ^ crc_in[13] ^ crc_in[14] ^ data_in[1] ^ data_in[5] ^ data_in[6];
-        crc_res[7] = crc_in[10] ^ crc_in[14] ^ crc_in[15] ^ data_in[2] ^ data_in[6] ^ data_in[7];
-        crc_res[8] = crc_in[0] ^ crc_in[11] ^ crc_in[15] ^ data_in[3] ^ data_in[7];
-        crc_res[9] = crc_in[1] ^ crc_in[12] ^ data_in[4];
-        crc_res[10] = crc_in[2] ^ crc_in[13] ^ data_in[5];
-        crc_res[11] = crc_in[3] ^ crc_in[14] ^ data_in[6];
-        crc_res[12] = crc_in[4] ^ crc_in[8] ^ crc_in[12] ^ crc_in[15] ^ data_in[0] ^ data_in[4] ^ data_in[7];
-        crc_res[13] = crc_in[5] ^ crc_in[9] ^ crc_in[13] ^ data_in[1] ^ data_in[5];
-        crc_res[14] = crc_in[6] ^ crc_in[10] ^ crc_in[14] ^ data_in[2] ^ data_in[6];
-        crc_res[15] = crc_in[7] ^ crc_in[11] ^ crc_in[15] ^ data_in[3] ^ data_in[7];
+        crc_res_r[0] = crc_in[8] ^ crc_in[12] ^ data_in[0] ^ data_in[4];
+        crc_res_r[1] = crc_in[9] ^ crc_in[13] ^ data_in[1] ^ data_in[5];
+        crc_res_r[2] = crc_in[10] ^ crc_in[14] ^ data_in[2] ^ data_in[6];
+        crc_res_r[3] = crc_in[11] ^ crc_in[15] ^ data_in[3] ^ data_in[7];
+        crc_res_r[4] = crc_in[12] ^ data_in[4];
+        crc_res_r[5] = crc_in[8] ^ crc_in[12] ^ crc_in[13] ^ data_in[0] ^ data_in[4] ^ data_in[5];
+        crc_res_r[6] = crc_in[9] ^ crc_in[13] ^ crc_in[14] ^ data_in[1] ^ data_in[5] ^ data_in[6];
+        crc_res_r[7] = crc_in[10] ^ crc_in[14] ^ crc_in[15] ^ data_in[2] ^ data_in[6] ^ data_in[7];
+        crc_res_r[8] = crc_in[0] ^ crc_in[11] ^ crc_in[15] ^ data_in[3] ^ data_in[7];
+        crc_res_r[9] = crc_in[1] ^ crc_in[12] ^ data_in[4];
+        crc_res_r[10] = crc_in[2] ^ crc_in[13] ^ data_in[5];
+        crc_res_r[11] = crc_in[3] ^ crc_in[14] ^ data_in[6];
+        crc_res_r[12] = crc_in[4] ^ crc_in[8] ^ crc_in[12] ^ crc_in[15] ^ data_in[0] ^ data_in[4] ^ data_in[7];
+        crc_res_r[13] = crc_in[5] ^ crc_in[9] ^ crc_in[13] ^ data_in[1] ^ data_in[5];
+        crc_res_r[14] = crc_in[6] ^ crc_in[10] ^ crc_in[14] ^ data_in[2] ^ data_in[6];
+        crc_res_r[15] = crc_in[7] ^ crc_in[11] ^ crc_in[15] ^ data_in[3] ^ data_in[7];
     end
 
 endmodule
@@ -62,7 +66,7 @@ module crc_calculator
         input  wire [31:0]   data_input         ,
 
         output wire [15:0]   crc_output_async   ,
-        output wire [15:0]   crc_output_sync    ,
+        output wire [15:0]   crc_output_sync
     );
 
 reg [15:0] crc_result;
