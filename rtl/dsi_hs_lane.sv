@@ -13,8 +13,7 @@ module dsi_hs_lane #(
     output wire        fin_ack             ,        // shows that in the next clock block will finish trail sequence
 
     output wire [7:0]  hs_output            ,
-    output             hs_enable            ,
-
+    output             hs_enable
     );
 
 /***********************************
@@ -67,19 +66,27 @@ always_comb begin
     endcase
 end
 
+logic active_r;
+
+assign active = active_r;
+
 always_ff @(posedge clk_sys or negedge rst_n)
-    if(~rst_n)                                  active <= 1'b0;
-    else if(state_next == STATE_TX_GO)          active <= 1'b1;
-    else if(state_next == STATE_IDLE)           active <= 1'b0;
+    if(~rst_n)                                  active_r <= 1'b0;
+    else if(state_next == STATE_TX_GO)          active_r <= 1'b1;
+    else if(state_next == STATE_IDLE)           active_r <= 1'b0;
 
 assign fin_ack      = tx_hs_trail_timeout;
+
+logic data_rqst_r;
+
+assign data_rqst = data_rqst_r;
 
 // data_rqst line forming
 always_ff @(posedge clk_sys or negedge rst_n) begin
     if(~rst_n) begin
-        data_rqst <= 1'b0;
+        data_rqst_r <= 1'b0;
     end else begin
-        data_rqst <= (state_next == STATE_TX_SYNC) || (state_next == STATE_TX_ACTIVE);
+        data_rqst_r <= (state_next == STATE_TX_SYNC) || (state_next == STATE_TX_ACTIVE);
     end
 end
 

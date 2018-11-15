@@ -1,3 +1,4 @@
+`timescale 1ns/1ps
 module dsi_core_tb();
 
 localparam DATA_SIZE = 27264;
@@ -298,7 +299,7 @@ semaphore lp_recv_sem;
 localparam [7:0]    ENTRY_CMD           = 8'b11100001;
 logic lp_clk;
 
-assign lp_clk = #0.1 LP_p_output[0] ^ LP_n_output[0];
+assign #0.1 lp_clk =  LP_p_output[0] ^ LP_n_output[0];
 
 initial
 begin
@@ -334,11 +335,13 @@ while(1)
 begin
 
     if(LP_p_output[0] != LP_n_output[0])
+    begin
         @(posedge lp_clk);
         begin
             recv_lp_shift_reg = {recv_lp_shift_reg[6:0], LP_p_output[0]};
             bit_counter = bit_counter + 1;
         end
+    end
     else
         break;
 
@@ -370,6 +373,7 @@ begin
             data_stream_mailbox.put({1'b0, recv_lp_shift_reg});
             data_stream_semaphore.put(1);
         end
+    endcase // state_lp_current
 end
 
 lp_recv_sem.put(1);
@@ -382,7 +386,7 @@ typedef enum logic [2:0]
 {
     LR_WAIT_LP00,
     LR_WAIT_SYNC,
-    LR_RECEIVE_DATA,
+    LR_RECEIVE_DATA
 } lr_state;
 
 semaphore lr_semp[0:3];
@@ -426,11 +430,14 @@ begin
         end
 
     LR_WAIT_SYNC:
-        @(posedge clk_sys);
-        if(data_lane == SYNC_SEQUENCE)
-            current_state = LR_RECEIVE_DATA;
+        begin
+            @(posedge clk_sys);
+            if(data_lane == SYNC_SEQUENCE)
+                current_state = LR_RECEIVE_DATA;
+        end
 
     LR_RECEIVE_DATA:
+    begin
         @(posedge clk_sys);
         data_byte = data_lane;
         #0.1;
@@ -442,6 +449,7 @@ begin
         end
         else
             break;
+    end
     endcase // current_state
 
 end
@@ -520,13 +528,13 @@ end
 
 typedef struct
 {
-    logic speed_mode,
-    logic [5:0] header_id,
-    logic [15:0] data_size,
-    logic ecc_status,
-    logic [7:0] data_array [],
-    logic crc_status,
-    logic packet_type
+    logic           speed_mode;
+    logic [5:0]     header_id;
+    logic [15:0]    data_size;
+    logic           ecc_status;
+    logic [7:0]     data_array [];
+    logic           crc_status;
+    logic           packet_type;
 } packet_data_type;
 
 int data_size_in_stream_queue;
@@ -548,8 +556,8 @@ while(data_size_in_stream_queue < 4)
 
 for(int i = 0; i < 4; i = i + 1)
 begin
-    data_stream_mailbox.get(next_byte);
-    header[8*i + 7: i*8] = inverse_byte(next_byte);
+    data_stream_mailbox.get({new_packet.speed_mode, next_byte});
+    header[8*i+:8] = inverse_byte(next_byte);
 end
 
 new_packet.header_id = header[29:24];
@@ -572,7 +580,7 @@ begin
     else if(packet_type[1])
     begin
         new_packet.packet_type = 1;
-        new_packet.data_array = new(new_packet.data_size);
+        new_packet.data_array = new[new_packet.data_size];
 
         data_size_in_stream_queue = 0;
         while(data_size_in_stream_queue < new_packet.data_size + 2)
@@ -685,10 +693,15 @@ function logic [2:0] packet_header_decoder;
     packet_header_decoder = {packet_decoder_error, packet_type_long, packet_type_short};
 endfunction
 
-function print_packet;
+task print_packet;
     input packet_data_type data_packet;
 
     $display("/***************** New Packet *********************/");
+
+    if(data_packet.speed_mode)
+        $display("Packet type - HS");
+    else $display("Packet type - LP");
+
     $display("Packet ID %x", data_packet.header_id);
     if(data_packet.ecc_status)
         $display("ECC correct");
@@ -710,6 +723,6 @@ function print_packet;
 
     $display("/*****************************************/");
 
-endfunction : print_packet
+endtask : print_packet
 
 endmodule

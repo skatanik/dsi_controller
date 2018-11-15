@@ -61,9 +61,11 @@ module packets_assembler #(
 
 /********* CMD fifo signals *********/
 logic           cmd_fifo_full;
+logic           cmd_fifo_full_w;
 logic           cmd_fifo_empty;
 logic           cmd_fifo_read;
 logic           cmd_fifo_write;
+logic [1:0]     cmd_fifo_usedw;
 logic [32:0]    cmd_fifo_data;
 logic [32:0]    cmd_fifo_data_in;
 logic           cmd_fifo_out_ctrl; // next muxes ctrl signals state. cmd_fifo_out_ctrl = 1, next cmd from usr fifo, 0 - from cmd fifo
@@ -89,6 +91,21 @@ assign cmd_fifo_out_ctrl = cmd_fifo_data[32];
 
 assign lp_pix       = cmd_fifo_data[21:16] == `PACKET_PPS24;
 assign lp_blank     = cmd_fifo_data[21:16] == `PACKET_BLANKING;
+
+
+cmd_fifo_33x4   cmd_fifo_33x4_inst (
+    .aclr   (reset_n           ),
+    .clock  (clk               ),
+    .data   (cmd_fifo_data_in  ),
+    .rdreq  (cmd_fifo_read     ),
+    .wrreq  (cmd_fifo_write    ),
+    .empty  (cmd_fifo_empty    ),
+    .full   (cmd_fifo_full_w   ),
+    .q      (cmd_fifo_data     ),
+    .usedw  (cmd_fifo_usedw    )
+    );
+
+assign cmd_fifo_full = cmd_fifo_usedw == 2'b1;
 
 /********************************************************************
                         FSM declaration
@@ -841,20 +858,23 @@ endgenerate
 
 assign iface_write_rqst = !data_writing_in_progress & (&iface_write_strb);
 
+logic [3:0] write_strb;
+
+assign iface_write_strb = write_strb;
+
 always_comb
     case(outp_data_size)
     3'd0:
-        iface_write_strb = 4'b0000;
+        write_strb = 4'b0000;
     3'd1:
-        iface_write_strb = 4'b0001;
+        write_strb = 4'b0001;
     3'd2:
-        iface_write_strb = 4'b0011;
+        write_strb = 4'b0011;
     3'd3:
-        iface_write_strb = 4'b0111;
+        write_strb = 4'b0111;
     3'd4:
-        iface_write_strb = 4'b1111;
-    default:
-        iface_write_strb = 4'b0000;
+        write_strb = 4'b1111;
+
     endcase // outp_data_size
 
 endmodule
