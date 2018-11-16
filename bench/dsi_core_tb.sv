@@ -163,7 +163,7 @@ forever
 
 end
 
-fifo_1024_32    fifo_1024_32_inst (
+pix_fifo_32x1024    fifo_1024_32_0 (
     .data           (pix_fifo_data      ),
     .rdclk          (clk_sys            ),
     .rdreq          (pix_fifo_read      ),
@@ -173,6 +173,18 @@ fifo_1024_32    fifo_1024_32_inst (
     .rdempty        (pix_fifo_empty     ),
     .wrfull         (pix_fifo_full      ),
     .wrusedw        (pix_fifo_usedw     )
+    );
+        
+usr_fifo_32x128    usr_fifo_32x128_0 (
+    .data           (usr_fifo_data      ),
+    .rdclk          (clk_sys            ),
+    .rdreq          (usr_fifo_read      ),
+    .wrclk          (clk_fast           ),
+    .wrreq          (usr_fifo_write     ),
+    .q              (usr_fifo_data_r    ),
+    .rdempty        (usr_fifo_empty     ),
+    .wrfull         (usr_fifo_full      ),
+    .wrusedw        (usr_fifo_usedw     )
     );
 
 packets_assembler #(
