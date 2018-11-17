@@ -16,7 +16,7 @@ module pixel_uploader (
     input   wire            rst_n                       ,
 
     /********* Avalon MM Master read-only iface *********/
-    output wire [32:0]      avl_mm_addr                 ,
+    output wire [31:0]      avl_mm_addr                 ,
     output wire             avl_mm_read                 ,
 
     input  wire [255:0]     avl_mm_readdata             ,

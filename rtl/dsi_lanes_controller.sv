@@ -29,10 +29,12 @@ module dsi_lanes_controller
         output wire [3:0]   hs_lane_enable          ,
         output wire [3:0]   LP_p_output             ,
         output wire [3:0]   LP_n_output             ,
+        output wire [3:0]   LP_enable               ,
 
         /********* Clock output *********/
         output wire         clock_LP_p_output       ,
         output wire         clock_LP_n_output       ,
+        output wire         clock_LP_enable         ,
         output wire [7:0]   clock_hs_output         ,
         output wire         clock_hs_enable
 
@@ -60,9 +62,10 @@ logic [3:0]     dsi_start_rqst;
 logic [3:0]     dsi_fin_rqst;
 logic [3:0]     dsi_data_rqst;
 logic [3:0]     dsi_active;
-logic [31:0]    dsi_serial_hs_output;
+logic [31:0]    dsi_hs_output;
 logic [3:0]     dsi_LP_p_output;
 logic [3:0]     dsi_LP_n_output;
+logic [3:0]     dsi_LP_enable;
 logic [31:0]    dsi_inp_data;
 logic [3:0]     dsi_lines_enable;
 
@@ -91,9 +94,11 @@ dsi_lane_full dsi_lane_0(
         .active             (dsi_active[0]                      ),
         .lines_enable       (dsi_lines_enable[0]                ),
 
-        .serial_hs_output   (dsi_serial_hs_output[7:0]          ),
+        .hs_output          (dsi_hs_output[7:0]                 ),
+        .hs_enable          (hs_lane_enable[0]                  ),
         .LP_p_output        (dsi_LP_p_output[0]                 ),
-        .LP_n_output        (dsi_LP_n_output[0]                 )
+        .LP_n_output        (dsi_LP_n_output[0]                 ),
+        .lp_lines_enable    (dsi_LP_enable[0]                   )
     );
 
 /********* send data to lane 0 with preloading 1 word *********/
@@ -135,10 +140,11 @@ for(i = 1; i < 4; i = i + 1)
         .active             (dsi_active[i]                          ),
         .lines_enable       (dsi_lines_enable[i]                    ),
 
-        .hs_output          (dsi_serial_hs_output[i*8 + 7 : i*8]    ),
+        .hs_output          (dsi_hs_output[i*8 + 7 : i*8]           ),
         .hs_enable          (hs_lane_enable[i]                      ),
         .LP_p_output        (dsi_LP_p_output[i]                     ),
-        .LP_n_output        (dsi_LP_n_output[i]                     )
+        .LP_n_output        (dsi_LP_n_output[i]                     ),
+        .lp_lines_enable    (dsi_LP_enable[i]                       )
     );
 endgenerate
 
@@ -153,6 +159,7 @@ logic       dsi_active_clk;
 logic[7:0]  dsi_serial_hs_output_clk;
 logic       dsi_LP_p_output_clk;
 logic       dsi_LP_n_output_clk;
+logic       dsi_LP_enable_clk;
 
 dsi_lane_full #(
     .MODE(1)
@@ -167,17 +174,21 @@ dsi_lane_full #(
         .mode_lp            (1'b0                           ),
 
         .active             (dsi_active_clk                 ),
+        .data_rqst          (                               ),
 
         .hs_output          (dsi_serial_hs_output_clk       ),
         .hs_enable          (clock_hs_enable                ),
         .LP_p_output        (dsi_LP_p_output_clk            ),
-        .LP_n_output        (dsi_LP_n_output_clk            )
+        .LP_n_output        (dsi_LP_n_output_clk            ),
+        .lp_lines_enable    (dsi_LP_enable_clk              )
     );
 
 
-assign hs_lane_output       = dsi_serial_hs_output;
+assign hs_lane_output       = dsi_hs_output;
 assign LP_p_output          = dsi_LP_p_output;
 assign LP_n_output          = dsi_LP_n_output;
+assign LP_enable            = dsi_LP_enable;
+assign clock_LP_enable      = dsi_LP_enable_clk;
 assign clock_LP_p_output    = dsi_LP_p_output_clk;
 assign clock_LP_n_output    = dsi_LP_n_output_clk;
 assign clock_hs_output      = dsi_serial_hs_output_clk;

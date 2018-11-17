@@ -2,8 +2,6 @@ module dsi_lane_full #(
     parameter MODE = 0  // 0 - lane, 1 - clk
     )(
     input wire          clk_sys             , // serial data clock
-    input wire          clk_serdes          , // logic clock = clk_hs/8
-    input wire          clk_latch           , // clk_sys, duty cycle 15%
     input wire          rst_n               ,
 
     input wire          mode_lp             , // which mode to use to send data throught this lane. 0 - hs, 1 - lp
@@ -12,13 +10,14 @@ module dsi_lane_full #(
     input wire          lines_enable        ,
     input wire [7:0]    inp_data            ,
 
-    output logic        data_rqst           ,
-    output logic        active              ,
+    output wire         data_rqst           ,
+    output wire         active              ,
 
-    output logic [7:0]  hs_output           ,
-    output logic        hs_enable           ,
-    output logic        LP_p_output         ,
-    output logic        LP_n_output
+    output wire [7:0]   hs_output           ,
+    output wire         hs_enable           ,
+    output wire         LP_p_output         ,
+    output wire         LP_n_output         ,
+    output wire         lp_lines_enable
 );
 
 logic hs_fin_ack;
@@ -192,21 +191,9 @@ always_ff @(posedge clk_sys or negedge rst_n) begin
     else if(current_lp_data_bit && (state_current != STATE_IDLE))           LP_n <= 0;
 end
 
-logic lp_lines_enable;
-
-assign lp_lines_enable = (state_current != STATE_HS_ACTIVE) && (state_current != STATE_LINES_DISABLED);
-// LP lines buffers
-hs_buff lp_buff_inst_p (
-    .datain     ( LP_p              ),
-    .oe         ( lp_lines_enable   ),
-    .dataout    ( LP_p_output       )
-    );
-
-hs_buff lp_buff_inst_n (
-    .datain     ( LP_n              ),
-    .oe         ( lp_lines_enable   ),
-    .dataout    ( LP_n_output       )
-    );
+assign lp_lines_enable  = (state_current != STATE_HS_ACTIVE) && (state_current != STATE_LINES_DISABLED);
+assign LP_p_output      = LP_p;
+assign LP_n_output      = LP_n;
 
 /******* Timeouts *******/
 
@@ -249,8 +236,6 @@ dsi_hs_lane  #(
     .MODE(MODE)
     ) dsi_hs_lane_0(
     .clk_sys                (clk_sys            ), // serial data clock
-    .clk_serdes             (clk_serdes         ), // logic clock = clk_hs/8
-    .clk_latch              (clk_latch          ), // clk_sys, duty cycle 15%
     .rst_n                  (rst_n              ),
 
     .start_rqst             (hs_start_rqst      ),

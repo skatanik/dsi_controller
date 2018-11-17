@@ -27,9 +27,11 @@ logic [31:0]    hs_lane_output;
 logic [3:0]     hs_lane_enable;
 logic [3:0]     LP_p_output;
 logic [3:0]     LP_n_output;
+logic [3:0]     LP_enable;
 
 logic           clock_LP_p_output;
 logic           clock_LP_n_output;
+logic           clock_LP_enable;
 logic           clock_hs_enable;
 logic [7:0]     clock_hs_output;
 
@@ -109,8 +111,8 @@ pixel_uploader pixel_uploader_0 (
         .word_mode                   (1'b1              ),   // 1 - word addressing, 0 - byte addressing
         .base_address                (32'b0             ),
         .total_size                  (36352             ),
-        .pix_fifo_threshold          (1000              ),
-        .transform_data              (1                 ),   // 0 - write data from memory directly to fifo, 1 - transform 4 bytes to 4, removing empty 3rd byte in memory data
+        .pix_fifo_threshold          (10'd1000          ),
+        .transform_data              (1'b1                 ),   // 0 - write data from memory directly to fifo, 1 - transform 4 bytes to 4, removing empty 3rd byte in memory data
 
         .read_error_w                (),
         .active                      ()
@@ -174,7 +176,7 @@ pix_fifo_32x1024    fifo_1024_32_0 (
     .wrfull         (pix_fifo_full      ),
     .wrusedw        (pix_fifo_usedw     )
     );
-        
+
 usr_fifo_32x128    usr_fifo_32x128_0 (
     .data           (usr_fifo_data      ),
     .rdclk          (clk_sys            ),
@@ -183,14 +185,11 @@ usr_fifo_32x128    usr_fifo_32x128_0 (
     .wrreq          (usr_fifo_write     ),
     .q              (usr_fifo_data_r    ),
     .rdempty        (usr_fifo_empty     ),
-    .wrfull         (usr_fifo_full      ),
-    .wrusedw        (usr_fifo_usedw     )
+    .wrfull         (usr_fifo_full      )
+ //   .wrusedw        (usr_fifo_usedw     )
     );
 
-packets_assembler #(
-    .USR_FIFO_DEPTH(10)
-    )
-packets_assembler
+packets_assembler packets_assembler_0
 (
     /********* Clock signals *********/
         .clk                                 (clk_sys       ),
@@ -213,7 +212,6 @@ packets_assembler
 
     /********* cmd FIFO interface *********/
         .usr_fifo_data                       (usr_fifo_data_r   ),
-        .usr_fifo_usedw                      (usr_fifo_usedw    ),
         .usr_fifo_empty                      (usr_fifo_empty    ),
         .usr_fifo_read                       (usr_fifo_read     ),
 
@@ -265,10 +263,12 @@ dsi_lanes_controller dsi_lanes_controller_0
         .hs_lane_enable          (hs_lane_enable        ),
         .LP_p_output             (LP_p_output           ),
         .LP_n_output             (LP_n_output           ),
+        .LP_enable               (LP_enable             ),
 
         /********* Clock output *********/
         .clock_LP_p_output       (clock_LP_p_output     ),
         .clock_LP_n_output       (clock_LP_n_output     ),
+        .clock_LP_enable         (clock_LP_enable       ),
         .clock_hs_output         (clock_hs_output       ),
         .clock_hs_enable         (clock_hs_enable       )
 
@@ -496,12 +496,12 @@ status = 0;
 bytes_number = 0;
 
 while(bytes_number == 0)
-    lr_byte_mailbox[0].num(bytes_number);
+    bytes_number = lr_byte_mailbox[0].num();
 
 while(!status)
 begin
 for (int i = 0; i < 4; i = i + 1) begin
-    lr_byte_mailbox[i].num(bytes_number);
+    bytes_number = lr_byte_mailbox[i].num();
     if(bytes_number != 0)
     begin
         lr_semaphore[i].get(1);
@@ -564,7 +564,7 @@ crc_old = 16'hFFFF;
 data_size_in_stream_queue = 0;
 
 while(data_size_in_stream_queue < 4)
-    data_stream_mailbox.num(data_size_in_stream_queue);
+    data_size_in_stream_queue = data_stream_mailbox.num();
 
 for(int i = 0; i < 4; i = i + 1)
 begin
@@ -596,7 +596,7 @@ begin
 
         data_size_in_stream_queue = 0;
         while(data_size_in_stream_queue < new_packet.data_size + 2)
-            data_stream_mailbox.num(data_size_in_stream_queue);
+            data_size_in_stream_queue = data_stream_mailbox.num();
 
         for (int i = 0; i < new_packet.data_size; i = i + 1) begin
             data_stream_mailbox.get(next_byte);

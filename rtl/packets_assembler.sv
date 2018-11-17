@@ -1,9 +1,7 @@
 `ifndef DSI_PACKETS_ASSEMBLER
 `define DSI_PACKETS_ASSEMBLER
 
-module packets_assembler #(
-    CMD_FIFO_DEPTH      = 10
-    )(
+module packets_assembler (
     /********* Clock signals *********/
         input   wire                            clk                                 ,
         input   wire                            reset_n                             ,
@@ -25,7 +23,6 @@ module packets_assembler #(
 
     /********* cmd FIFO interface *********/
         input   wire  [31:0]                    usr_fifo_data                       ,
-        input   wire  [CMD_FIFO_DEPTH - 1:0]    usr_fifo_usedw                      ,
         input   wire                            usr_fifo_empty                      ,
         output  wire                            usr_fifo_read                       ,
 
@@ -618,11 +615,11 @@ always_comb
 
 assign read_lp_data = read_data && (`OUTPUT_MUX_DATA);
 
-crc_calculator
+crc_calculator crc_calculator_0
 (
     .clk                (clk                    ),
     .reset_n            (reset_n                ),
-    .clear              (`OUTPUT_MUX_CMD         ),
+    .clear              (`OUTPUT_MUX_CMD        ),
     .data_write         (read_lp_data           ),
     .bytes_number       (bytes_in_line          ),
     .data_input         (data_to_write_masked   ),
