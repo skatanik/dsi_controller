@@ -67,6 +67,26 @@ clk_fast = 1;
 forever    #5 clk_fast      = ~clk_fast;
 end
 
+initial begin
+rst_n_fast               = 0;
+#100
+wait(10) @(posedge clk_fast)
+rst_n_fast = 1;
+end
+
+initial
+begin
+lpm_enable = 1;
+avl_waitrequest = 0;
+avl_datavalid = 0;
+user_cmd_transmission_mode = 0;
+enable_EoT_sending = 0;
+streaming_enable = 0;
+alv_dataread = 0;
+
+
+end
+
 logic           pix_fifo_write;
 logic [31:0]    pix_fifo_data;
 logic           pix_fifo_full;
@@ -112,12 +132,24 @@ pixel_uploader pixel_uploader_0 (
         .base_address                (32'b0             ),
         .total_size                  (36352             ),
         .pix_fifo_threshold          (10'd1000          ),
-        .transform_data              (1'b1                 ),   // 0 - write data from memory directly to fifo, 1 - transform 4 bytes to 4, removing empty 3rd byte in memory data
+        .transform_data              (1'b1              ),   // 0 - write data from memory directly to fifo, 1 - transform 4 bytes to 4, removing empty 3rd byte in memory data
 
         .read_error_w                (),
         .active                      ()
 
     );
+
+initial
+begin
+uploader_en = 0;
+wait(rst_n_fast);
+
+repeat(20) @(posedge clk_fast);
+
+uploader_en = 1;
+
+end
+
 
 semaphore mem_read_sem = new(1);
 
@@ -312,15 +344,7 @@ localparam [7:0]    ENTRY_CMD           = 8'b11100001;
 logic lp_clk;
 
 assign #0.1 lp_clk =  LP_p_output[0] ^ LP_n_output[0];
-
-initial
-begin
-lp_recv_sem = new(1);
-data_stream_semaphore = new(1);
-data_stream_mailbox = new(1);
-end
-
-logic state_idle;
+logic [7:0] recv_lp_shift_reg;
 
 enum logic [2:0]
 {
@@ -329,7 +353,14 @@ enum logic [2:0]
     ST_LPR_RECEIV_DATA
 } state_lp_current;
 
-logic [7:0] recv_lp_shift_reg;
+initial
+begin
+lp_recv_sem = new(1);
+data_stream_semaphore = new(1);
+data_stream_mailbox = new(1);
+recv_lp_shift_reg = 0;
+state_lp_current = ST_LPR_WAIT_ENTRY;
+end
 
 task automatic LP_receiver;
 
@@ -495,8 +526,10 @@ logic status;
 status = 0;
 bytes_number = 0;
 
-while(bytes_number == 0)
-    bytes_number = lr_byte_mailbox[0].num();
+wait(lr_byte_mailbox[0].num() > 0);
+
+//while(bytes_number == 0)
+//    bytes_number = lr_byte_mailbox[0].num();
 
 while(!status)
 begin
@@ -563,8 +596,10 @@ logic [15:0] crc_got;
 crc_old = 16'hFFFF;
 data_size_in_stream_queue = 0;
 
-while(data_size_in_stream_queue < 4)
-    data_size_in_stream_queue = data_stream_mailbox.num();
+wait(data_stream_mailbox.num() > 4);
+
+//while(data_size_in_stream_queue < 4)
+//    data_size_in_stream_queue = data_stream_mailbox.num();
 
 for(int i = 0; i < 4; i = i + 1)
 begin
