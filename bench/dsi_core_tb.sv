@@ -74,19 +74,6 @@ wait(10) @(posedge clk_fast)
 rst_n_fast = 1;
 end
 
-initial
-begin
-lpm_enable = 1;
-avl_waitrequest = 0;
-avl_datavalid = 0;
-user_cmd_transmission_mode = 0;
-enable_EoT_sending = 0;
-streaming_enable = 0;
-alv_dataread = 0;
-
-
-end
-
 logic           pix_fifo_write;
 logic [31:0]    pix_fifo_data;
 logic           pix_fifo_full;
@@ -141,14 +128,40 @@ pixel_uploader pixel_uploader_0 (
 
 initial
 begin
+lpm_enable = 1;
+avl_waitrequest = 0;
+avl_datavalid = 0;
+user_cmd_transmission_mode = 0;
+enable_EoT_sending = 0;
+streaming_enable = 0;
+alv_dataread = 0;
 uploader_en = 0;
+usr_fifo_data   = 0;
+usr_fifo_write  = 0;
+
 wait(rst_n_fast);
 
 repeat(20) @(posedge clk_fast);
 
-uploader_en = 1;
+
 
 end
+
+task automatic write_usr_fifo;
+
+input logic [31:0] data;
+
+wait(!usr_fifo_full)
+
+repeat(1) @(posedge clk_fast);
+#0.1 usr_fifo_data = data;
+    usr_fifo_write = 1;
+
+repeat(1) @(posedge clk_fast);
+usr_fifo_write = 0;
+
+
+endtask : write_usr_fifo
 
 
 semaphore mem_read_sem = new(1);
@@ -773,3 +786,4 @@ task print_packet;
 endtask : print_packet
 
 endmodule
+
