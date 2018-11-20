@@ -504,7 +504,7 @@ assign packet_header_usr_fifo = {usr_fifo_data[23:16], usr_fifo_data[7:0], usr_f
 
 ecc_calc ecc_0
 (
-    .data       ({usr_fifo_data[23:16], usr_fifo_data[7:0], usr_fifo_data[15:8]} ),         // add bit inversion
+    .data       ({usr_fifo_data[15:8], usr_fifo_data[7:0], usr_fifo_data[23:16]} ),         // add bit inversion
     .ecc_result (ecc_result_0    )
 );
 
@@ -512,7 +512,7 @@ assign packet_header_cmd = {cmd_fifo_data[23:16], cmd_fifo_data[7:0], cmd_fifo_d
 
 ecc_calc ecc_1
 (
-    .data       ({cmd_fifo_data[23:16], cmd_fifo_data[7:0], cmd_fifo_data[15:8]} ),         // add bit inversion
+    .data       ({cmd_fifo_data[15:8], cmd_fifo_data[7:0], cmd_fifo_data[23:16]} ),         // add bit inversion
     .ecc_result (ecc_result_1    )
 );
 
