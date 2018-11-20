@@ -126,28 +126,6 @@ pixel_uploader pixel_uploader_0 (
 
     );
 
-initial
-begin
-lpm_enable = 1;
-avl_waitrequest = 0;
-avl_datavalid = 0;
-user_cmd_transmission_mode = 0;
-enable_EoT_sending = 0;
-streaming_enable = 0;
-alv_dataread = 0;
-uploader_en = 0;
-usr_fifo_data   = 0;
-usr_fifo_write  = 0;
-
-wait(rst_n_fast);
-
-repeat(20) @(posedge clk_fast);
-
-
-
-end
-
-
 
 initial
 begin
@@ -294,6 +272,28 @@ dsi_lanes_controller_ready = 1;
 end
 
 `include test_tasks.sv
+
+
+initial
+begin
+lpm_enable = 1;
+avl_waitrequest = 0;
+avl_datavalid = 0;
+user_cmd_transmission_mode = 0;
+enable_EoT_sending = 0;
+streaming_enable = 0;
+alv_dataread = 0;
+uploader_en = 0;
+usr_fifo_data   = 0;
+usr_fifo_write  = 0;
+
+wait(rst_n_fast);
+
+repeat(20) @(posedge clk_fast);
+
+write_usr_fifo(32'h0100_0000);
+
+end
 
 endmodule
 
