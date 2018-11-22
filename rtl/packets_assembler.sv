@@ -64,6 +64,7 @@ logic           cmd_fifo_read;
 logic           cmd_fifo_write;
 logic [1:0]     cmd_fifo_usedw;
 logic [32:0]    cmd_fifo_data;
+logic [32:0]    cmd_fifo_data_out;
 logic [32:0]    cmd_fifo_data_in;
 logic           cmd_fifo_out_ctrl; // next muxes ctrl signals state. cmd_fifo_out_ctrl = 1, next cmd from usr fifo, 0 - from cmd fifo
 logic           cmd_fifo_in_ctrl; // next muxes ctrl signals state. cmd_fifo_out_ctrl = 1, next cmd from usr fifo, 0 - from cmd fifo
@@ -98,9 +99,11 @@ cmd_fifo_33x4   cmd_fifo_33x4_inst (
     .wrreq  (cmd_fifo_write    ),
     .empty  (cmd_fifo_empty    ),
     .full   (cmd_fifo_full_w   ),
-    .q      (cmd_fifo_data     ),
+    .q      (cmd_fifo_data_out ),
     .usedw  (cmd_fifo_usedw    )
     );
+
+assign cmd_fifo_data = cmd_fifo_empty ? 33'b0 : cmd_fifo_data_out;
 
 assign cmd_fifo_full = cmd_fifo_usedw == 2'b1;
 
@@ -446,7 +449,7 @@ If there is a new cmd then fsm calculates right size of blanking packet and sets
 ********************************************************************/
 /*********
 TO DO:
-1. add cmd_fifo
+
 *********/
 
 
@@ -469,24 +472,15 @@ localparam [31:0]   BLANK_PATTERN           = 32'h5555_5555;
 `define DATA_MUX_BLANK          |(mux_ctrl_vec[4:2] & `SET_DATA_MUX_BLANK)
 `define DATA_MUX_NULL           !(|mux_ctrl_vec[4:2])
 
-logic send_vss;
-
 logic [31:0]    data_to_write;
 logic [31:0]    data_to_write_masked;
 logic [15:0]    crc_result_sync;
 logic [15:0]    crc_result_async;
 logic [1:0]     bytes_in_line;
-logic           source_cmd_fifo;
 logic [23:0]    packet_header;
-logic [31:0]    packet_header_wecc;
-logic           read_header;
 logic           read_lp_data;
-logic           packet_type_long;
-logic           packet_type_short;
 logic [7:0]     ecc_result_0;
 logic [7:0]     ecc_result_1;
-
-logic           data_is_data;  // 0 - current data is being taken from cmd path, 1 - from data path
 
 logic           cmd_fifo_packet_long;
 logic           cmd_fifo_packet_short;
@@ -518,35 +512,47 @@ ecc_calc ecc_1
 
 /********* Packet type decoder *********/
 logic [16:0]    data_size_left;
-logic           current_packet_type; // 1 - long, 0 - short
-logic           start_lp_sending;
-logic           start_sp_sending;
-logic           last_lp_read;
-logic           add_crc;
-logic [15:0]    crc_val;
-logic [17:0]    data_size_left_wo_crc;
-
-assign start_lp_sending = read_header && packet_type_long;
-assign start_sp_sending = read_header && packet_type_short;
 
 /********* header type decoding *********/
-function logic [2:0] packet_header_decoder;
-    input logic [7:0] data_id;
-    logic packet_decoder_error;
-    logic packet_not_reserved;
-    logic packet_type_long;
-    logic packet_type_short;
+//function automatic logic [2:0] packet_header_decoder;
+//    input logic [7:0] data_id;
+//    logic packet_decoder_error;
+//    logic packet_not_reserved;
+//    logic packet_type_long;
+//    logic packet_type_short;
+//    logic [2:0] result;
+//
+//    packet_decoder_error = !packet_not_reserved;
+//    packet_not_reserved  = !(|data_id[3:0]) && (&data_id[3:0]);
+//    packet_type_long     = (!data_id[3] || data_id[3] && (!(|data_id[5:4]) && !(|data_id[2:0]))) && packet_not_reserved;
+//    packet_type_short    = (data_id[3] || !(data_id[3] && (!(|data_id[5:4]) && !(|data_id[2:0])))) && packet_not_reserved;
+//
+//    result = {packet_decoder_error, packet_type_long, packet_type_short};
+//
+//    return result;
+//endfunction
+//
+//logic [2:0] cmd_packet_decoder_res;
+//logic [2:0] usr_packet_decoder_res;
 
-    packet_decoder_error = !packet_not_reserved;
-    packet_not_reserved  = !(|data_id[3:0]) && !(&data_id[3:0]);
-    packet_type_long     = (!data_id[3] || data_id[3] && (!(|data_id[5:4]) && !(|data_id[2:0]))) && packet_not_reserved;
-    packet_type_short    = (data_id[3] || !(data_id[3] && (!(|data_id[5:4]) && !(|data_id[2:0])))) && packet_not_reserved;
+logic packet_not_reserved_0;
+logic packet_not_reserved_1;
+logic [7:0] data_id_0;
+logic [7:0] data_id_1;
 
-    packet_header_decoder = {packet_decoder_error, packet_type_long, packet_type_short};
-endfunction
+//assign cmd_packet_decoder_res   = packet_header_decoder(cmd_fifo_data[23:16]);
+//assign usr_packet_decoder_res   = packet_header_decoder(usr_fifo_data[23:16]);
+assign data_id_0                = cmd_fifo_data[23:16];
+assign cmd_fifo_packet_error    = !packet_not_reserved_0;
+assign packet_not_reserved_0    = !(|data_id_0[3:0]) && (&data_id_0[3:0]);
+assign cmd_fifo_packet_long     = (!data_id_0[3] || data_id_0[3] && (!(|data_id_0[5:4]) && !(|data_id_0[2:0]))) && packet_not_reserved_0;
+assign cmd_fifo_packet_short    = (data_id_0[3] || !(data_id_0[3] && (!(|data_id_0[5:4]) && !(|data_id_0[2:0])))) && packet_not_reserved_0;
 
-assign {cmd_fifo_packet_error, cmd_fifo_packet_long, cmd_fifo_packet_short} = packet_header_decoder(cmd_fifo_data[23:16]);
-assign {usr_fifo_packet_error, usr_fifo_packet_long, usr_fifo_packet_short} = packet_header_decoder(usr_fifo_data[23:16]);
+assign data_id_1                = usr_fifo_data[23:16];
+assign usr_fifo_packet_error    = !packet_not_reserved_1;
+assign packet_not_reserved_1    = !(|data_id_1[3:0]) && (&data_id_1[3:0]);
+assign usr_fifo_packet_long     = (!data_id_1[3] || data_id_1[3] && (!(|data_id_1[5:4]) && !(|data_id_1[2:0]))) && packet_not_reserved_1;
+assign usr_fifo_packet_short    = (data_id_1[3] || !(data_id_1[3] && (!(|data_id_1[5:4]) && !(|data_id_1[2:0])))) && packet_not_reserved_1;
 
 // Data to write mux
 
