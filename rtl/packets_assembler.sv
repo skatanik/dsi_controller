@@ -847,7 +847,7 @@ always @(`CLK_RST(clk, reset_n))
         if(ask_for_extra_data && !extra_data_ok)            outp_data_size <= (data_size_left + offset_value);
         else                                                outp_data_size <= 3'd4;
 
-assign iface_last_word  = read_data && ((outp_data_size < 3'd4) || (data_size_left == 0));
+assign iface_last_word  = (read_data && ((outp_data_size < 3'd4) || (data_size_left == 0))) & (|outp_data_size);
 //assign iface_write_data = output_data;
 
 // reverse bit order in bytes

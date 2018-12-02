@@ -16,25 +16,24 @@ logic          lines_enable;
 logic          clock_enable;
 logic          lines_ready;
 logic          clock_ready;
-logic  [3:0]   hs_lane_output;
+logic  [31:0]   hs_lane_output;
 logic  [3:0]   LP_p_output;
 logic  [3:0]   LP_n_output;
+logic  [3:0]   hs_lane_enable;
+logic  [3:0]   LP_enable;
 logic          clock_LP_p_output;
 logic          clock_LP_n_output;
 logic          clock_hs_output;
 
 dsi_lanes_controller dsi_lanes_controller_0(
     .clk_sys                    (clk_sys                ),
-    .clk_serdes                 (clk_serdes             ),
-    .clk_serdes_clk             (clk_serdes_clk         ),
-    .clk_latch                  (clk_latch              ),
     .rst_n                      (rst_n                  ),
     .iface_write_data           (iface_write_data       ),
     .iface_write_strb           (iface_write_strb       ),
     .iface_write_rqst           (iface_write_rqst       ),
     .iface_last_word            (iface_last_word        ),
     .iface_data_rqst            (iface_data_rqst        ),
-    .iface_lpm_en               (1'b1                   ),
+    .iface_lpm_en               (1'b0                   ),
     .reg_lanes_number           (reg_lanes_number       ),
     .lines_enable               (lines_enable           ),
     .clock_enable               (clock_enable           ),
@@ -45,6 +44,8 @@ dsi_lanes_controller dsi_lanes_controller_0(
     .LP_n_output                (LP_n_output            ),
     .clock_LP_p_output          (clock_LP_p_output      ),
     .clock_LP_n_output          (clock_LP_n_output      ),
+    .hs_lane_enable             (hs_lane_enable         ),
+    .LP_enable                  (LP_enable              ),
     .clock_hs_output            (clock_hs_output        )
 );
 
@@ -53,31 +54,6 @@ rst_n               = 0;
 #100
 wait(10) @(posedge clk_sys)
 rst_n = 1;
-end
-
-initial
-begin
-clk_serdes = 1;
-#1.25;
-forever    #1.25 clk_serdes      = ~clk_serdes;
-end
-
-initial
-begin
-#0.6125;
-clk_serdes_clk = 1;
-forever    #1.25 clk_serdes_clk      = ~clk_serdes_clk;
-end
-
-initial
-begin
-#5;
-clk_latch = 1;
-forever
-    begin
-     #2.5 clk_latch  = ~clk_latch;
-     #17.5 clk_latch = 1;
-    end
 end
 
 initial
@@ -134,7 +110,7 @@ task write_data;
     integer data_left;
     integer i;
 
-    data_size = 10;
+    data_size = 4;
     $display("Data size %d", data_size);
 
 
@@ -151,6 +127,8 @@ task write_data;
     #0.01 iface_write_data = data_array[i];
     iface_write_strb = 4'hf;
     iface_write_rqst = 1;
+    if(i == total_cycles - 1)
+        iface_last_word = 1;
     data_left = data_left >= 4 ? data_left - 4 : 0;
     i = i + 1;
 
