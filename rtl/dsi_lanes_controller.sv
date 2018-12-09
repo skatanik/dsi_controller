@@ -59,6 +59,7 @@ logic           transmission_active;
                 DSI lanes instances
 ********************************************************************/
 logic [3:0]     dsi_start_rqst;
+logic [3:0]     dsi_lp_mode;
 logic [3:0]     dsi_fin_rqst;
 logic [3:0]     dsi_data_rqst;
 logic [3:0]     dsi_active;
@@ -69,68 +70,14 @@ logic [3:0]     dsi_LP_enable;
 logic [31:0]    dsi_inp_data;
 logic [3:0]     dsi_lines_enable;
 
-assign dsi_start_rqst[0] = !iface_lpm_en && !transmission_active && iface_write_rqst;
-assign dsi_start_rqst[1] = !iface_lpm_en && !transmission_active && iface_write_rqst && (|reg_lanes_number);
-assign dsi_start_rqst[2] = !iface_lpm_en && !transmission_active && iface_write_rqst && (reg_lanes_number[1]);
-assign dsi_start_rqst[3] = !iface_lpm_en && !transmission_active && iface_write_rqst && (&reg_lanes_number);
-
-logic           lp_data_request;
-logic           lp_start_rqst;
-logic           lp_last_byte;
-logic [7:0]     lp_data_byte;
-
-dsi_lane_full dsi_lane_0(
-        .clk_sys            (clk_sys                            ), // serial data clock
-        .rst_n              (rst_n                              ),
-
-        .mode_lp            (iface_lpm_en                       ),
-
-        .start_rqst         (!iface_lpm_en ? dsi_start_rqst[0]   : lp_start_rqst               ),
-        .fin_rqst           (!iface_lpm_en ? dsi_fin_rqst[0]     : lp_last_byte               ),  // change to data_rqst <= (state_next == STATE_TX_ACTIVE);
-        .inp_data           (!iface_lpm_en ? dsi_inp_data[7 : 0] : lp_data_byte               ),
-
-        .data_rqst          (dsi_data_rqst[0]                   ),
-
-        .active             (dsi_active[0]                      ),
-        .lines_enable       (dsi_lines_enable[0]                ),
-
-        .hs_output          (dsi_hs_output[7:0]                 ),
-        .hs_enable          (hs_lane_enable[0]                  ),
-        .LP_p_output        (dsi_LP_p_output[0]                 ),
-        .LP_n_output        (dsi_LP_n_output[0]                 ),
-        .lp_lines_enable    (dsi_LP_enable[0]                   )
-    );
-
-/********* send data to lane 0 with preloading 1 word *********/
-
-repacker_4_to_1 repacker_4_to_1_0
-(
-    .clk                 (clk_sys                           ),
-    .rst_n               (rst_n                             ),
-
-    /********* Data source iface *********/
-    .src_data_rqst       (lp_data_request                   ),
-
-    .src_input_data      (iface_write_data                  ),
-    .src_input_strb      (iface_write_strb                  ),
-    .src_start_rqst      (iface_lpm_en && iface_write_rqst  ),
-    .src_fin_rqst        (iface_lpm_en && iface_last_word   ),
-
-    /********* Data sink iface *********/
-    .sink_data_rqst      (iface_lpm_en && dsi_data_rqst[0]  ),
-    .sink_input_data     (lp_data_byte                      ),
-    .sink_start_rqst     (lp_start_rqst                     ),
-    .sink_fin_rqst       (lp_last_byte                      )
-    );
-
 genvar i;
 generate
-for(i = 1; i < 4; i = i + 1)
+for(i = 0; i < 4; i = i + 1) begin : dsi_lane
     dsi_lane_full dsi_lane(
         .clk_sys            (clk_sys                                ), // serial data clock
         .rst_n              (rst_n                                  ),
 
-        .mode_lp            (1'b0                                   ),
+        .mode_lp            (dsi_lp_mode[i]                         ),
 
         .start_rqst         (dsi_start_rqst[i]                      ),
         .fin_rqst           (dsi_fin_rqst[i]                        ),  // change to data_rqst <= (state_next == STATE_TX_ACTIVE);
@@ -146,6 +93,29 @@ for(i = 1; i < 4; i = i + 1)
         .LP_n_output        (dsi_LP_n_output[i]                     ),
         .lp_lines_enable    (dsi_LP_enable[i]                       )
     );
+end // dsi_lane
+
+for(i = 0; i < 4; i = i + 1) begin : fifo_to_lane_bridge
+    fifo_to_lane_bridge inst(
+    .clk                    (clk_sys                            ),    // Clock
+    .rst_n                  (rst_n                              ),  // Asynchronous reset active low
+
+    /********* input fifo iface *********/
+    .fifo_data              (lanes_fifo_data[i]                 ),
+    .fifo_empty             (lanes_fifo_empty[i]                ),
+    .fifo_read              (lanes_fifo_read[i]                 ),
+
+     /********* Lane iface *********/
+    .mode_lp                 (dsi_lp_mode[i]                     ), // which mode to use to send data throught this lane. 0 - hs, 1 - lp
+    .start_rqst              (dsi_start_rqst[i]                  ),
+    .fin_rqst                (dsi_fin_rqst[i]                    ),
+    .inp_data                (dsi_inp_data[i*8 + 7 : i*8]        ),
+    .data_rqst               (dsi_data_rqst[i]                   ),
+    .p2p_timeout             (16'hf                              ),
+
+    );
+    end // fifo_to_lane_bridge
+
 endgenerate
 
 assign lines_active = |dsi_active;
@@ -182,7 +152,6 @@ dsi_lane_full #(
         .LP_n_output        (dsi_LP_n_output_clk            ),
         .lp_lines_enable    (dsi_LP_enable_clk              )
     );
-
 
 assign hs_lane_output       = dsi_hs_output;
 assign LP_p_output          = dsi_LP_p_output;
@@ -265,35 +234,5 @@ always_ff @(posedge clk_sys or negedge rst_n)
     if(~rst_n)                                          dsi_lines_enable[3] <= 1'b0;
     else if(state_current == STATE_ENABLE_BUFFERS)      dsi_lines_enable[3] <= (&reg_lanes_number);
     else if(state_current == STATE_DISABLE_BUFFERS)     dsi_lines_enable[3] <= !(&reg_lanes_number);
-
-/********************************************************************
-            Preload data part
-********************************************************************/
-
-always_ff @(posedge clk_sys or negedge rst_n)
-    if(~rst_n)                                          transmission_active <= 1'b0;
-    else if(iface_last_word)                            transmission_active <= 1'b0;
-    else if(iface_write_rqst && !iface_lpm_en)          transmission_active <= 1'b1;
-
-logic rpckr_iface_data_rqst;
-logic enable_repacker;
-
-repacker_4_to_4 repacker_4_to_4_0(
-    .clk                (clk_sys                    ),
-    .rst_n              (rst_n                      ),
-
-    .data_req           (|dsi_data_rqst             ),   // data request signal. Need to get new data on the next clock.
-    .data_out           (dsi_inp_data               ),   // output data
-    .last_data_strb     (dsi_fin_rqst               ),   // strobes indicate last data bytes on each line
-
-    .data_change_req    (rpckr_iface_data_rqst      ),   // request data changing. new data on the next clock is needed
-    .input_data         (iface_write_data           ),   // input data
-    .input_strb         (iface_write_strb[3:0]      ),   // input strobes
-
-    .enable             (enable_repacker            )   // enable repacker signal
-    );
-
-assign iface_data_rqst = !iface_lpm_en ? rpckr_iface_data_rqst & transmission_active : lp_data_request;
-assign enable_repacker = (iface_write_rqst || (|dsi_active)) && !iface_lpm_en;
 
 endmodule

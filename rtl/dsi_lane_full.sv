@@ -30,6 +30,7 @@ logic send_esc_mode_entry_done;
 logic send_entry_cmd_done;
 logic send_mark_one_done;
 logic inc_lp_data_bits_counter;
+logic fin_rqst_reg;
 
 /***********************************
         FSM declaration
@@ -114,12 +115,13 @@ logic       next_state_send_cmd;
 logic       last_lp_byte;
 logic       send_lp_data;
 logic       reset_baud_counter;
+logic       fin_rqst_reg;
 
 assign next_state_lpdt          = (state_next == STATE_LP_SEND_ESC_MODE_ENTRY) && (state_current == STATE_IDLE);
 assign next_state_entry_cmd     = (state_next == STATE_LP_SEND_ENTRY_CMD) && (state_current == STATE_LP_SEND_ESC_MODE_ENTRY);
 assign next_state_mark_one      = (state_next == STATE_LP_SEND_MARK_ONE) && (state_current == STATE_LP_SEND_LP_CMD);
 assign next_state_send_cmd      = (state_current == STATE_LP_SEND_ENTRY_CMD) && (state_next == STATE_LP_SEND_LP_CMD);
-assign data_rqst                = ((state_current == STATE_HS_RQST) || (state_current == STATE_HS_PREP) || (state_current == STATE_HS_ACTIVE)) ? hs_data_rqst : lp_data_rqst;
+assign data_rqst                = (/*(state_current == STATE_HS_RQST) ||*/ (state_current == STATE_HS_PREP) || (state_current == STATE_HS_ACTIVE)) ? hs_data_rqst : lp_data_rqst;
 
 always_ff @(posedge clk_sys or negedge rst_n)
     if(~rst_n)                                      lp_data_buffer <= 8'b0;
@@ -130,8 +132,13 @@ always_ff @(posedge clk_sys or negedge rst_n)
 
 always_ff @(posedge clk_sys or negedge rst_n)
     if(~rst_n)                          last_lp_byte <= 1'b0;
-    else if(send_lp_data)               last_lp_byte <= fin_rqst;
+    else if(send_lp_data)               last_lp_byte <= fin_rqst_reg;
     else if(state_next == STATE_IDLE)   last_lp_byte <= 1'b0;
+
+always_ff @(posedge clk or negedge rst_n)
+    if(!rst_n)              fin_rqst_reg <= 1'b0;
+    else if(fin_rqst)       fin_rqst_reg <= 1'b1;
+    else if(send_lp_data)   fin_rqst_reg <= 1'b0;
 
 assign lp_data_is_sent = lp_data_rqst & last_lp_byte;
 
@@ -232,22 +239,28 @@ assign hs_start_rqst = (state_next == STATE_HS_ACTIVE) && (state_current != STAT
 
 logic hs_lane_active;
 
+always_ff @(posedge clk_sys or negedge rst_n)
+    if(~rst_n)                          fin_rqst_reg <= 1'b0;
+    else if(fin_rqst && !mode_lp)       fin_rqst_reg <= 1'b1;
+    else if(hs_fin_ack)                 fin_rqst_reg <= 1'b0;
+
+
 dsi_hs_lane  #(
     .MODE(MODE)
     ) dsi_hs_lane_0(
-    .clk_sys                (clk_sys            ), // serial data clock
-    .rst_n                  (rst_n              ),
+    .clk_sys                (clk_sys                    ), // serial data clock
+    .rst_n                  (rst_n                      ),
 
-    .start_rqst             (hs_start_rqst      ),
-    .fin_rqst               (fin_rqst           ),
-    .inp_data               (inp_data           ),
+    .start_rqst             (hs_start_rqst              ),
+    .fin_rqst               (fin_rqst | fin_rqst_reg    ),
+    .inp_data               (inp_data                   ),
 
-    .data_rqst              (hs_data_rqst       ),
-    .active                 (hs_lane_active     ),
-    .fin_ack                (hs_fin_ack         ),
+    .data_rqst              (hs_data_rqst               ),
+    .active                 (hs_lane_active             ),
+    .fin_ack                (hs_fin_ack                 ),
 
-    .hs_output              (hs_output          ),
-    .hs_enable              (hs_enable          )
+    .hs_output              (hs_output                  ),
+    .hs_enable              (hs_enable                  )
 
     );
 

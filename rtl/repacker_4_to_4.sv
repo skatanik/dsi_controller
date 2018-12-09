@@ -2,47 +2,59 @@ module repacker_4_to_4(
     input wire          clk                 ,
     input wire          rst_n               ,
 
-    input wire          data_req            ,   // data request signal. Need to get new data on the next clock.
-    output wire [31:0]  data_out            ,   // output data
-    output wire [3:0]   last_data_strb      ,   // strobes indicate last data bytes on each line
+    input wire          ln_data_rqst        ,   // data request signal. Need to get new data on the next clock.
+    output wire [31:0]  ln_write_data       ,   // output data
+    output wire [3:0]   ln_last_word        ,
+    output wire [3:0]   ln_write_rqst       ,
 
-    output wire         data_change_req     ,   // request data changing. new data on the next clock is needed
-    input wire  [31:0]  input_data          ,   // input data
-    input wire  [3:0]   input_strb          ,   // input strobes
+    input wire [31:0]   rpck_write_data     ,
+    input wire [3:0]    rpck_write_strb     ,
+    input wire          rpck_write_rqst     ,
+    input wire          rpck_last_word      ,
+    output wire         rpck_data_rqst
 
-    input wire          enable                  // enable repacker signal
     );
 
-logic [31:0]    input_buffer;
-logic           buffer_empty;
+logic [31:0]    buffer_1;
+logic [31:0]    buffer_2;
+logic           stop_filling;
+logic           stage_active;
+logic           buff_1_full;
+logic           buff_2_full;
+logic [1:0]     rpck_last_word_delayed;
+logic           rpck_write_rqst_delayed;
 
-always_ff @(posedge clk or negedge rst_n)
-    if(~rst_n)                input_buffer <= 0;
-    else if(data_change_req)  input_buffer <= input_data;
-    else if(!enable)          input_buffer <= 0;
+always @(posedge clk or negedge rst_n)
+    if(!rst_n)                                              stage_active <= 1'b0;
+    else if(!stage_active & buff_2_full)                    stage_active <= 1'b1;
+    else if(rpck_last_word_delayed[1] && ln_data_rqst)      stage_active <= 1'b0;
 
-assign data_change_req = enable & (buffer_empty || data_req);
+assign rpck_data_rqst = rpck_write_rqst_delayed & !(|rpck_last_word_delayed) | stage_active & ln_data_rqst & !(|ln_last_word);
 
-always_ff @(posedge clk or negedge rst_n)
-    if(~rst_n)                buffer_empty <= 1;
-    else if(data_change_req)  buffer_empty <= 0;
-    else if(!enable)          buffer_empty <= 1;
 
-logic [3:0] input_strb_reg;
-logic [3:0] output_strb_reg;
 
-always_ff @(posedge clk or negedge rst_n)
-    if(~rst_n)                input_strb_reg <= 0;
-    else if(data_change_req)  input_strb_reg <= input_strb;
-    else if(!enable)          input_strb_reg <= 0;
+always @(posedge clk or negedge rst_n)
+    if(!rst_n)                                          buffer_1 <= 32'b0;
+    else if(rpck_write_rqst || rpck_data_rqst)          buffer_1 <= rpck_write_data;
 
-always_ff @(posedge clk or negedge rst_n)
-    if(~rst_n)                      output_strb_reg <= 0;
-    else if(data_change_req)        output_strb_reg <= enable ? (input_strb_reg ^ input_strb) & ~input_strb : 4'b0;
-    else                            output_strb_reg <= 0;
+always @(posedge clk or negedge rst_n)
+    if(!rst_n)                                          buff_1_full <= 1'b0;
+    else if(rpck_write_rqst || rpck_data_rqst)          buff_1_full <= 1'b1;
+    else if(rpck_last_word_delayed[0])                  buff_1_full <= 1'b0;
 
-assign last_data_strb = output_strb_reg;
+always @(posedge clk or negedge rst_n)
+    if(!rst_n)                                                      buffer_2 <= 32'b0;
+    else if(buff_1_full && (!buff_2_full || ln_data_rqst))          buffer_2 <= buffer_1;
 
-assign data_out = input_buffer;
+always @(posedge clk or negedge rst_n)
+    if(!rst_n)                                                      buff_2_full <= 1'b0;
+    else if(buff_1_full && (!buff_2_full || ln_data_rqst))          buff_2_full <= 1'b1;
+
+always @(posedge clk or negedge rst_n)
+    if(!rst_n)                      rpck_last_word_delayed <= 1'b0;
+    else if(rpck_data_rqst)         rpck_last_word_delayed <= {rpck_last_word_delayed[0], rpck_last_word};
+always @(posedge clk or negedge rst_n)
+    if(!rst_n)              rpck_write_rqst_delayed <= 1'b0;
+    else                    rpck_write_rqst_delayed <= rpck_write_rqst;
 
 endmodule // repacker_4_to_4

@@ -86,7 +86,7 @@ always_ff @(posedge clk_sys or negedge rst_n) begin
     if(~rst_n) begin
         data_rqst_r <= 1'b0;
     end else begin
-        data_rqst_r <= (state_next == STATE_TX_SYNC) || (state_next == STATE_TX_ACTIVE);
+        data_rqst_r <= ((state_next == STATE_TX_ACTIVE)) & !fin_rqst;
     end
 end
 
