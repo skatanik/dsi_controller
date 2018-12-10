@@ -101,7 +101,7 @@ for(i = 0; i < 4; i = i + 1) begin : fifo_to_lane_bridge
     .rst_n                  (rst_n                              ),  // Asynchronous reset active low
 
     /********* input fifo iface *********/
-    .fifo_data              (lanes_fifo_data[i]                 ),
+    .fifo_data              (lanes_fifo_data[i*8 + 7 : i*8]     ),
     .fifo_empty             (lanes_fifo_empty[i]                ),
     .fifo_read              (lanes_fifo_read[i]                 ),
 
@@ -115,6 +115,20 @@ for(i = 0; i < 4; i = i + 1) begin : fifo_to_lane_bridge
 
     );
     end // fifo_to_lane_bridge
+
+for(i = 0; i < 4; i = i + 1) begin : lanes_fifo
+    lane_fifo_9x32  lane_fifo_inst (
+    .aclr           (wr_fifo_clear[i]                   ),
+    .data           (wr_fifo_data[i*8 + 7 : i*8]        ),
+    .wrclk          (wr_clk                             ),
+    .wrreq          (wr_fifo_write[i]                   ),
+    .wrfull         (wr_fifo_full[i]                    ),
+    .rdreq          (lanes_fifo_read[i]                 ),
+    .q              (lanes_fifo_data[i*8 + 7 : i*8]     ),
+    .rdempty        (lanes_fifo_empty[i]                ),
+    .rdclk          (clk_sys                            )
+    );
+    end // lanes_fifo
 
 endgenerate
 
