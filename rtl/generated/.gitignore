@@ -11,3 +11,6 @@
 /usr_fifo_32x128.qip
 /usr_fifo_32x128_bb.v
 /usr_fifo_32x128_inst.v
+/lane_fifo_9x32.qip
+/lane_fifo_9x32_bb.v
+/lane_fifo_9x32_inst.v
