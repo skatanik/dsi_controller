@@ -452,45 +452,93 @@ TO DO:
 
 *********/
 
-
 localparam [31:0]   BLANK_PATTERN           = 32'h5555_5555;
 
-`define SET_OUTP_MUX_DATA       1'b1
-`define SET_OUTP_MUX_CMD        1'b0
-`define SET_CMD_MUX_CMD         1'b1
-`define SET_CMD_MUX_USR         1'b0
-`define SET_DATA_MUX_USR        3'b010
-`define SET_DATA_MUX_PIX        3'b001
-`define SET_DATA_MUX_BLANK      3'b100
-`define SET_DATA_MUX_NULL       3'b000
-`define OUTPUT_MUX_DATA         mux_ctrl_vec[0]
-`define OUTPUT_MUX_CMD          !mux_ctrl_vec[0]
-`define CMD_MUX_USR_FIFO        !mux_ctrl_vec[1]
-`define CMD_MUX_CMD_FIFO        mux_ctrl_vec[1]
-`define DATA_MUX_USR_FIFO       |(mux_ctrl_vec[4:2] & `SET_DATA_MUX_USR)
-`define DATA_MUX_PIX_FIFO       |(mux_ctrl_vec[4:2] & `SET_DATA_MUX_PIX)
-`define DATA_MUX_BLANK          |(mux_ctrl_vec[4:2] & `SET_DATA_MUX_BLANK)
-`define DATA_MUX_NULL           !(|mux_ctrl_vec[4:2])
+logic pix_packet_long;
+logic usr_packet_long;
+logic writing_completed;
+logic repacker_empty;
 
-logic [31:0]    data_to_write;
-logic [31:0]    data_to_write_masked;
-logic [15:0]    crc_result_sync;
-logic [15:0]    crc_result_async;
-logic [1:0]     bytes_in_line;
-logic [23:0]    packet_header;
-logic           read_lp_data;
-logic [7:0]     ecc_result_0;
-logic [7:0]     ecc_result_1;
+enum logic [3:0] {
+    MUX_STATE_IDLE,
+    MUX_STATE_PIX_CMD,
+    MUX_STATE_USR_CMD,
+    MUX_STATE_PIX_DATA,
+    MUX_STATE_USR_DATA,
+    MUX_STATE_BLANK_DATA,
+    MUX_STATE_PIX_CRC,
+    MUX_STATE_BLANK_CRC,
+    MUX_STATE_USR_CRC,
+    MUX_STATE_WAIT_ENTER_LPM,
+    MUX_STATE_WAIT_EXIT_LPM
+} mux_state_current, mux_state_next;
 
-logic           cmd_fifo_packet_long;
-logic           cmd_fifo_packet_short;
-logic           cmd_fifo_packet_error;
+always_ff @(posedge clk or negedge rst_n)
+    if(!rst_n)  mux_state_current <= MUX_STATE_IDLE;
+    else        mux_state_current <= mux_state_next;
 
-logic [31:0]    packet_header_cmd;
-logic [31:0]    packet_header_usr_fifo;
+always_comb
+    begin
+        if(streaming_enable)
+            case(mux_state_current)
+            MUX_STATE_IDLE:
+                mux_state_next = !usr_fifo_empty ? MUX_STATE_USR_CMD : MUX_STATE_IDLE;
 
+            MUX_STATE_USR_CMD:
+                mux_state_next = writing_completed ? MUX_STATE_USR_DATA : MUX_STATE_USR_CMD;
 
-assign packet_header_usr_fifo = {usr_fifo_data[23:16], usr_fifo_data[7:0], usr_fifo_data[15:8], ecc_result_0};
+            MUX_STATE_USR_DATA:
+                mux_state_next = writing_completed ? MUX_STATE_USR_CRC : MUX_STATE_USR_DATA;
+
+            MUX_STATE_USR_CRC:
+                mux_state_next = writing_completed ? (!usr_fifo_empty ? MUX_STATE_USR_CMD : MUX_STATE_IDLE) : MUX_STATE_USR_CRC;
+
+            default:
+                mux_state_next = MUX_STATE_IDLE;
+
+            endcase
+        else
+            case(mux_state_current)
+            MUX_STATE_IDLE:
+                mux_state_next = !cmd_fifo_empty ? MUX_STATE_PIX_CMD : MUX_STATE_IDLE;
+
+            MUX_STATE_PIX_CMD:
+                mux_state_next = writing_completed ? (next_usr_data ? (user_cmd_transmission_mode ? MUX_STATE_WAIT_ENTER_LPM : MUX_STATE_USR_CMD) : (pix_packet_long ? MUX_STATE_PIX_DATA : MUX_STATE_PIX_CMD)) : MUX_STATE_PIX_CMD;
+
+            MUX_STATE_USR_CMD:
+                mux_state_next = writing_completed ? (usr_packet_long ? MUX_STATE_USR_DATA : MUX_STATE_IDLE) : MUX_STATE_USR_CMD;
+
+            MUX_STATE_PIX_DATA:
+                mux_state_next = writing_completed ? MUX_STATE_PIX_CRC : MUX_STATE_PIX_DATA;
+
+            MUX_STATE_USR_DATA:
+                mux_state_next = writing_completed ? MUX_STATE_USR_CRC : MUX_STATE_USR_DATA;
+
+            MUX_STATE_BLANK_DATA:
+                mux_state_next = writing_completed ? MUX_STATE_BLANK_CRC : MUX_STATE_BLANK_DATA;
+
+            MUX_STATE_PIX_CRC:
+                mux_state_next = writing_completed ? ((next_usr_data ? (user_cmd_transmission_mode ? MUX_STATE_WAIT_ENTER_LPM : MUX_STATE_USR_CMD) : MUX_STATE_IDLE) : MUX_STATE_PIX_CRC;
+
+            MUX_STATE_BLANK_CRC:
+                mux_state_next = writing_completed ? ((next_usr_data ? (user_cmd_transmission_mode ? MUX_STATE_WAIT_ENTER_LPM : MUX_STATE_USR_CMD) : MUX_STATE_IDLE) : MUX_STATE_BLANK_CRC;
+
+            MUX_STATE_USR_CRC:
+                mux_state_next = writing_completed ? MUX_STATE_IDLE : MUX_STATE_USR_CRC;
+
+            MUX_STATE_WAIT_ENTER_LPM:
+                mux_state_next = repacker_empty ? MUX_STATE_USR_CMD : MUX_STATE_WAIT_ENTER_LPM;
+
+            default:
+                mux_state_next = MUX_STATE_IDLE;
+
+            endcase
+    end
+
+logic [31:0] usr_cmd_header;
+logic [31:0] pix_cmd_header;
+
+assign usr_cmd_header = {usr_fifo_data[23:16], usr_fifo_data[7:0], usr_fifo_data[15:8], ecc_result_0};
 
 ecc_calc ecc_0
 (
@@ -498,7 +546,7 @@ ecc_calc ecc_0
     .ecc_result (ecc_result_0    )
 );
 
-assign packet_header_cmd = {cmd_fifo_data[23:16], cmd_fifo_data[7:0], cmd_fifo_data[15:8], ecc_result_1};
+assign pix_cmd_header = {cmd_fifo_data[23:16], cmd_fifo_data[7:0], cmd_fifo_data[15:8], ecc_result_1};
 
 ecc_calc ecc_1
 (
@@ -506,57 +554,157 @@ ecc_calc ecc_1
     .ecc_result (ecc_result_1    )
 );
 
-/********* Packet type decoder *********/
-logic [16:0]    data_size_left;
+logic pix_packet_decoder_error;
+logic pix_packet_not_reserved;
+logic pix_packet_short;
+logic usr_packet_decoder_error;
+logic usr_packet_not_reserved;
+logic usr_packet_short;
 
+pix_packet_decoder_error    = !pix_packet_not_reserved;
+pix_packet_not_reserved     = !(|cmd_fifo_data[3:0]) && (&cmd_fifo_data[3:0]);
+pix_packet_long             = (!cmd_fifo_data[3] || cmd_fifo_data[3] && (!(|cmd_fifo_data[5:4]) && !(|cmd_fifo_data[2:0]))) && packet_not_reserved;
+pix_packet_short            = (cmd_fifo_data[3] || !(cmd_fifo_data[3] && (!(|cmd_fifo_data[5:4]) && !(|cmd_fifo_data[2:0])))) && packet_not_reserved;
+
+usr_packet_decoder_error    = !usr_packet_not_reserved;
+usr_packet_not_reserved     = !(|usr_fifo_data[3:0]) && (&usr_fifo_data[3:0]);
+usr_packet_long             = (!usr_fifo_data[3] || usr_fifo_data[3] && (!(|usr_fifo_data[5:4]) && !(|usr_fifo_data[2:0]))) && packet_not_reserved;
+usr_packet_short            = (usr_fifo_data[3] || !(usr_fifo_data[3] && (!(|usr_fifo_data[5:4]) && !(|usr_fifo_data[2:0])))) && packet_not_reserved;
+
+logic [32:0]    mux_data_reg_with_lpm;
+logic [3:0]     mux_bytes_number;
+logic           mux_reg_full;
+logic           mux_reg_write;
+logic           mux_reg_read;
+logic           mux_data_lpm;
+logic [16:0]    data_size_left;
+logic [16:0]    crc_result_async;
+logic [16:0]    crc_result_sync;
+logic           mux_state_writing;
+
+assign mux_reg_write        = (mux_reg_read | !mux_reg_full) & mux_state_writing;
+assign mux_state_writing    = (mux_state_current != MUX_STATE_IDLE) & (mux_state_current != MUX_STATE_WAIT_ENTER_LPM);
+
+always_ff @(posedge clk or negedge rst_n)
+    if(!rst_n)                  mux_reg_full <= 1'b0;
+    else if(mux_reg_write)      mux_reg_full <= 1'b1;
+    else if(mux_reg_read)       mux_reg_full <= 1'b0;
+
+always_ff @(posedge clk or negedge rst_n)
+    if(!rst_n)              mux_data_reg_with_lpm <= 32'b0;
+    else if(mux_reg_write)
+        case(mux_state_current)
+        MUX_STATE_PIX_CMD:
+            mux_data_reg_with_lpm <= {1'b0, pix_cmd_header};
+
+        MUX_STATE_USR_CMD:
+            mux_data_reg_with_lpm <= {user_cmd_transmission_mode, usr_cmd_header};
+
+        MUX_STATE_PIX_DATA:
+            mux_data_reg_with_lpm <= {1'b0, pix_fifo_data};
+
+        MUX_STATE_USR_DATA:
+            mux_data_reg_with_lpm <= {user_cmd_transmission_mode, usr_fifo_data};
+
+        MUX_STATE_BLANK_DATA:
+            mux_data_reg_with_lpm <= {1'b0, BLANK_PATTERN};
+
+        MUX_STATE_PIX_CRC:
+            mux_data_reg_with_lpm <= {1'b0, crc_result_async};
+
+        MUX_STATE_BLANK_CRC:
+            mux_data_reg_with_lpm <= {1'b0, crc_result_async};
+
+        MUX_STATE_USR_CRC:
+            mux_data_reg_with_lpm <= {user_cmd_transmission_mode, crc_result_async};
+
+        default:
+            mux_data_reg_with_lpm <= 33'b0;
+
+        endcase
+
+logic       decrease_data_counter;
+logic       set_data_counter_pix;
+logic       set_data_counter_cmd;
+logic       set_data_header_size;
+logic       set_data_crc_size;
+
+assign set_data_crc_size        = (mux_state_next == MUX_STATE_PIX_CRC) | (mux_state_next = MUX_STATE_BLANK_CRC) | (mux_state_next = MUX_STATE_USR_CRC);
+assign set_data_header_size     = (mux_state_next == MUX_STATE_USR_CMD) | (mux_state_next = MUX_STATE_PIX_CMD);
+assign decrease_data_counter    = mux_state_writing & mux_reg_write;
+assign set_data_counter_pix     = ((mux_state_next == MUX_STATE_PIX_DATA) | (mux_state_next == MUX_STATE_BLANK_DATA)) & (mux_state_current == MUX_STATE_PIX_CMD);
+assign set_data_counter_cmd     = (mux_state_next == MUX_STATE_USR_DATA) && (mux_state_current == MUX_STATE_USR_CMD);
+
+always_ff @(posedge clk or negedge rst_n)
+    if(!rst_n)                          data_size_left <= 16'b0;
+    else if(set_data_header_size)       data_size_left <= 16'd4;
+    else if(set_data_crc_size)          data_size_left <= 16'd2;
+    else if(set_data_counter_cmd)       data_size_left <= usr_cmd_header[15:0];                                         // check me
+    else if(set_data_counter_pix)       data_size_left <= pix_cmd_header[15:0];                                         // check me
+    else if(decrease_data_counter)      data_size_left <= (data_size_left > 16'd4) ? data_size_left - 16'd4 : 16'd0;
+
+assign writing_completed    = decrease_data_counter & (data_size_left <= 16'd4);
+assign mux_bytes_number     = (data_size_left > 16'd4) ? 4'd4 : data_size_left[3:0];
+
+/********* Packet type decoder *********/
+logic           clear_crc_calc;
+logic           write_crc_calc;
+logic [1:0]     bytes_in_line;
+
+assign clear_crc_calc   = (mux_state_current == MUX_STATE_USR_CMD) | (mux_state_current == MUX_STATE_PIX_CMD);
+assign bytes_in_line    = data_size_left[1:0] > 2'd1 ? data_size_left[1:0] - 2'd1 : 2'd0;
 
 crc_calculator crc_calculator_0
 (
-    .clk                (clk                    ),
-    .reset_n            (reset_n                ),
-    .clear              (`OUTPUT_MUX_CMD        ),
-    .data_write         (read_lp_data           ),
-    .bytes_number       (bytes_in_line          ),
-    .data_input         (data_to_write_masked   ),
-    .crc_output_async   (crc_result_async       ),
-    .crc_output_sync    (crc_result_sync        )
+    .clk                (clk                            ),
+    .reset_n            (reset_n                        ),
+    .clear              (clear_crc_calc                 ),
+    .data_write         (mux_reg_write                  ),
+    .bytes_number       (bytes_in_line                  ),
+    .data_input         (mux_data_reg_with_lpm[31:0]    ),
+    .crc_output_async   (crc_result_async               ),
+    .crc_output_sync    (crc_result_sync                )
 );
 
 logic [31:0]    rpck_shadow_buffer;
 logic [3:0]     rpck_bytes_in_sb;
 logic [3:0]     rpck_bytes_available;
-logic [3:0]     rpck_in_bn;
 logic [3:0]     rpck_out_bn;
+logic [3:0]     lines_number_real;
 logic [31:0]    rpck_out;
 logic           rpck_read;
 logic           rpck_write;
 logic           rpck_bytes_enough;
 logic           rpck_bn_sb_enough;
 
-assign rpck_bn_sb_enough    = rpck_bytes_in_sb > lines_number;
-assign rpck_bytes_enough    = rpck_bytes_available > lines_number;
+assign mux_reg_read         = rpck_read;
+assign mux_data_lpm         = mux_data_reg[33];
+assign lines_number_real    = mux_data_lpm ? 4'd1 : lines_number;
+assign rpck_bn_sb_enough    = rpck_bytes_in_sb > lines_number_real;
+assign rpck_bytes_enough    = rpck_bytes_available > lines_number_real;
 assign rpck_read            = !rpck_bn_sb_enough & mux_reg_full & !(|out_fifo_full);
 assign rpck_write           = (rpck_bytes_enough | !mux_reg_full) & !(|out_fifo_full) & (|rpck_bytes_available);
 assign rpck_bytes_available = rpck_bytes_in_sb + mux_bytes_number;
-assign rpck_out_bn          = rpck_bytes_enough ? (rpck_bytes_available - lines_number) : rpck_bytes_available;
+assign rpck_out_bn          = rpck_bytes_enough ? (rpck_bytes_available - lines_number_real) : rpck_bytes_available;
 assign rpck_out             = rpck_shadow_buffer | (mux_data_reg << rpck_bytes_in_sb);
+assign repacker_empty       = rpck_bytes_available == 4'd0;
 
 always_ff @(posedge clk or negedge rst_n)
     if(!rst_n)          rpck_shadow_buffer <= 32'b0;
-    else if(rpck_read)  rpck_shadow_buffer <= rpck_bytes_enough ? (mux_data_reg >> (lines_number - rpck_bytes_in_sb)) : rpck_shadow_buffer | (mux_data_reg << rpck_bytes_in_sb);
-    else if(rpck_write) rpck_shadow_buffer <= rpck_shadow_buffer >> (lines_number);
+    else if(rpck_read)  rpck_shadow_buffer <= rpck_bytes_enough ? (mux_data_reg >> (lines_number_real - rpck_bytes_in_sb)) : rpck_shadow_buffer | (mux_data_reg << rpck_bytes_in_sb);
+    else if(rpck_write) rpck_shadow_buffer <= rpck_shadow_buffer >> (lines_number_real);
 
 always_ff @(posedge clk or negedge rst_n)
     if(!rst_n)              rpck_bytes_in_sb <= 4'd0;
-    else if(rpck_read)      rpck_bytes_in_sb <= rpck_bytes_enough ? (rpck_bytes_available - lines_number) : rpck_bytes_available;
-    else if(rpck_write)     rpck_bytes_in_sb <= rpck_bn_sb_enough ? (rpck_bytes_in_sb - lines_number) : 4'd0;
+    else if(rpck_read)      rpck_bytes_in_sb <= rpck_bytes_enough ? (rpck_bytes_available - lines_number_real) : rpck_bytes_available;
+    else if(rpck_write)     rpck_bytes_in_sb <= rpck_bn_sb_enough ? (rpck_bytes_in_sb - lines_number_real) : 4'd0;
 
 logic [3:0] lines_enable;
 
 always_ff @(posedge clk or negedge rst_n)
     if(!rst_n)      lines_enable <= 4'b0;
     else
-        case(lines_number)
+        case(lines_number_real)
         4'd1:
             lines_enable <= 4'b0001;
         4'd2:
