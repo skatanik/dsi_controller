@@ -3,9 +3,11 @@ module fifo_to_lane_bridge (
     input   wire                rst_n           ,  // Asynchronous reset active low
 
     /********* input fifo iface *********/
-    input   wire [32:0]         fifo_data       ,
+    input   wire [7:0]          fifo_data       ,
     input   wire                fifo_empty      ,
     output  wire                fifo_read       ,
+
+    input   wire                mode_lp         ,
 
     /********* Lane iface *********/
     output  wire                mode_lp             , // which mode to use to send data throught this lane. 0 - hs, 1 - lp
@@ -25,7 +27,6 @@ logic           read_fifo;
 logic           read_fifo_second;
 logic           fifo_not_empty;
 
-assign mode_lp      = out_buffer[33];
 assign read_fifo    = !state_active ? fifo_not_empty : fifo_not_empty & (data_rqst | read_fifo_second);
 
 always_ff @(posedge clk or negedge rst_n)
@@ -42,7 +43,7 @@ assign start_rqst   = read_fifo_second;
 assign inp_data     = out_buffer;
 
 always_ff @(posedge clk or negedge rst_n)
-    if(!rst_n)              out_buffer <= 33'b0;
+    if(!rst_n)              out_buffer <= 7'b0;
     else if(read_fifo)      out_buffer <= fifo_data;
 
 /********* timeout counter *********/

@@ -4,14 +4,11 @@ module dsi_lanes_controller
         input wire          clk_sys                 , // serial data clock
         input wire          rst_n                   ,
 
-        /********* Fifo signals *********/
-        input wire [31:0]   iface_write_data        ,
-        input wire [3:0]    iface_write_strb        , // iface_write_strb[4] - mode flag.
-        input wire          iface_write_rqst        ,
-        input wire          iface_last_word         ,
-        input wire          iface_lpm_en            , //0 - hs, 1 - lp should be asserted at least one cycle before iface_write_rqst and disasserted one cycle after iface_last_word
+        /********* lanes controller iface *********/
+        input  wire [32:0] lanes_fifo_data          , // 32:9 - 3x8 data, 8 - lpm sign, 7:0 lane 0 data
+        input  wire [3:0]  lanes_fifo_write         ,
+        output wire [3:0]  lanes_fifo_full          ,
 
-        output wire         iface_data_rqst         ,
 
         /********* Misc signals *********/
 
@@ -70,6 +67,10 @@ logic [3:0]     dsi_LP_enable;
 logic [31:0]    dsi_inp_data;
 logic [3:0]     dsi_lines_enable;
 
+logic [31:0]    wr_fifo_data;
+logic [3:0]     wr_fifo_write;
+logic [3:0]     wr_fifo_full;
+
 genvar i;
 generate
 for(i = 0; i < 4; i = i + 1) begin : dsi_lane
@@ -97,21 +98,22 @@ end // dsi_lane
 
 for(i = 0; i < 4; i = i + 1) begin : fifo_to_lane_bridge
     fifo_to_lane_bridge inst(
-    .clk                    (clk_sys                            ),    // Clock
-    .rst_n                  (rst_n                              ),  // Asynchronous reset active low
+    .clk                    (clk_sys                                ),    // Clock
+    .rst_n                  (rst_n                                  ),  // Asynchronous reset active low
 
     /********* input fifo iface *********/
-    .fifo_data              (lanes_fifo_data[i*8 + 7 : i*8]     ),
-    .fifo_empty             (lanes_fifo_empty[i]                ),
-    .fifo_read              (lanes_fifo_read[i]                 ),
+    .fifo_data              (lanes_fifo_data[i*8 + 7 : i*8]         ),
+    .fifo_empty             (lanes_fifo_empty[i]                    ),
+    .fifo_read              (lanes_fifo_read[i]                     ),
+    .mode_lp                (i == 0 ? lanes_fifo_data[32] : 1'b0    )
 
      /********* Lane iface *********/
-    .mode_lp                 (dsi_lp_mode[i]                     ), // which mode to use to send data throught this lane. 0 - hs, 1 - lp
-    .start_rqst              (dsi_start_rqst[i]                  ),
-    .fin_rqst                (dsi_fin_rqst[i]                    ),
-    .inp_data                (dsi_inp_data[i*8 + 7 : i*8]        ),
-    .data_rqst               (dsi_data_rqst[i]                   ),
-    .p2p_timeout             (16'hf                              ),
+    .mode_lp                 (dsi_lp_mode[i]                        ), // which mode to use to send data throught this lane. 0 - hs, 1 - lp
+    .start_rqst              (dsi_start_rqst[i]                     ),
+    .fin_rqst                (dsi_fin_rqst[i]                       ),
+    .inp_data                (dsi_inp_data[i*8 + 7 : i*8]           ),
+    .data_rqst               (dsi_data_rqst[i]                      ),
+    .p2p_timeout             (16'hf                                 ),
 
     );
     end // fifo_to_lane_bridge
@@ -133,6 +135,10 @@ for(i = 0; i < 4; i = i + 1) begin : lanes_fifo
 endgenerate
 
 assign lines_active = |dsi_active;
+
+assign wr_fifo_data     = lanes_fifo_data[31:0]
+assign wr_fifo_write    = lanes_fifo_write;
+assign lanes_fifo_full  = wr_fifo_full;
 
 /********************************************************************
         CLK lane
