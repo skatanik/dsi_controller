@@ -10,6 +10,7 @@ module packets_assembler (
         output  wire [32:0]                     lanes_fifo_data                     , // 32:9 - 3x8 data, 8 - lpm sign, 7:0 lane 0 data
         output  wire [3:0]                      lanes_fifo_write                    ,
         input   wire [3:0]                      lanes_fifo_full                     ,
+        input   wire [3:0]                      lanes_fifo_empty                    ,
 
         input   wire                            lanes_controller_lines_active       ,
 
@@ -454,7 +455,7 @@ localparam [31:0]   BLANK_PATTERN           = 32'h5555_5555;
 logic pix_packet_long;
 logic usr_packet_long;
 logic writing_completed;
-logic repacker_empty;
+logic lanes_fifo_empty_w;
 logic next_usr_data;
 
 assign next_usr_data = cmd_fifo_out_ctrl;
@@ -527,10 +528,10 @@ always_comb
                 mux_state_next = writing_completed ? (user_cmd_transmission_mode ? MUX_STATE_WAIT_EXIT_LPM : MUX_STATE_IDLE) : MUX_STATE_USR_CRC;
 
             MUX_STATE_WAIT_ENTER_LPM:
-                mux_state_next = repacker_empty ? MUX_STATE_USR_CMD : MUX_STATE_WAIT_ENTER_LPM;
+                mux_state_next = lanes_fifo_empty_w ? MUX_STATE_USR_CMD : MUX_STATE_WAIT_ENTER_LPM;
 
             MUX_STATE_WAIT_EXIT_LPM:
-                mux_state_next = repacker_empty ? MUX_STATE_IDLE : MUX_STATE_WAIT_EXIT_LPM;
+                mux_state_next = lanes_fifo_empty_w ? MUX_STATE_IDLE : MUX_STATE_WAIT_EXIT_LPM;
 
             default:
                 mux_state_next = MUX_STATE_IDLE;
@@ -699,7 +700,7 @@ assign rpck_write           = (rpck_bytes_enough | !mux_reg_full) & !(|out_fifo_
 assign rpck_bytes_available = rpck_bytes_in_sb + mux_bytes_number;
 assign rpck_out_bn          = rpck_bytes_enough ? (rpck_bytes_available - lines_number_real) : rpck_bytes_available;
 assign rpck_out             = rpck_shadow_buffer | (mux_data_reg << rpck_bytes_in_sb);
-assign repacker_empty       = rpck_bytes_available == 4'd0;
+assign lanes_fifo_empty_w   = &lanes_fifo_empty;
 
 always_ff @(posedge clk or negedge rst_n)
     if(!rst_n)          rpck_shadow_buffer <= 32'b0;
