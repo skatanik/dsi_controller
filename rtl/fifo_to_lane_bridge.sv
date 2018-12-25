@@ -1,13 +1,13 @@
 module fifo_to_lane_bridge (
-    input   wire                clk             ,    // Clock
-    input   wire                rst_n           ,  // Asynchronous reset active low
+    input   wire                clk                 ,    // Clock
+    input   wire                rst_n               ,  // Asynchronous reset active low
 
     /********* input fifo iface *********/
-    input   wire [7:0]          fifo_data       ,
-    input   wire                fifo_empty      ,
-    output  wire                fifo_read       ,
+    input   wire [7:0]          fifo_data           ,
+    input   wire                fifo_empty          ,
+    output  wire                fifo_read           ,
 
-    input   wire                mode_lp         ,
+    input   wire                mode_lp_in          ,
 
     /********* Lane iface *********/
     output  wire                mode_lp             , // which mode to use to send data throught this lane. 0 - hs, 1 - lp
@@ -27,7 +27,8 @@ logic           read_fifo;
 logic           read_fifo_second;
 logic           fifo_not_empty;
 
-assign read_fifo    = !state_active ? fifo_not_empty : fifo_not_empty & (data_rqst | read_fifo_second);
+assign read_fifo        = !state_active ? fifo_not_empty : fifo_not_empty & (data_rqst | read_fifo_second);
+assign fifo_not_empty   = !fifo_empty;
 
 always_ff @(posedge clk or negedge rst_n)
     if(!rst_n)                                      state_active <= 1'b0;
@@ -45,6 +46,12 @@ assign inp_data     = out_buffer;
 always_ff @(posedge clk or negedge rst_n)
     if(!rst_n)              out_buffer <= 7'b0;
     else if(read_fifo)      out_buffer <= fifo_data;
+
+logic mode_lp_reg;
+
+always_ff @(posedge clk or negedge rst_n)
+    if(!rst_n)              mode_lp_reg <= 7'b0;
+    else if(read_fifo)      mode_lp_reg <= mode_lp_in;
 
 /********* timeout counter *********/
 logic [15:0]    counter;
