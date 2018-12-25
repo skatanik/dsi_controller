@@ -43,6 +43,11 @@ module dsi_lanes_controller
 // logic clock = clk_hs/8 + 90dgr phase shift
 // clk_sys, duty cycle 15%
 
+/*
+TO DO:
+1. regenerate lane fifo
+*/
+
 /********************************************************************
    On the power on module has all lines output buffers off. At first it is needed to set  lines_enable signal, then when lines_ready signal is got
    one can wait for a while and then set clock_enable signal and again wait for clock_ready signal. After that it is possible to start writing data.

@@ -676,6 +676,8 @@ crc_calculator crc_calculator_0
     .crc_output_sync    (crc_result_sync                )
 );
 
+/********* repacker 4 -> n and packets stitcher *********/
+
 logic [31:0]    rpck_shadow_buffer;
 logic [3:0]     rpck_bytes_in_sb;
 logic [3:0]     rpck_bytes_available;
