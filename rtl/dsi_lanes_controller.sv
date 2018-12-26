@@ -5,12 +5,17 @@ module dsi_lanes_controller
         input wire          rst_n                   ,
 
         /********* lanes controller iface *********/
-        input  wire        data_fifo_write_clk     ,
-        input  wire        data_fifo_write_rst_n   ,
-        input  wire [32:0] data_fifo_data          , // 32:9 - 3x8 data, 8 - lpm sign, 7:0 lane 0 data
-        input  wire [3:0]  data_fifo_write         ,
-        output wire [3:0]  data_fifo_full          ,
-        output wire [3:0]  data_fifo_empty         ,
+//        input  wire        data_fifo_write_clk     ,
+//        input  wire        data_fifo_write_rst_n   ,
+//        input  wire [32:0] data_fifo_data          , // 32:9 - 3x8 data, 8 - lpm sign, 7:0 lane 0 data
+//        input  wire [3:0]  data_fifo_write         ,
+//        output wire [3:0]  data_fifo_full          ,
+//        output wire [3:0]  data_fifo_empty         ,
+
+        input  wire [35:0]  lanes_fifo_data         ,
+        input  wire [3:0]   lanes_fifo_empty        ,
+
+        output wire [3:0]   lanes_fifo_read         ,
 
         /********* Misc signals *********/
 
@@ -125,26 +130,26 @@ for(i = 0; i < 4; i = i + 1) begin : fifo_to_lane_bridge
     );
     end // fifo_to_lane_bridge
 
-for(i = 0; i < 4; i = i + 1) begin : lanes_fifo
-    lane_fifo_9x32  lane_fifo_inst (
-    .aclr           (data_fifo_write_rst_n              ),
-    .data           (wr_fifo_data[i*8 + 7 : i*8]        ),
-    .wrclk          (data_fifo_write_clk                ),
-    .wrreq          (data_fifo_write[i]                 ),
-    .wrfull         (data_fifo_full[i]                  ),
-    .wempty         (data_fifo_empty[i]                 ),
-    .rdreq          (lanes_fifo_read[i]                 ),
-    .q              (lanes_fifo_data[i*8 + 7 : i*8]     ),
-    .rdempty        (lanes_fifo_empty[i]                ),
-    .rdclk          (clk_sys                            )
-    );
-    end // lanes_fifo
-
-endgenerate
-
 assign lines_active = |dsi_active;
 
-assign wr_fifo_data     = {1'b0, data_fifo_data[32:25], 1'b0, data_fifo_data[24:17], 1'b0, data_fifo_data[16:9], data_fifo_data[8:0]};
+//for(i = 0; i < 4; i = i + 1) begin : lanes_fifo
+//    lane_fifo_9x32  lane_fifo_inst (
+//    .aclr           (data_fifo_write_rst_n              ),
+//    .data           (wr_fifo_data[i*8 + 7 : i*8]        ),
+//    .wrclk          (data_fifo_write_clk                ),
+//    .wrreq          (data_fifo_write[i]                 ),
+//    .wrfull         (data_fifo_full[i]                  ),
+//    .wempty         (data_fifo_empty[i]                 ),
+//    .rdreq          (lanes_fifo_read[i]                 ),
+//    .q              (lanes_fifo_data[i*8 + 7 : i*8]     ),
+//    .rdempty        (lanes_fifo_empty[i]                ),
+//    .rdclk          (clk_sys                            )
+//    );
+//    end // lanes_fifo
+//
+//endgenerate
+//
+//assign wr_fifo_data     = {1'b0, data_fifo_data[32:25], 1'b0, data_fifo_data[24:17], 1'b0, data_fifo_data[16:9], data_fifo_data[8:0]};
 
 /********************************************************************
         CLK lane

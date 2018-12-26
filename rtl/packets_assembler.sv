@@ -4,7 +4,7 @@
 module packets_assembler (
     /********* Clock signals *********/
         input   wire                            clk                                 ,
-        input   wire                            rst_n                             ,
+        input   wire                            rst_n                               ,
 
     /********* lanes controller iface *********/
         output  wire [32:0]                     lanes_fifo_data                     , // 32:9 - 3x8 data, 8 - lpm sign, 7:0 lane 0 data
