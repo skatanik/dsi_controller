@@ -1,7 +1,7 @@
 module dsi_lanes_controller
     (
         /********* Clock signals *********/
-        input wire          clk_sys                 , // serial data clock
+        input wire          clk_phy                 , // serial data clock
         input wire          rst_n                   ,
 
         /********* lanes controller iface *********/
@@ -46,7 +46,7 @@ module dsi_lanes_controller
 
 // logic clock = clk_hs/8
 // logic clock = clk_hs/8 + 90dgr phase shift
-// clk_sys, duty cycle 15%
+// clk_phy, duty cycle 15%
 
 /*
 TO DO:
@@ -87,7 +87,7 @@ genvar i;
 generate
 for(i = 0; i < 4; i = i + 1) begin : dsi_lane
     dsi_lane_full dsi_lane(
-        .clk_sys            (clk_sys                                ), // serial data clock
+        .clk_phy            (clk_phy                                ), // serial data clock
         .rst_n              (rst_n                                  ),
 
         .mode_lp            (dsi_lp_mode[i]                         ),
@@ -110,7 +110,7 @@ end // dsi_lane
 
 for(i = 0; i < 4; i = i + 1) begin : fifo_to_lane_bridge
     fifo_to_lane_bridge inst(
-    .clk                    (clk_sys                                ),    // Clock
+    .clk                    (clk_phy                                ),    // Clock
     .rst_n                  (rst_n                                  ),  // Asynchronous reset active low
 
     /********* input fifo iface *********/
@@ -129,27 +129,9 @@ for(i = 0; i < 4; i = i + 1) begin : fifo_to_lane_bridge
 
     );
     end // fifo_to_lane_bridge
+endgenerate
 
 assign lines_active = |dsi_active;
-
-//for(i = 0; i < 4; i = i + 1) begin : lanes_fifo
-//    lane_fifo_9x32  lane_fifo_inst (
-//    .aclr           (data_fifo_write_rst_n              ),
-//    .data           (wr_fifo_data[i*8 + 7 : i*8]        ),
-//    .wrclk          (data_fifo_write_clk                ),
-//    .wrreq          (data_fifo_write[i]                 ),
-//    .wrfull         (data_fifo_full[i]                  ),
-//    .wempty         (data_fifo_empty[i]                 ),
-//    .rdreq          (lanes_fifo_read[i]                 ),
-//    .q              (lanes_fifo_data[i*8 + 7 : i*8]     ),
-//    .rdempty        (lanes_fifo_empty[i]                ),
-//    .rdclk          (clk_sys                            )
-//    );
-//    end // lanes_fifo
-//
-//endgenerate
-//
-//assign wr_fifo_data     = {1'b0, data_fifo_data[32:25], 1'b0, data_fifo_data[24:17], 1'b0, data_fifo_data[16:9], data_fifo_data[8:0]};
 
 /********************************************************************
         CLK lane
@@ -165,7 +147,7 @@ logic       dsi_LP_enable_clk;
 dsi_lane_full #(
     .MODE(1)
     ) dsi_lane_clk(
-        .clk_sys            (clk_sys                        ), // serial data clock
+        .clk_phy            (clk_phy                        ), // serial data clock
         .rst_n              (rst_n                          ),
 
         .start_rqst         (dsi_start_rqst_clk             ),
@@ -207,7 +189,7 @@ enum logic [2:0]
     STATE_DISABLE_BUFFERS           // send a signal to lanes to disactivate output LP buffers.
 } state_current, state_next;
 
-always_ff @(posedge clk_sys or negedge rst_n) begin
+always_ff @(posedge clk_phy or negedge rst_n) begin
     if(~rst_n) begin
         state_current <= STATE_IDLE;
     end else begin
@@ -246,22 +228,22 @@ assign clock_ready = dsi_active_clk;
 assign dsi_start_rqst_clk   = state_next == STATE_WAIT_CLK_ACTIVE;
 assign dsi_fin_rqst_clk     = state_next == STATE_WAIT_CLK_UNACTIVE;
 
-always_ff @(posedge clk_sys or negedge rst_n)
+always_ff @(posedge clk_phy or negedge rst_n)
     if(~rst_n)                                          dsi_lines_enable[0] <= 1'b0;
     else if(state_current == STATE_ENABLE_BUFFERS)      dsi_lines_enable[0] <= 1'b1;
     else if(state_current == STATE_DISABLE_BUFFERS)     dsi_lines_enable[0] <= 1'b0;
 
-always_ff @(posedge clk_sys or negedge rst_n)
+always_ff @(posedge clk_phy or negedge rst_n)
     if(~rst_n)                                          dsi_lines_enable[1] <= 1'b0;
     else if(state_current == STATE_ENABLE_BUFFERS)      dsi_lines_enable[1] <= (|reg_lanes_number);
     else if(state_current == STATE_DISABLE_BUFFERS)     dsi_lines_enable[1] <= !(|reg_lanes_number);
 
-always_ff @(posedge clk_sys or negedge rst_n)
+always_ff @(posedge clk_phy or negedge rst_n)
     if(~rst_n)                                          dsi_lines_enable[2] <= 1'b0;
     else if(state_current == STATE_ENABLE_BUFFERS)      dsi_lines_enable[2] <= (reg_lanes_number[1]);
     else if(state_current == STATE_DISABLE_BUFFERS)     dsi_lines_enable[2] <= !(reg_lanes_number[1]);
 
-always_ff @(posedge clk_sys or negedge rst_n)
+always_ff @(posedge clk_phy or negedge rst_n)
     if(~rst_n)                                          dsi_lines_enable[3] <= 1'b0;
     else if(state_current == STATE_ENABLE_BUFFERS)      dsi_lines_enable[3] <= (&reg_lanes_number);
     else if(state_current == STATE_DISABLE_BUFFERS)     dsi_lines_enable[3] <= !(&reg_lanes_number);

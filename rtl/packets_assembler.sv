@@ -12,8 +12,6 @@ module packets_assembler (
         input   wire [3:0]                      lanes_fifo_full                     ,
         input   wire [3:0]                      lanes_fifo_empty                    ,
 
-        input   wire                            lanes_controller_lines_active       ,
-
     /********* pixel FIFO interface *********/
         input   wire  [31:0]                    pix_fifo_data                       ,
         input   wire                            pix_fifo_empty                      ,
@@ -29,7 +27,7 @@ module packets_assembler (
         input   wire                            user_cmd_transmission_mode          ,   // 0: data from user fifo is sent in HS mode; 1: data from user fifo is sent in LP mode.
         input   wire                            enable_EoT_sending                  ,
         input   wire                            streaming_enable                    ,
-        input   wire [3:0]                      lines_number                        ,
+        input   wire [2:0]                      lines_number                        ,
     /********* timings registers *********/
         input   wire [15:0]                     horizontal_line_length              ,   // length in clk
         input   wire [15:0]                     horizontal_front_porch              ,   // length in pixels
@@ -765,7 +763,7 @@ assign inp_read                         = |shift_free_bytes[3:2];
 assign out_ready                        = (shift_total_num >= lines_number_real) | (shift_total_num < lines_number_real) & !mux_reg_full;
 assign mux_reg_read                     = inp_read;
 assign mux_data_lpm                     = mux_data_reg_with_lpm[32];
-assign lines_number_real                = mux_data_lpm ? 4'd1 : lines_number;
+assign lines_number_real                = mux_data_lpm ? 4'd1 : {1'b0, lines_number};
 assign inp_data                         = mux_data_reg;
 assign out_data                         = shift_reg[63:32];
 
