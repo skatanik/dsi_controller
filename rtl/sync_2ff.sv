@@ -1,19 +1,27 @@
 module sync_2ff #(
-    parameter WIDTH     = 1,
-    parameter STAGES    = 2,
+    parameter WIDTH     = 1
     )(
     input wire clk_out,    // Clock
 
     input wire [WIDTH-1:0] data_in,
-    input wire [WIDTH-1:0] data_out
+    output wire [WIDTH-1:0] data_out
 
 );
 
-logic [WIDTH-1:0] sync_reg [STAGES-1:0];
+logic [WIDTH-1:0] sync_reg_1;
+logic [WIDTH-1:0] sync_reg_2;
 
-always_ff @(posedge clk_out)
-    sync_reg <= {sync_reg[STAGES-2:0], data_in};
+genvar i;
+generate
+    for (i = 0; i < WIDTH; i = i + 1) begin :bits
+        always_ff @(posedge clk_out)
+        begin
+            sync_reg_1[i] <= data_in[i];
+            sync_reg_2[i] <= sync_reg_1[i];
+        end
+    end
+endgenerate
 
-assign data_out = sync_reg[STAGES-1];
+assign data_out = sync_reg_2;
 
 endmodule

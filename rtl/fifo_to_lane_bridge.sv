@@ -28,7 +28,6 @@ logic           read_fifo_second;
 logic           fifo_not_empty;
 
 assign read_fifo        = !state_active ? fifo_not_empty : fifo_not_empty & (data_rqst | read_fifo_second);
-assign fifo_not_empty   = !fifo_empty;
 
 always_ff @(posedge clk or negedge rst_n)
     if(!rst_n)                                      state_active <= 1'b0;

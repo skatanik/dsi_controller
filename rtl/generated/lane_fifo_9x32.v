@@ -45,6 +45,7 @@ module lane_fifo_9x32 (
 	wrreq,
 	q,
 	rdempty,
+	wrempty,
 	wrfull);
 
 	input	  aclr;
@@ -55,6 +56,7 @@ module lane_fifo_9x32 (
 	input	  wrreq;
 	output	[8:0]  q;
 	output	  rdempty;
+	output	  wrempty;
 	output	  wrfull;
 `ifndef ALTERA_RESERVED_QIS
 // synopsys translate_off
@@ -67,9 +69,11 @@ module lane_fifo_9x32 (
 	wire [8:0] sub_wire0;
 	wire  sub_wire1;
 	wire  sub_wire2;
+	wire  sub_wire3;
 	wire [8:0] q = sub_wire0[8:0];
 	wire  rdempty = sub_wire1;
-	wire  wrfull = sub_wire2;
+	wire  wrempty = sub_wire2;
+	wire  wrfull = sub_wire3;
 
 	dcfifo	dcfifo_component (
 				.aclr (aclr),
@@ -80,16 +84,16 @@ module lane_fifo_9x32 (
 				.wrreq (wrreq),
 				.q (sub_wire0),
 				.rdempty (sub_wire1),
-				.wrfull (sub_wire2),
+				.wrempty (sub_wire2),
+				.wrfull (sub_wire3),
 				.eccstatus (),
 				.rdfull (),
 				.rdusedw (),
-				.wrempty (),
 				.wrusedw ());
 	defparam
 		dcfifo_component.intended_device_family = "Cyclone V",
 		dcfifo_component.lpm_numwords = 32,
-		dcfifo_component.lpm_showahead = "OFF",
+		dcfifo_component.lpm_showahead = "ON",
 		dcfifo_component.lpm_type = "dcfifo",
 		dcfifo_component.lpm_width = 9,
 		dcfifo_component.lpm_widthu = 5,
@@ -98,7 +102,7 @@ module lane_fifo_9x32 (
 		dcfifo_component.read_aclr_synch = "OFF",
 		dcfifo_component.underflow_checking = "ON",
 		dcfifo_component.use_eab = "ON",
-		dcfifo_component.write_aclr_synch = "ON",
+		dcfifo_component.write_aclr_synch = "OFF",
 		dcfifo_component.wrsync_delaypipe = 4;
 
 
@@ -118,7 +122,7 @@ endmodule
 // Retrieval info: PRIVATE: Full NUMERIC "1"
 // Retrieval info: PRIVATE: INTENDED_DEVICE_FAMILY STRING "Cyclone V"
 // Retrieval info: PRIVATE: LE_BasedFIFO NUMERIC "0"
-// Retrieval info: PRIVATE: LegacyRREQ NUMERIC "1"
+// Retrieval info: PRIVATE: LegacyRREQ NUMERIC "0"
 // Retrieval info: PRIVATE: MAX_DEPTH_BY_9 NUMERIC "0"
 // Retrieval info: PRIVATE: OVERFLOW_CHECKING NUMERIC "0"
 // Retrieval info: PRIVATE: Optimize NUMERIC "0"
@@ -136,13 +140,13 @@ endmodule
 // Retrieval info: PRIVATE: rsUsedW NUMERIC "0"
 // Retrieval info: PRIVATE: sc_aclr NUMERIC "0"
 // Retrieval info: PRIVATE: sc_sclr NUMERIC "0"
-// Retrieval info: PRIVATE: wsEmpty NUMERIC "0"
+// Retrieval info: PRIVATE: wsEmpty NUMERIC "1"
 // Retrieval info: PRIVATE: wsFull NUMERIC "1"
 // Retrieval info: PRIVATE: wsUsedW NUMERIC "0"
 // Retrieval info: LIBRARY: altera_mf altera_mf.altera_mf_components.all
 // Retrieval info: CONSTANT: INTENDED_DEVICE_FAMILY STRING "Cyclone V"
 // Retrieval info: CONSTANT: LPM_NUMWORDS NUMERIC "32"
-// Retrieval info: CONSTANT: LPM_SHOWAHEAD STRING "OFF"
+// Retrieval info: CONSTANT: LPM_SHOWAHEAD STRING "ON"
 // Retrieval info: CONSTANT: LPM_TYPE STRING "dcfifo"
 // Retrieval info: CONSTANT: LPM_WIDTH NUMERIC "9"
 // Retrieval info: CONSTANT: LPM_WIDTHU NUMERIC "5"
@@ -151,7 +155,7 @@ endmodule
 // Retrieval info: CONSTANT: READ_ACLR_SYNCH STRING "OFF"
 // Retrieval info: CONSTANT: UNDERFLOW_CHECKING STRING "ON"
 // Retrieval info: CONSTANT: USE_EAB STRING "ON"
-// Retrieval info: CONSTANT: WRITE_ACLR_SYNCH STRING "ON"
+// Retrieval info: CONSTANT: WRITE_ACLR_SYNCH STRING "OFF"
 // Retrieval info: CONSTANT: WRSYNC_DELAYPIPE NUMERIC "4"
 // Retrieval info: USED_PORT: aclr 0 0 0 0 INPUT GND "aclr"
 // Retrieval info: USED_PORT: data 0 0 9 0 INPUT NODEFVAL "data[8..0]"
@@ -160,6 +164,7 @@ endmodule
 // Retrieval info: USED_PORT: rdempty 0 0 0 0 OUTPUT NODEFVAL "rdempty"
 // Retrieval info: USED_PORT: rdreq 0 0 0 0 INPUT NODEFVAL "rdreq"
 // Retrieval info: USED_PORT: wrclk 0 0 0 0 INPUT NODEFVAL "wrclk"
+// Retrieval info: USED_PORT: wrempty 0 0 0 0 OUTPUT NODEFVAL "wrempty"
 // Retrieval info: USED_PORT: wrfull 0 0 0 0 OUTPUT NODEFVAL "wrfull"
 // Retrieval info: USED_PORT: wrreq 0 0 0 0 INPUT NODEFVAL "wrreq"
 // Retrieval info: CONNECT: @aclr 0 0 0 0 aclr 0 0 0 0
@@ -170,6 +175,7 @@ endmodule
 // Retrieval info: CONNECT: @wrreq 0 0 0 0 wrreq 0 0 0 0
 // Retrieval info: CONNECT: q 0 0 9 0 @q 0 0 9 0
 // Retrieval info: CONNECT: rdempty 0 0 0 0 @rdempty 0 0 0 0
+// Retrieval info: CONNECT: wrempty 0 0 0 0 @wrempty 0 0 0 0
 // Retrieval info: CONNECT: wrfull 0 0 0 0 @wrfull 0 0 0 0
 // Retrieval info: GEN_FILE: TYPE_NORMAL lane_fifo_9x32.v TRUE
 // Retrieval info: GEN_FILE: TYPE_NORMAL lane_fifo_9x32.inc FALSE

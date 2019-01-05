@@ -30,7 +30,6 @@ logic send_esc_mode_entry_done;
 logic send_entry_cmd_done;
 logic send_mark_one_done;
 logic inc_lp_data_bits_counter;
-logic fin_rqst_reg;
 
 /***********************************
         FSM declaration
@@ -134,11 +133,6 @@ always_ff @(posedge clk_sys or negedge rst_n)
     if(~rst_n)                          last_lp_byte <= 1'b0;
     else if(send_lp_data)               last_lp_byte <= fin_rqst_reg;
     else if(state_next == STATE_IDLE)   last_lp_byte <= 1'b0;
-
-always_ff @(posedge clk or negedge rst_n)
-    if(!rst_n)              fin_rqst_reg <= 1'b0;
-    else if(fin_rqst)       fin_rqst_reg <= 1'b1;
-    else if(send_lp_data)   fin_rqst_reg <= 1'b0;
 
 assign lp_data_is_sent = lp_data_rqst & last_lp_byte;
 

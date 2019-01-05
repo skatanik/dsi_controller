@@ -87,7 +87,7 @@ genvar i;
 generate
 for(i = 0; i < 4; i = i + 1) begin : dsi_lane
     dsi_lane_full dsi_lane(
-        .clk_phy            (clk_phy                                ), // serial data clock
+        .clk_sys            (clk_phy                                ), // serial data clock
         .rst_n              (rst_n                                  ),
 
         .mode_lp            (dsi_lp_mode[i]                         ),
@@ -147,7 +147,7 @@ logic       dsi_LP_enable_clk;
 dsi_lane_full #(
     .MODE(1)
     ) dsi_lane_clk(
-        .clk_phy            (clk_phy                        ), // serial data clock
+        .clk_sys            (clk_phy                        ), // serial data clock
         .rst_n              (rst_n                          ),
 
         .start_rqst         (dsi_start_rqst_clk             ),
