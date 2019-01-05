@@ -702,46 +702,6 @@ crc_calculator crc_calculator_0
     .crc_output_sync    (crc_result_sync                )
 );
 
-/********* repacker 4 -> n and packets stitcher *********/
-
-//logic [31:0]    rpck_shadow_buffer;
-//logic [3:0]     rpck_bytes_in_sb;
-//logic [3:0]     rpck_bytes_available;
-//logic [3:0]     rpck_out_bn;
-//logic [3:0]     lines_number_real;
-//logic [31:0]    rpck_out;
-//logic [31:0]    mux_data_reg;
-//logic           rpck_read;
-//logic           rpck_write;
-//logic           rpck_bytes_enough;
-//logic           rpck_bn_sb_enough;
-//logic [3:0]     out_fifo_full;
-//
-//assign mux_data_reg         = mux_data_reg_with_lpm[31:0];
-//assign mux_reg_read         = rpck_read;
-//assign mux_data_lpm         = mux_data_reg_with_lpm[32];
-//assign lines_number_real    = mux_data_lpm ? 4'd1 : lines_number;
-//assign rpck_bn_sb_enough    = rpck_bytes_in_sb > lines_number_real;
-//assign rpck_bytes_enough    = rpck_bytes_available > lines_number_real;
-//assign rpck_read            = !rpck_bn_sb_enough & mux_reg_full & !(|out_fifo_full);
-//assign rpck_write           = (rpck_bytes_enough | !mux_reg_full) & !(|out_fifo_full) & (|rpck_bytes_available);
-//assign rpck_bytes_available = rpck_bytes_in_sb + mux_bytes_number;
-//assign rpck_out_bn          = rpck_bytes_enough ? (rpck_bytes_available - lines_number_real) : rpck_bytes_available;
-//assign rpck_out             = rpck_shadow_buffer | (mux_data_reg << rpck_bytes_in_sb);
-//assign lanes_fifo_empty_w   = &lanes_fifo_empty;
-//
-//always_ff @(posedge clk or negedge rst_n)
-//    if(!rst_n)          rpck_shadow_buffer <= 32'b0;
-//    else if(rpck_read)  rpck_shadow_buffer <= rpck_bytes_enough ? (mux_data_reg >> (lines_number_real - rpck_bytes_in_sb)) : rpck_shadow_buffer | (mux_data_reg << rpck_bytes_in_sb);
-//    else if(rpck_write) rpck_shadow_buffer <= rpck_shadow_buffer >> (lines_number_real);
-//
-//always_ff @(posedge clk or negedge rst_n)
-//    if(!rst_n)              rpck_bytes_in_sb <= 4'd0;
-//    else if(rpck_read)      rpck_bytes_in_sb <= rpck_bytes_enough ? (rpck_bytes_available - lines_number_real) : rpck_bytes_available;
-//    else if(rpck_write)     rpck_bytes_in_sb <= rpck_bn_sb_enough ? (rpck_bytes_in_sb - lines_number_real) : 4'd0;
-
-/////////////////////////////////////////////////////////////
-
 logic [3:0] lines_enable;
 logic [3:0] rpck_out_bn;
 
