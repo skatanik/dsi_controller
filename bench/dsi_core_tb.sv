@@ -756,7 +756,7 @@ wait(dsi_lanes_controller_ready);
 
 repeat(20) @(posedge clk_fast);
 
-write_usr_fifo(32'h0001_0000);
+write_usr_fifo(32'h0000_0001);
 
 end
 

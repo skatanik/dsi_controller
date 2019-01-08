@@ -72,15 +72,7 @@ logic           last_hss_bl_0;
 logic           last_pix_line;
 logic           last_hss_bl_2;
 logic           usr_fifo_packet_long;
-logic           usr_fifo_packet_short;
 logic           usr_fifo_packet_error;
-logic [4:0]     mux_ctrl_vec;
-logic           set_source_data_usr_fifo;
-logic           last_data_read_from_fifo;
-logic           next_packet_from_usr_fifo;
-logic           streaming_enable_delayed;
-logic           ask_for_extra_data;
-logic           read_data;
 
 assign cmd_fifo_out_ctrl = cmd_fifo_data[32];
 
@@ -480,7 +472,6 @@ TO DO:
 localparam [31:0]   BLANK_PATTERN           = 32'h5555_5555;
 
 logic pix_packet_long;
-logic usr_packet_long;
 logic writing_completed;
 logic lanes_fifo_empty_w;
 logic next_usr_data;
@@ -507,13 +498,13 @@ always_ff @(posedge clk or negedge rst_n)
 
 always_comb
     begin
-        if(streaming_enable)
+        if(!streaming_enable)
             case(mux_state_current)
             MUX_STATE_IDLE:
-                mux_state_next = !usr_fifo_empty ? MUX_STATE_USR_CMD : MUX_STATE_IDLE;
+                mux_state_next = !usr_fifo_empty & !usr_fifo_packet_error ? MUX_STATE_USR_CMD : MUX_STATE_IDLE;
 
             MUX_STATE_USR_CMD:
-                mux_state_next = writing_completed ? MUX_STATE_USR_DATA : MUX_STATE_USR_CMD;
+                mux_state_next = writing_completed ? (usr_fifo_packet_long ? MUX_STATE_USR_DATA : MUX_STATE_IDLE) : MUX_STATE_USR_CMD;
 
             MUX_STATE_USR_DATA:
                 mux_state_next = writing_completed ? MUX_STATE_USR_CRC : MUX_STATE_USR_DATA;
@@ -534,7 +525,7 @@ always_comb
                 mux_state_next = writing_completed ? (next_usr_data ? (user_cmd_transmission_mode ? MUX_STATE_WAIT_ENTER_LPM : MUX_STATE_USR_CMD) : (pix_packet_long ? MUX_STATE_PIX_DATA : MUX_STATE_PIX_CMD)) : MUX_STATE_PIX_CMD;
 
             MUX_STATE_USR_CMD:
-                mux_state_next = writing_completed ? (usr_packet_long ? MUX_STATE_USR_DATA : (user_cmd_transmission_mode ? MUX_STATE_WAIT_EXIT_LPM : MUX_STATE_IDLE)) : MUX_STATE_USR_CMD;
+                mux_state_next = writing_completed ? (usr_fifo_packet_long ? MUX_STATE_USR_DATA : (user_cmd_transmission_mode ? MUX_STATE_WAIT_EXIT_LPM : MUX_STATE_IDLE)) : MUX_STATE_USR_CMD;
 
             MUX_STATE_PIX_DATA:
                 mux_state_next = writing_completed ? MUX_STATE_PIX_CRC : MUX_STATE_PIX_DATA;
@@ -566,6 +557,8 @@ always_comb
             endcase
     end
 
+assign lanes_fifo_empty_w = (&lanes_fifo_empty);
+
 logic [31:0] usr_cmd_header;
 logic [31:0] pix_cmd_header;
 logic [7:0]  ecc_result_0;
@@ -590,19 +583,18 @@ ecc_calc ecc_1
 logic pix_packet_decoder_error;
 logic pix_packet_not_reserved;
 logic pix_packet_short;
-logic usr_packet_decoder_error;
-logic usr_packet_not_reserved;
+logic usr_packet_reserved;
 logic usr_packet_short;
 
 assign pix_packet_decoder_error    = !pix_packet_not_reserved;
-assign pix_packet_not_reserved     = !(|cmd_fifo_data[3:0]) && (&cmd_fifo_data[3:0]);
-assign pix_packet_long             = (!cmd_fifo_data[3] || cmd_fifo_data[3] && (!(|cmd_fifo_data[5:4]) && !(|cmd_fifo_data[2:0]))) && pix_packet_not_reserved;
-assign pix_packet_short            = (cmd_fifo_data[3] || !(cmd_fifo_data[3] && (!(|cmd_fifo_data[5:4]) && !(|cmd_fifo_data[2:0])))) && pix_packet_not_reserved;
+assign pix_packet_not_reserved     = !(!(|cmd_fifo_data[3:0]) & (&cmd_fifo_data[3:0]));
+assign pix_packet_long             = !(!cmd_fifo_data[3] | (cmd_fifo_data[5:0] == 6'b001000)) & pix_packet_not_reserved;
+assign pix_packet_short            = (!cmd_fifo_data[3] | (cmd_fifo_data[5:0] == 6'b001000)) & pix_packet_not_reserved;
 
-assign usr_packet_decoder_error    = !usr_packet_not_reserved;
-assign usr_packet_not_reserved     = !(|usr_fifo_data[3:0]) && (&usr_fifo_data[3:0]);
-assign usr_packet_long             = (!usr_fifo_data[3] || usr_fifo_data[3] && (!(|usr_fifo_data[5:4]) && !(|usr_fifo_data[2:0]))) && usr_packet_not_reserved;
-assign usr_packet_short            = (usr_fifo_data[3] || !(usr_fifo_data[3] && (!(|usr_fifo_data[5:4]) && !(|usr_fifo_data[2:0])))) && usr_packet_not_reserved;
+assign usr_fifo_packet_error       = usr_packet_reserved;
+assign usr_packet_reserved         = !(|usr_fifo_data[3:0]) & (&usr_fifo_data[3:0]);
+assign usr_fifo_packet_long        = !(!cmd_fifo_data[3] | (cmd_fifo_data[5:0] == 6'b001000)) & !usr_packet_reserved;
+assign usr_packet_short            = (!cmd_fifo_data[3] | (cmd_fifo_data[5:0] == 6'b001000)) & !usr_packet_reserved;
 
 logic [32:0]    mux_data_reg_with_lpm;
 logic [2:0]     mux_bytes_number;
@@ -685,7 +677,6 @@ assign mux_bytes_number     = |data_size_left[15:2] ? 4'd4 : data_size_left[2:0]
 
 /********* Packet type decoder *********/
 logic           clear_crc_calc;
-logic           write_crc_calc;
 logic [1:0]     bytes_in_line;
 
 assign clear_crc_calc   = (mux_state_current == MUX_STATE_USR_CMD) | (mux_state_current == MUX_STATE_PIX_CMD);
@@ -720,8 +711,8 @@ logic [31:0]    mux_data_reg;
 
 assign mux_data_reg                     = mux_data_reg_with_lpm[31:0];
 assign shift_free_bytes                 = 4'd8 - shift_total_num + lines_number_real;
-assign inp_read                         = |shift_free_bytes[3:2];
-assign out_ready                        = (shift_total_num >= lines_number_real) | (shift_total_num < lines_number_real) & !mux_reg_full;
+assign inp_read                         = |shift_free_bytes[3:2] & mux_state_writing;
+assign out_ready                        = ((shift_total_num >= lines_number_real) | (shift_total_num < lines_number_real) & !mux_reg_full) & (shift_total_num != 4'd0);
 assign mux_reg_read                     = inp_read;
 assign mux_data_lpm                     = mux_data_reg_with_lpm[32];
 assign lines_number_real                = mux_data_lpm ? 4'd1 : {1'b0, lines_number};
@@ -775,7 +766,7 @@ always_comb
 
 assign lanes_fifo_data      = out_data;
 assign lanes_fifo_lpm       = mux_data_lpm;
-assign lanes_fifo_write     = {4{out_ready}} & lines_enable & lines_byte_ok & !lanes_fifo_full;
+assign lanes_fifo_write     = {4{out_ready}} & lines_enable & lines_byte_ok & ~lanes_fifo_full;
 assign out_fifo_full        = lanes_fifo_full;
 assign out_read_ack         = out_ready & !(|lanes_fifo_full);
 
