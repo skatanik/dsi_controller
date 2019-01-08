@@ -1,7 +1,7 @@
 module dsi_hs_lane #(
     parameter MODE = 0  // 0 - lane, 1 - clk
     )(
-    input wire          clk_sys             , // serial data clock
+    input wire          clk             , // serial data clock
     input wire          rst_n               ,
 
     input wire          start_rqst          ,
@@ -33,7 +33,7 @@ enum logic [2:0]
     STATE_TX_TRAIL
 } state_current, state_next;
 
-always_ff @(posedge clk_sys or negedge rst_n) begin
+always_ff @(posedge clk or negedge rst_n) begin
     if(~rst_n) begin
         state_current <= STATE_IDLE;
     end else begin
@@ -70,7 +70,7 @@ logic active_r;
 
 assign active = active_r;
 
-always_ff @(posedge clk_sys or negedge rst_n)
+always_ff @(posedge clk or negedge rst_n)
     if(~rst_n)                                  active_r <= 1'b0;
     else if(state_next == STATE_TX_GO)          active_r <= 1'b1;
     else if(state_next == STATE_IDLE)           active_r <= 1'b0;
@@ -82,11 +82,11 @@ logic data_rqst_r;
 assign data_rqst = data_rqst_r;
 
 // data_rqst line forming
-always_ff @(posedge clk_sys or negedge rst_n) begin
+always_ff @(posedge clk or negedge rst_n) begin
     if(~rst_n) begin
         data_rqst_r <= 1'b0;
     end else begin
-        data_rqst_r <= ((state_next == STATE_TX_ACTIVE)) & !fin_rqst;
+        data_rqst_r <= (state_next == STATE_TX_ACTIVE) & !fin_rqst;
     end
 end
 
@@ -96,19 +96,16 @@ logic [7:0] serdes_data;
 logic [7:0] last_bit_byte;
 
 // serdes data mux
-always_comb begin
-    if(state_current == STATE_TX_SYNC)
-        serdes_data = SYNC_SEQUENCE;
-    else if(state_current == STATE_TX_ACTIVE)
-        serdes_data = inp_data;
-    else if(state_current == STATE_TX_TRAIL)
-        serdes_data = last_bit_byte;
-    else
-        serdes_data = 8'b0;
+always_ff @(posedge clk or negedge rst_n) begin
+    if(~rst_n)                                  serdes_data <= 8'b0;
+    else if(state_current == STATE_TX_SYNC)     serdes_data <= SYNC_SEQUENCE;
+    else if(state_current == STATE_TX_ACTIVE)   serdes_data <= inp_data;
+    else if(state_current == STATE_TX_TRAIL)    serdes_data <= last_bit_byte;
+    else                                        serdes_data <= 8'b0;
 end
 
 // remember bit for trail sequence
-always_ff @(posedge clk_sys or negedge rst_n) begin
+always_ff @(posedge clk or negedge rst_n) begin
     if(~rst_n) begin
          last_bit_byte <= 8'd0;
     end else if(state_current == STATE_TX_ACTIVE) begin
@@ -116,13 +113,14 @@ always_ff @(posedge clk_sys or negedge rst_n) begin
     end
 end
 
-wire serdes_enable;
-wire serdes_out;
+logic serdes_enable;
 
-assign serdes_enable = (state_current != STATE_IDLE); // or (state_next != STATE_IDLE)
+always_ff @(posedge clk or negedge rst_n)
+    if(~rst_n)          serdes_enable <= 1'b0;
+    else                serdes_enable <= (state_current != STATE_IDLE); // or (state_next != STATE_IDLE)
 
-assign hs_output = serdes_data;
-assign hs_enable = serdes_enable;
+assign hs_output        = serdes_data;
+assign hs_enable        = serdes_enable;
 
 // Timeouts
 localparam [7:0] TX_HS_GO_TIMEOUT_VAL = 2; // 145 ns + 10*UI THS-zero
@@ -131,14 +129,14 @@ localparam [7:0] TX_HS_TRAIL_TIMEOUT_VAL = 2; // 145 ns + 10*UI
 logic [7:0] tx_hs_go_counter;
 logic [7:0] tx_hs_trail_counter;
 
-always_ff @(posedge clk_sys or negedge rst_n)
+always_ff @(posedge clk or negedge rst_n)
     if(~rst_n)                                                          tx_hs_go_counter <= 0;
     else if((state_current == STATE_TX_GO) && (|tx_hs_go_counter))      tx_hs_go_counter <= tx_hs_go_counter - 1;
     else if(state_next == STATE_TX_GO)                                  tx_hs_go_counter <= TX_HS_GO_TIMEOUT_VAL - 1;
 
 assign tx_hs_go_timeout = (state_current == STATE_TX_GO) && !(|tx_hs_go_counter);
 
-always_ff @(posedge clk_sys or negedge rst_n)
+always_ff @(posedge clk or negedge rst_n)
     if(~rst_n)                                                              tx_hs_trail_counter <= 0;
     else if((state_current == STATE_TX_TRAIL) && (|tx_hs_trail_counter))    tx_hs_trail_counter <= tx_hs_trail_counter - 1;
     else if(state_next == STATE_TX_TRAIL)                                   tx_hs_trail_counter <= TX_HS_TRAIL_TIMEOUT_VAL - 1;

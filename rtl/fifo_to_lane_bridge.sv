@@ -28,6 +28,7 @@ logic           read_fifo_second;
 logic           fifo_not_empty;
 
 assign read_fifo        = !state_active ? fifo_not_empty : fifo_not_empty & (data_rqst | read_fifo_second);
+assign fifo_read        = read_fifo;
 
 always_ff @(posedge clk or negedge rst_n)
     if(!rst_n)                                      state_active <= 1'b0;
@@ -51,6 +52,8 @@ logic mode_lp_reg;
 always_ff @(posedge clk or negedge rst_n)
     if(!rst_n)              mode_lp_reg <= 7'b0;
     else if(read_fifo)      mode_lp_reg <= mode_lp_in;
+
+assign mode_lp = mode_lp_reg;
 
 /********* timeout counter *********/
 logic [15:0]    counter;

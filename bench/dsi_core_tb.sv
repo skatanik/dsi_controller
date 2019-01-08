@@ -10,13 +10,6 @@ bit clk_sys;
 bit clk_fast;
 bit rst_n_fast;
 
-logic [31:0]    iface_write_data;
-logic [3:0]     iface_write_strb;
-logic           iface_write_rqst;
-logic           iface_last_word;
-logic           iface_lpm_en;
-logic           iface_data_rqst;
-
 logic           lines_enable;
 logic           clock_enable;
 logic           lines_ready;
@@ -57,7 +50,7 @@ initial
 begin
 #1.25;
 clk_sys = 1;
-forever    #10 clk_sys      = ~clk_sys;
+forever    #2.5 clk_sys      = ~clk_sys;
 end
 
 initial
@@ -163,21 +156,14 @@ usr_fifo_32x128    usr_fifo_32x128_0 (
  //   .wrusedw        (usr_fifo_usedw     )
     );
 
-packets_assembler packets_assembler_0
+dsi_core dsi_core_0
 (
     /********* Clock signals *********/
-        .clk                                 (clk_sys       ),
-        .reset_n                             (rst_n         ),
+        .sys_clk                               (clk_sys       ),
+        .sys_rst_n                             (rst_n         ),
 
-    /********* lanes controller iface *********/
-        .iface_write_data                    (iface_write_data  ),
-        .iface_write_strb                    (iface_write_strb  ),
-        .iface_write_rqst                    (iface_write_rqst  ),
-        .iface_last_word                     (iface_last_word   ),
-        .iface_lpm_en                        (iface_lpm_en      ), //0 - hs, 1 - lp should be asserted at least one cycle before iface_write_rqst and disasserted one cycle after iface_last_word
-
-        .iface_data_rqst                     (iface_data_rqst   ),
-        .lanes_controller_lines_active       (lines_active      ),
+        .phy_clk                               (clk_fast        ),
+        .phy_rst_n                             (rst_n_fast      ),
 
     /********* pixel FIFO interface *********/
         .pix_fifo_data                       (pix_fifo_data_r   ),
@@ -203,27 +189,10 @@ packets_assembler packets_assembler_0
         .vertical_active_lines_number        (20),   // length in lines
         .vertical_front_porch_lines_number   (5),   // length in lines
         .vertical_back_porch_lines_number    (5),   // length in lines
-        .lpm_length                          (20)    // length in clk
-);
+        .lpm_length                          (20),    // length in clk
+                /********* Misc signals *********/
 
-dsi_lanes_controller dsi_lanes_controller_0
-    (
-        /********* Clock signals *********/
-        .clk_sys                 (clk_sys               ), // serial data clock
-        .rst_n                   (rst_n                 ),
-
-        /********* Fifo signals *********/
-        .iface_write_data        (iface_write_data      ),
-        .iface_write_strb        (iface_write_strb      ), // iface_write_strb[4] - mode flag.
-        .iface_write_rqst        (iface_write_rqst      ),
-        .iface_last_word         (iface_last_word       ),
-        .iface_lpm_en            (iface_lpm_en          ), //0 - hs, 1 - lp should be asserted at least one cycle before iface_write_rqst and disasserted one cycle after iface_last_word
-
-        .iface_data_rqst         (iface_data_rqst       ),
-
-        /********* Misc signals *********/
-
-        .reg_lanes_number        (2'd3                  ),
+        .lines_number           (3'd4                  ),
         .lines_enable            (lines_enable          ),   // enable output buffers of LP lines
         .clock_enable            (clock_enable          ),   // enable clock
 
@@ -245,8 +214,9 @@ dsi_lanes_controller dsi_lanes_controller_0
         .clock_LP_enable         (clock_LP_enable       ),
         .clock_hs_output         (clock_hs_output       ),
         .clock_hs_enable         (clock_hs_enable       )
+);
 
-    );
+
 
 /********* enable lines block *********/
 

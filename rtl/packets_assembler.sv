@@ -7,8 +7,9 @@ module packets_assembler (
         input   wire                            rst_n                               ,
 
     /********* lanes controller iface *********/
-        output  wire [32:0]                     lanes_fifo_data                     , // 32:9 - 3x8 data, 8 - lpm sign, 7:0 lane 0 data
+        output  wire [31:0]                     lanes_fifo_data                     , // 32:9 - 3x8 data, 8 - lpm sign, 7:0 lane 0 data
         output  wire [3:0]                      lanes_fifo_write                    ,
+        output  wire                            lanes_fifo_lpm                      ,
         input   wire [3:0]                      lanes_fifo_full                     ,
         input   wire [3:0]                      lanes_fifo_empty                    ,
 
@@ -772,7 +773,8 @@ always_comb
         endcase
     end
 
-assign lanes_fifo_data      = {mux_data_lpm, out_data};
+assign lanes_fifo_data      = out_data;
+assign lanes_fifo_lpm       = mux_data_lpm;
 assign lanes_fifo_write     = {4{out_ready}} & lines_enable & lines_byte_ok & !lanes_fifo_full;
 assign out_fifo_full        = lanes_fifo_full;
 assign out_read_ack         = out_ready & !(|lanes_fifo_full);

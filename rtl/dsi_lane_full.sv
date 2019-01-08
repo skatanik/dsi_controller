@@ -1,7 +1,7 @@
 module dsi_lane_full #(
     parameter MODE = 0  // 0 - lane, 1 - clk
     )(
-    input wire          clk_sys             , // serial data clock
+    input wire          clk                 , // serial data clock
     input wire          rst_n               ,
 
     input wire          mode_lp             , // which mode to use to send data throught this lane. 0 - hs, 1 - lp
@@ -49,7 +49,7 @@ enum logic [3:0]
     STATE_LP_SEND_MARK_ONE
 } state_current, state_next;
 
-always_ff @(posedge clk_sys or negedge rst_n) begin
+always_ff @(posedge clk or negedge rst_n) begin
     if(~rst_n) begin
         state_current <= STATE_LINES_DISABLED;
     end else begin
@@ -95,7 +95,7 @@ always_comb begin
     endcase
 end
 
-assign active = (state_current != STATE_LINES_DISABLED) && (state_current != STATE_IDLE);
+assign active = (state_current == STATE_HS_ACTIVE) | (state_current == STATE_LP_SEND_LP_CMD);
 
 localparam [7:0]    ESC_MODE_ENTRY      = 8'b00000010;
 localparam [7:0]    ENTRY_CMD           = 8'b11100001;
@@ -122,14 +122,14 @@ assign next_state_mark_one      = (state_next == STATE_LP_SEND_MARK_ONE) && (sta
 assign next_state_send_cmd      = (state_current == STATE_LP_SEND_ENTRY_CMD) && (state_next == STATE_LP_SEND_LP_CMD);
 assign data_rqst                = (/*(state_current == STATE_HS_RQST) ||*/ (state_current == STATE_HS_PREP) || (state_current == STATE_HS_ACTIVE)) ? hs_data_rqst : lp_data_rqst;
 
-always_ff @(posedge clk_sys or negedge rst_n)
+always_ff @(posedge clk or negedge rst_n)
     if(~rst_n)                                      lp_data_buffer <= 8'b0;
     else if(next_state_lpdt)                        lp_data_buffer <= ESC_MODE_ENTRY;
     else if(next_state_entry_cmd)                   lp_data_buffer <= ENTRY_CMD;
     else if(send_lp_data)                           lp_data_buffer <= inp_data;
     else if(next_state_mark_one)                    lp_data_buffer <= 8'hff;
 
-always_ff @(posedge clk_sys or negedge rst_n)
+always_ff @(posedge clk or negedge rst_n)
     if(~rst_n)                          last_lp_byte <= 1'b0;
     else if(send_lp_data)               last_lp_byte <= fin_rqst_reg;
     else if(state_next == STATE_IDLE)   last_lp_byte <= 1'b0;
@@ -143,7 +143,7 @@ logic bits_counter_is_zero;
 assign bits_counter_is_zero     = !(|lp_data_bits_counter) && reset_baud_counter;
 assign send_lp_data             = next_state_send_cmd || lp_data_rqst && !last_lp_byte && (state_current != STATE_IDLE);
 
-always_ff @(posedge clk_sys or negedge rst_n)
+always_ff @(posedge clk or negedge rst_n)
     if(~rst_n)                                                      lp_data_bits_counter <= 4'b0;
     else if(next_state_lpdt)                                        lp_data_bits_counter <= 4'b1;
     else if(next_state_entry_cmd)                                   lp_data_bits_counter <= 4'd7;
@@ -158,7 +158,7 @@ assign send_mark_one_done           = (state_current == STATE_LP_SEND_MARK_ONE) 
 
 assign reset_baud_counter = next_state_lpdt || inc_lp_data_bits_counter;
 
-always_ff @(posedge clk_sys or negedge rst_n)
+always_ff @(posedge clk or negedge rst_n)
     if(~rst_n)                          lp_baud_counter <= 8'b0;
     else if(reset_baud_counter)         lp_baud_counter <= LP_BAUD_TIME;
     else if(state_next == STATE_IDLE)   lp_baud_counter <= 8'b0;
@@ -169,23 +169,26 @@ assign set_second_half_bit  = (lp_baud_counter == {1'b0, LP_BAUD_TIME[7:1]});
 
 logic current_lp_data_bit;
 logic [7:0] shifted_lp_data;
+logic set_lp_line_to_one;
 
-assign shifted_lp_data = lp_data_buffer >> (lp_data_bits_counter);
-assign current_lp_data_bit = shifted_lp_data[0];
+assign shifted_lp_data          = lp_data_buffer >> (lp_data_bits_counter);
+assign current_lp_data_bit      = shifted_lp_data[0];
+assign set_lp_line_to_one       = state_next == STATE_IDLE || state_next == STATE_HS_EXIT || state_next == STATE_LINES_DISABLED;
+
 
 // LP lines control
-always_ff @(posedge clk_sys or negedge rst_n) begin
+always_ff @(posedge clk or negedge rst_n) begin
     if(~rst_n)                                                              LP_p <= 1;
-    else if(state_next == STATE_IDLE || state_next == STATE_HS_EXIT)        LP_p <= 1;
+    else if(set_lp_line_to_one)                                             LP_p <= 1;
     else if(state_next == STATE_HS_RQST)                                    LP_p <= 0;
     else if(set_first_half_bit && current_lp_data_bit)                      LP_p <= 1;
     else if(set_second_half_bit && current_lp_data_bit)                     LP_p <= 0;
     else if(!current_lp_data_bit && (state_current != STATE_IDLE))          LP_p <= 0;
 end
 
-always_ff @(posedge clk_sys or negedge rst_n) begin
+always_ff @(posedge clk or negedge rst_n) begin
     if(~rst_n)                                                              LP_n <= 1;
-    else if(state_next == STATE_IDLE || state_next == STATE_HS_EXIT)        LP_n <= 1;
+    else if(set_lp_line_to_one)                                             LP_n <= 1;
     else if(state_next == STATE_HS_PREP)                                    LP_n <= 0;
     else if(set_first_half_bit && !current_lp_data_bit)                     LP_n <= 1;
     else if(set_second_half_bit && !current_lp_data_bit)                    LP_n <= 0;
@@ -206,21 +209,21 @@ logic [7:0] hs_rqst_counter;
 logic [7:0] hs_prep_counter;
 logic [7:0] hs_exit_counter;
 
-always_ff @(posedge clk_sys or negedge rst_n)
+always_ff @(posedge clk or negedge rst_n)
     if(~rst_n)                              hs_rqst_counter <= 0;
     else if(state_current == STATE_HS_RQST) hs_rqst_counter <= hs_rqst_counter - 1;
     else if(state_next == STATE_HS_RQST)    hs_rqst_counter <= T_LPX - 1;
 
 assign hs_rqst_timeout = (state_current == STATE_HS_RQST) && !(|hs_rqst_counter);
 
-always_ff @(posedge clk_sys or negedge rst_n)
+always_ff @(posedge clk or negedge rst_n)
     if(~rst_n)                              hs_prep_counter <= 0;
     else if(state_current == STATE_HS_PREP) hs_prep_counter <= hs_prep_counter - 1;
     else if(state_next == STATE_HS_PREP)    hs_prep_counter <= T_HS_PREPARE - 1;
 
 assign hs_prep_timeout = (state_current == STATE_HS_PREP) && !(|hs_prep_counter);
 
-always_ff @(posedge clk_sys or negedge rst_n)
+always_ff @(posedge clk or negedge rst_n)
     if(~rst_n)                              hs_exit_counter <= 0;
     else if(state_current == STATE_HS_EXIT) hs_exit_counter <= hs_exit_counter - 1;
     else if(state_next == STATE_HS_EXIT)    hs_exit_counter <= T_HS_EXIT - 1;
@@ -233,7 +236,7 @@ assign hs_start_rqst = (state_next == STATE_HS_ACTIVE) && (state_current != STAT
 
 logic hs_lane_active;
 
-always_ff @(posedge clk_sys or negedge rst_n)
+always_ff @(posedge clk or negedge rst_n)
     if(~rst_n)                          fin_rqst_reg <= 1'b0;
     else if(fin_rqst && !mode_lp)       fin_rqst_reg <= 1'b1;
     else if(hs_fin_ack)                 fin_rqst_reg <= 1'b0;
@@ -242,7 +245,7 @@ always_ff @(posedge clk_sys or negedge rst_n)
 dsi_hs_lane  #(
     .MODE(MODE)
     ) dsi_hs_lane_0(
-    .clk_sys                (clk_sys                    ), // serial data clock
+    .clk                    (clk                        ), // serial data clock
     .rst_n                  (rst_n                      ),
 
     .start_rqst             (hs_start_rqst              ),

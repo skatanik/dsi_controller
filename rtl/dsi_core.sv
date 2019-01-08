@@ -58,8 +58,9 @@ module dsi_core(
     output  wire                            clock_hs_enable
     );
 
-logic [32:0] data_fifo_data;
+logic [31:0] data_fifo_data;
 logic [3:0]  data_fifo_write;
+logic        data_fifo_lpm;
 logic [3:0]  data_fifo_full;
 logic [3:0]  data_fifo_empty;
 
@@ -71,6 +72,7 @@ packets_assembler packets_assembler_0(
     /********* lanes controller iface *********/
         .lanes_fifo_data                     (data_fifo_data                        ), // 32:9 - 3x8 data, 8 - lpm sign, 7:0 lane 0 data
         .lanes_fifo_write                    (data_fifo_write                       ),
+        .lanes_fifo_lpm                      (data_fifo_lpm                         ),
         .lanes_fifo_full                     (data_fifo_full                        ),
         .lanes_fifo_empty                    (data_fifo_empty                       ),
 
@@ -111,16 +113,16 @@ genvar i;
 generate
 for(i = 0; i < 4; i = i + 1) begin : lanes_fifo
     lane_fifo_9x32  lane_fifo_inst (
-    .aclr           (sys_rst_n                          ),
-    .data           (data_fifo_data[i*8 + 7 : i*8]      ),
-    .wrclk          (sys_clk                            ),
-    .wrreq          (data_fifo_write[i]                 ),
-    .wrfull         (data_fifo_full[i]                  ),
-    .wrempty        (data_fifo_empty[i]                 ),
-    .rdreq          (lanes_fifo_read[i]                 ),
-    .q              (lanes_fifo_data[i*8 + 7 : i*8]     ),
-    .rdempty        (lanes_fifo_empty[i]                ),
-    .rdclk          (phy_clk                            )
+    .aclr           (sys_rst_n                                                              ),
+    .data           ({(i == 0 ? data_fifo_lpm : 1'b0), data_fifo_data[i*8 + 7 : i*8]}       ),
+    .wrclk          (sys_clk                                                                ),
+    .wrreq          (data_fifo_write[i]                                                     ),
+    .wrfull         (data_fifo_full[i]                                                      ),
+    .wrempty        (data_fifo_empty[i]                                                     ),
+    .rdreq          (lanes_fifo_read[i]                                                     ),
+    .q              (lanes_fifo_data[i*8 + 7 : i*8]                                         ),
+    .rdempty        (lanes_fifo_empty[i]                                                    ),
+    .rdclk          (phy_clk                                                                )
     );
     end // lanes_fifo
 
@@ -128,16 +130,16 @@ endgenerate
 
 logic [35:0] wr_fifo_data;
 
-assign wr_fifo_data     = {1'b0, lanes_fifo_data[32:25], 1'b0, lanes_fifo_data[24:17], 1'b0, lanes_fifo_data[16:9], lanes_fifo_data[8:0]};
+assign wr_fifo_data     = |(!lanes_fifo_empty) ? {1'b0, lanes_fifo_data[32:25], 1'b0, lanes_fifo_data[24:17], 1'b0, lanes_fifo_data[16:9], lanes_fifo_data[8:0]} : 36'd0;
 
-logic reg_lanes_number_sync;
+logic [2:0] reg_lanes_number_sync;
 logic lines_enable_sync;
 logic clock_enable_sync;
 logic lines_ready_sync;
 logic clock_ready_sync;
 logic lines_active_sync;
 
-sync_2ff #(.WIDTH(4)) sync_lanes_number
+sync_2ff #(.WIDTH(3)) sync_lanes_number
 (
     .clk_out    (phy_clk                    ),
     .data_in    (lines_number               ),
