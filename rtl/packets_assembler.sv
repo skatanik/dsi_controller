@@ -320,52 +320,52 @@ always_comb
                 cmd_packet_header_prefifo = 24'b0;
 
             STATE_WRITE_VSS:
-                cmd_packet_header_prefifo = {{2'b0, `PACKET_VSS}, 16'b0};
+                cmd_packet_header_prefifo = {16'b0, {2'b0, `PACKET_VSS}};
 
             STATE_WRITE_VSS_EOT:
-                cmd_packet_header_prefifo = {{2'b0, `PACKET_EOT}, 16'b0};
+                cmd_packet_header_prefifo = {16'b0, {2'b0, `PACKET_EOT}};
 
             STATE_WRITE_VSS_BL:
-                cmd_packet_header_prefifo = lpm_enable ? 24'b0 : {{2'b0, `PACKET_BLANKING}, blank_packet_size};
+                cmd_packet_header_prefifo = lpm_enable ? 24'b0 : {blank_packet_size, {2'b0, `PACKET_BLANKING}};
 
             STATE_WRITE_HSS_0:
-                cmd_packet_header_prefifo = {{2'b0, `PACKET_HSS}, 16'b0};
+                cmd_packet_header_prefifo = {16'b0, {2'b0, `PACKET_HSS}};
 
             STATE_WRITE_HSS_0_EOT:
-                cmd_packet_header_prefifo = {{2'b0, `PACKET_EOT}, 16'b0};
+                cmd_packet_header_prefifo = {16'b0, {2'b0, `PACKET_EOT}};
 
             STATE_WRITE_HSS_BL_0:
-                cmd_packet_header_prefifo = lpm_enable ? 24'b0 : {{2'b0, `PACKET_BLANKING}, blank_packet_size};
+                cmd_packet_header_prefifo = lpm_enable ? 24'b0 : {blank_packet_size, {2'b0, `PACKET_BLANKING}};
 
             STATE_WRITE_HSS_1:
-                cmd_packet_header_prefifo = {{2'b0, `PACKET_HSS}, 16'b0};
+                cmd_packet_header_prefifo = {16'b0, {2'b0, `PACKET_HSS}};
 
             STATE_WRITE_HSS_1_EOT:
-                cmd_packet_header_prefifo = {{2'b0, `PACKET_EOT}, 16'b0};
+                cmd_packet_header_prefifo = {16'b0, {2'b0, `PACKET_EOT}};
 
             STATE_WRITE_HBP:
-                cmd_packet_header_prefifo = lpm_enable ? 24'b0 : {{2'b0, `PACKET_BLANKING}, horizontal_back_porch};
+                cmd_packet_header_prefifo = lpm_enable ? 24'b0 : {horizontal_back_porch, {2'b0, `PACKET_BLANKING}};
 
             STATE_WRITE_RGB:
-                cmd_packet_header_prefifo = {{2'b0, `PACKET_PPS24}, (pixels_in_line_number * 3)};
+                cmd_packet_header_prefifo = {(pixels_in_line_number * 3), {2'b0, `PACKET_PPS24}};
 
             STATE_WRITE_RGB_EOT:
-                cmd_packet_header_prefifo = {{2'b0, `PACKET_EOT}, 16'b0};
+                cmd_packet_header_prefifo = {16'b0, {2'b0, `PACKET_EOT}};
 
             STATE_WRITE_HSS_BL_1:
-                cmd_packet_header_prefifo = lpm_enable ? 24'b0 : {{2'b0, `PACKET_BLANKING}, blank_packet_size};
+                cmd_packet_header_prefifo = lpm_enable ? 24'b0 : {blank_packet_size, {2'b0, `PACKET_BLANKING}};
 
             STATE_WRITE_HFP:
-                cmd_packet_header_prefifo = lpm_enable ? 24'b0 : {{2'b0, `PACKET_BLANKING}, horizontal_front_porch};
+                cmd_packet_header_prefifo = lpm_enable ? 24'b0 : {horizontal_front_porch, {2'b0, `PACKET_BLANKING}};
 
             STATE_WRITE_HSS_2:
-                cmd_packet_header_prefifo = {{2'b0, `PACKET_HSS}, 16'b0};
+                cmd_packet_header_prefifo = {16'b0, {2'b0, `PACKET_HSS}};
 
             STATE_WRITE_HSS_2_EOT:
-                cmd_packet_header_prefifo = {{2'b0, `PACKET_EOT}, 16'b0};
+                cmd_packet_header_prefifo = {16'b0, {2'b0, `PACKET_EOT}};
 
             STATE_WRITE_HSS_BL_2:
-                cmd_packet_header_prefifo = lpm_enable ? 24'b0 : {{2'b0, `PACKET_BLANKING}, blank_packet_size};
+                cmd_packet_header_prefifo = lpm_enable ? 24'b0 : {blank_packet_size, {2'b0, `PACKET_BLANKING}};
 
             STATE_WRITE_LPM:    // we dont write any cmd here, just wait for timeout
                 cmd_packet_header_prefifo = 24'b0;
@@ -564,19 +564,19 @@ logic [31:0] pix_cmd_header;
 logic [7:0]  ecc_result_0;
 logic [7:0]  ecc_result_1;
 
-assign usr_cmd_header = {usr_fifo_data[23:16], usr_fifo_data[7:0], usr_fifo_data[15:8], ecc_result_0};
+assign usr_cmd_header = {ecc_result_0, usr_fifo_data[23:0]};
 
 ecc_calc ecc_0
 (
-    .data       ({usr_fifo_data[15:8], usr_fifo_data[7:0], usr_fifo_data[23:16]} ),         // add bit inversion
+    .data       (usr_fifo_data[23:0] ),         // add bit inversion
     .ecc_result (ecc_result_0    )
 );
 
-assign pix_cmd_header = {cmd_fifo_data[23:16], cmd_fifo_data[7:0], cmd_fifo_data[15:8], ecc_result_1};
+assign pix_cmd_header = {ecc_result_1, cmd_fifo_data[23:0]};
 
 ecc_calc ecc_1
 (
-    .data       ({cmd_fifo_data[15:8], cmd_fifo_data[7:0], cmd_fifo_data[23:16]} ),         // add bit inversion
+    .data       (cmd_fifo_data[23:0] ),         // add bit inversion
     .ecc_result (ecc_result_1    )
 );
 
@@ -606,6 +606,7 @@ logic [15:0]    data_size_left;
 logic [15:0]    crc_result_async;
 logic [15:0]    crc_result_sync;
 logic           mux_state_writing;
+logic           mux_state_writing_delayed;
 
 assign mux_reg_write        = (mux_reg_read | !mux_reg_full) & mux_state_writing;
 assign mux_state_writing    = (mux_state_current != MUX_STATE_IDLE) & (mux_state_current != MUX_STATE_WAIT_ENTER_LPM) & (mux_state_current != MUX_STATE_WAIT_EXIT_LPM);
@@ -614,6 +615,10 @@ always_ff @(posedge clk or negedge rst_n)
     if(!rst_n)                  mux_reg_full <= 1'b0;
     else if(mux_reg_write)      mux_reg_full <= 1'b1;
     else if(mux_reg_read)       mux_reg_full <= 1'b0;
+
+always_ff @(posedge clk or negedge rst_n)
+    if(!rst_n)      mux_state_writing_delayed <= 1'b0;
+    else            mux_state_writing_delayed <= mux_state_writing;
 
 always_ff @(posedge clk or negedge rst_n)
     if(!rst_n)              mux_data_reg_with_lpm <= 32'b0;
@@ -673,7 +678,10 @@ always_ff @(posedge clk or negedge rst_n)
     else if(decrease_data_counter)      data_size_left <= data_size_left >= 16'd4 ? (data_size_left - 16'd4) : 16'd0;   // |data_size_left[15:2]
 
 assign writing_completed    = decrease_data_counter & (data_size_left <= 16'd4);
-assign mux_bytes_number     = |data_size_left[15:2] ? 4'd4 : data_size_left[2:0];
+
+always_ff @(posedge clk or negedge rst_n)
+    if(!rst_n)  mux_bytes_number <= 'b0;
+    else        mux_bytes_number <= |data_size_left[15:2] ? 4'd4 : data_size_left[2:0];
 
 /********* Packet type decoder *********/
 logic           clear_crc_calc;
@@ -710,19 +718,19 @@ logic [3:0]     lines_number_real;
 logic [31:0]    mux_data_reg;
 
 assign mux_data_reg                     = mux_data_reg_with_lpm[31:0];
-assign shift_free_bytes                 = 4'd8 - shift_total_num + lines_number_real;
-assign inp_read                         = |shift_free_bytes[3:2] & mux_state_writing;
-assign out_ready                        = ((shift_total_num >= lines_number_real) | (shift_total_num < lines_number_real) & !mux_reg_full) & (shift_total_num != 4'd0);
+assign shift_free_bytes                 = 4'd8 - shift_total_num + (out_read_ack ? lines_number_real : 4'd0);
+assign inp_read                         = |shift_free_bytes[3:2] & mux_state_writing_delayed;
+assign out_ready                        = (shift_total_num >= lines_number_real) | ((shift_total_num < lines_number_real) & !mux_reg_full) & (shift_total_num != 4'd0);
 assign mux_reg_read                     = inp_read;
 assign mux_data_lpm                     = mux_data_reg_with_lpm[32];
 assign lines_number_real                = mux_data_lpm ? 4'd1 : {1'b0, lines_number};
 assign inp_data                         = mux_data_reg;
-assign out_data                         = shift_reg[63:32];
+assign out_data                         = shift_reg[31:0];
 
 
 always @(posedge clk or negedge rst_n)
 if(!rst_n)      shift_reg <= 64'b0;
-else            shift_reg <= (shift_reg << ({4{out_read_ack}} & lines_number_real*8)) | ({64{inp_read}} & ({32'b0, inp_data} << shift_free_bytes*8));
+else            shift_reg <= (shift_reg >> ({4{out_read_ack}} & lines_number_real*8)) | ({64{inp_read}} & ({inp_data, 32'b0} >> (shift_free_bytes - 4'd4)*8));
 
 always @(posedge clk or negedge rst_n)
 if(!rst_n)      shift_total_num <= 4'd0;
