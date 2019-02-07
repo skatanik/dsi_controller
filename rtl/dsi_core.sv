@@ -113,7 +113,7 @@ genvar i;
 generate
 for(i = 0; i < 4; i = i + 1) begin : lanes_fifo
     lane_fifo_9x32  lane_fifo_inst (
-    .aclr           (sys_rst_n                                                              ),
+    .aclr           (!sys_rst_n                                                              ),
     .data           ({(i == 0 ? data_fifo_lpm : 1'b0), data_fifo_data[i*8 + 7 : i*8]}       ),
     .wrclk          (sys_clk                                                                ),
     .wrreq          (data_fifo_write[i]                                                     ),
