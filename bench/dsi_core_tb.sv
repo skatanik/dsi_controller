@@ -737,7 +737,7 @@ endtask : print_packet
 
 initial
 begin
-lpm_enable = 1;
+lpm_enable = 0;
 avl_waitrequest = 0;
 avl_datavalid = 0;
 user_cmd_transmission_mode = 0;
