@@ -1,18 +1,21 @@
 module dsi_hs_lane #(
     parameter MODE = 0  // 0 - lane, 1 - clk
     )(
-    input wire          clk             , // serial data clock
-    input wire          rst_n               ,
+    input wire          clk                     , // serial data clock
+    input wire          rst_n                   ,
 
-    input wire          start_rqst          ,
-    input wire          fin_rqst            ,
-    input wire [7:0]    inp_data            ,
+    input wire          start_rqst              ,
+    input wire          fin_rqst                ,
+    input wire [7:0]    inp_data                ,
 
-    output wire        data_rqst           ,
-    output wire        active              ,
-    output wire        fin_ack             ,        // shows that in the next clock block will finish trail sequence
+    output wire        data_rqst                ,
+    output wire        active                   ,
+    output wire        fin_ack                  ,        // shows that in the next clock block will finish trail sequence
 
-    output wire [7:0]  hs_output            ,
+    input wire [7:0]   hs_go_timeout            ,
+    input wire [7:0]   hs_trail_timeout         ,
+
+    output wire [7:0]  hs_output                ,
     output             hs_enable
     );
 
@@ -75,7 +78,13 @@ always_ff @(posedge clk or negedge rst_n)
     else if(state_next == STATE_TX_GO)          active_r <= 1'b1;
     else if(state_next == STATE_IDLE)           active_r <= 1'b0;
 
-assign fin_ack      = tx_hs_trail_timeout;
+logic tx_hs_trail_timeout_delayed;
+
+always_ff @(posedge clk or negedge rst_n)
+    if(~rst_n)          tx_hs_trail_timeout_delayed <= 1'b0;
+    else                tx_hs_trail_timeout_delayed <= tx_hs_trail_timeout;
+
+assign fin_ack      = tx_hs_trail_timeout_delayed;
 
 logic data_rqst_r;
 
@@ -123,23 +132,21 @@ assign hs_output        = serdes_data;
 assign hs_enable        = serdes_enable;
 
 // Timeouts
-localparam [7:0] TX_HS_GO_TIMEOUT_VAL = 2; // 145 ns + 10*UI THS-zero
-localparam [7:0] TX_HS_TRAIL_TIMEOUT_VAL = 2; // 145 ns + 10*UI
 
 logic [7:0] tx_hs_go_counter;
 logic [7:0] tx_hs_trail_counter;
 
 always_ff @(posedge clk or negedge rst_n)
-    if(~rst_n)                                                          tx_hs_go_counter <= 0;
-    else if((state_current == STATE_TX_GO) && (|tx_hs_go_counter))      tx_hs_go_counter <= tx_hs_go_counter - 1;
-    else if(state_next == STATE_TX_GO)                                  tx_hs_go_counter <= TX_HS_GO_TIMEOUT_VAL - 1;
+    if(~rst_n)                          tx_hs_go_counter <= 8'd0;
+    else if((|tx_hs_go_counter))        tx_hs_go_counter <= tx_hs_go_counter - 8'd1;
+    else if(state_next == STATE_TX_GO)  tx_hs_go_counter <= hs_go_timeout - 8'd1;
 
 assign tx_hs_go_timeout = (state_current == STATE_TX_GO) && !(|tx_hs_go_counter);
 
 always_ff @(posedge clk or negedge rst_n)
-    if(~rst_n)                                                              tx_hs_trail_counter <= 0;
-    else if((state_current == STATE_TX_TRAIL) && (|tx_hs_trail_counter))    tx_hs_trail_counter <= tx_hs_trail_counter - 1;
-    else if(state_next == STATE_TX_TRAIL)                                   tx_hs_trail_counter <= TX_HS_TRAIL_TIMEOUT_VAL - 1;
+    if(~rst_n)                              tx_hs_trail_counter <= 8'd0;
+    else if((|tx_hs_trail_counter))         tx_hs_trail_counter <= tx_hs_trail_counter - 8'd1;
+    else if(state_next == STATE_TX_TRAIL)   tx_hs_trail_counter <= hs_trail_timeout - 8'd1;
 
 assign tx_hs_trail_timeout = (state_current == STATE_TX_TRAIL) && !(|tx_hs_trail_counter);
 

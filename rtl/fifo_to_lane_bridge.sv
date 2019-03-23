@@ -21,39 +21,44 @@ module fifo_to_lane_bridge (
 
 );
 
-logic           state_active;
-logic [32:0]    out_buffer;
-logic           read_fifo;
-logic           read_fifo_second;
-logic           fifo_not_empty;
+logic [7:0] middle_buffer;
+logic       fifo_empty_delayed;
+logic       state_active;
+logic       mode_lp_reg;
+logic [7:0] fifo_data_inv;
 
-assign read_fifo        = !state_active ? fifo_not_empty : fifo_not_empty & (data_rqst | read_fifo_second);
-assign fifo_read        = read_fifo;
-
-always_ff @(posedge clk or negedge rst_n)
-    if(!rst_n)                                      state_active <= 1'b0;
-    else if(!state_active & fifo_not_empty)         state_active <= 1'b1;
-    else if(state_active & !fifo_not_empty)         state_active <= 1'b0;
-
-always_ff @(posedge clk or negedge rst_n)
-    if(!rst_n)      read_fifo_second <= 1'b0;
-    else            read_fifo_second <= !state_active & fifo_not_empty;
-
-assign fin_rqst     = state_active & !fifo_not_empty;
-assign start_rqst   = read_fifo_second;
-assign inp_data     = out_buffer;
+genvar i;
+generate
+    for (i = 0; i < 8; i = i + 1) begin: lines_inversion
+        assign fifo_data_inv[i] = fifo_data[7-i];
+    end
+endgenerate
 
 always_ff @(posedge clk or negedge rst_n)
-    if(!rst_n)              out_buffer <= 7'b0;
-    else if(read_fifo)      out_buffer <= fifo_data;
+    if(!rst_n)      fifo_empty_delayed <= 1'b0;
+    else            fifo_empty_delayed <= fifo_empty;
 
-logic mode_lp_reg;
+assign start_rqst = (fifo_empty_delayed ^ fifo_empty) & !fifo_empty & !state_active & data_rqst;
 
 always_ff @(posedge clk or negedge rst_n)
-    if(!rst_n)              mode_lp_reg <= 7'b0;
-    else if(read_fifo)      mode_lp_reg <= mode_lp_in;
+    if(!rst_n)                  state_active <= 1'b0;
+    else if(start_rqst)         state_active <= 1'b1;
+    else if(fin_rqst)           state_active <= 1'b0;
 
-assign mode_lp = mode_lp_reg;
+always_ff @(posedge clk or negedge rst_n)
+    if(!rst_n)                  mode_lp_reg <= 1'b0;
+    else if(start_rqst)         mode_lp_reg <= mode_lp_in;
+    else if(fin_rqst)           mode_lp_reg <= 1'b0;
+
+always_ff @(posedge clk or negedge rst_n)
+    if(!rst_n)                                          middle_buffer <= 1'b0;
+    else if(start_rqst)                                 middle_buffer <= fifo_data_inv;
+    else if(!fifo_empty && data_rqst && state_active)   middle_buffer <= fifo_data_inv;
+
+assign fin_rqst     = (fifo_empty_delayed ^ fifo_empty) & fifo_empty & state_active;
+assign mode_lp      = mode_lp_reg;
+assign fifo_read    = state_active & data_rqst & !fifo_empty | start_rqst;
+assign inp_data     = middle_buffer;
 
 /********* timeout counter *********/
 logic [15:0]    counter;

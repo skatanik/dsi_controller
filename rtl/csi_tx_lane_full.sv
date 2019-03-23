@@ -1,22 +1,29 @@
 module dsi_lane_full #(
     parameter MODE = 0  // 0 - lane, 1 - clk
     )(
-    input wire          clk                 , // serial data clock
-    input wire          rst_n               ,
+    input wire          clk                     , // serial data clock
+    input wire          rst_n                   ,
 
-    input wire          mode_lp             , // which mode to use to send data throught this lane. 0 - hs, 1 - lp
-    input wire          start_rqst          ,
-    input wire          fin_rqst            ,
-    input wire          lines_enable        ,
-    input wire [7:0]    inp_data            ,
+    input wire          mode_lp                 , // which mode to use to send data throught this lane. 0 - hs, 1 - lp
+    input wire          start_rqst              ,
+    input wire          fin_rqst                ,
+    input wire          lines_enable            ,
+    input wire [7:0]    inp_data                ,
 
-    output wire         data_rqst           ,
-    output wire         active              ,
+    output wire         data_rqst               ,
+    output wire         active                  ,
+    output wire         lane_ready              ,
 
-    output wire [7:0]   hs_output           ,
-    output wire         hs_enable           ,
-    output wire         LP_p_output         ,
-    output wire         LP_n_output         ,
+    input wire [7:0]    tlpx_timeout_val        ,
+    input wire [7:0]    hs_prepare_timeout_val  ,
+    input wire [7:0]    hs_exit_timeout_val     ,
+    input wire [7:0]    hs_go_timeout_val       ,
+    input wire [7:0]    hs_trail_timeout_val    ,
+
+    output wire [7:0]   hs_output               ,
+    output wire         hs_enable               ,
+    output wire         LP_p_output             ,
+    output wire         LP_n_output             ,
     output wire         lp_lines_enable
 );
 
@@ -30,6 +37,7 @@ logic send_esc_mode_entry_done;
 logic send_entry_cmd_done;
 logic send_mark_one_done;
 logic inc_lp_data_bits_counter;
+logic [7:0] hs_rqst_counter;
 
 /***********************************
         FSM declaration
@@ -46,7 +54,8 @@ enum logic [3:0]
     STATE_LP_SEND_ESC_MODE_ENTRY,
     STATE_LP_SEND_ENTRY_CMD,        // entry command is fixed to Low-Power Data Transmission
     STATE_LP_SEND_LP_CMD,
-    STATE_LP_SEND_MARK_ONE
+    STATE_LP_SEND_MARK_ONE,
+    STATE_ULPS_01
 } state_current, state_next;
 
 always_ff @(posedge clk or negedge rst_n) begin
@@ -61,7 +70,7 @@ always_comb begin
     case (state_current)
 
         STATE_LINES_DISABLED:
-            state_next = lines_enable ? STATE_IDLE : STATE_LINES_DISABLED;
+            state_next = lines_enable ? STATE_ULPS_01 : STATE_LINES_DISABLED;
 
         STATE_IDLE:
             state_next = lines_enable ? (start_rqst ? (mode_lp ? STATE_LP_SEND_ESC_MODE_ENTRY : STATE_HS_RQST) : STATE_IDLE) : STATE_LINES_DISABLED;
@@ -90,10 +99,15 @@ always_comb begin
         STATE_LP_SEND_MARK_ONE:
             state_next = send_mark_one_done ? STATE_IDLE : STATE_LP_SEND_MARK_ONE;
 
+        STATE_ULPS_01:
+            state_next = (hs_rqst_counter == 0) ? STATE_IDLE : STATE_ULPS_01;
+
         default :
             state_next = STATE_LINES_DISABLED;
     endcase
 end
+
+assign lane_ready = (state_current != STATE_LINES_DISABLED) && (state_current != STATE_ULPS_01);
 
 assign active = (state_current == STATE_HS_ACTIVE) | (state_current == STATE_LP_SEND_LP_CMD);
 
@@ -170,15 +184,18 @@ assign set_second_half_bit  = (lp_baud_counter == {1'b0, LP_BAUD_TIME[7:1]});
 logic current_lp_data_bit;
 logic [7:0] shifted_lp_data;
 logic set_lp_line_to_one;
+logic set_lp_line_to_zero;
 
 assign shifted_lp_data          = lp_data_buffer >> (lp_data_bits_counter);
 assign current_lp_data_bit      = shifted_lp_data[0];
-assign set_lp_line_to_one       = state_next == STATE_IDLE || state_next == STATE_HS_EXIT || state_next == STATE_LINES_DISABLED;
+assign set_lp_line_to_one       = state_next == STATE_IDLE || state_next == STATE_HS_EXIT;
+assign set_lp_line_to_zero      = state_next == STATE_LINES_DISABLED;
 
 
 // LP lines control
 always_ff @(posedge clk or negedge rst_n) begin
-    if(~rst_n)                                                              LP_p <= 1;
+    if(~rst_n)                                                              LP_p <= 0;
+    else if(set_lp_line_to_zero)                                            LP_p <= 0;
     else if(set_lp_line_to_one)                                             LP_p <= 1;
     else if(state_next == STATE_HS_RQST)                                    LP_p <= 0;
     else if(set_first_half_bit && current_lp_data_bit)                      LP_p <= 1;
@@ -187,8 +204,10 @@ always_ff @(posedge clk or negedge rst_n) begin
 end
 
 always_ff @(posedge clk or negedge rst_n) begin
-    if(~rst_n)                                                              LP_n <= 1;
+    if(~rst_n)                                                              LP_n <= 0;
+    else if(set_lp_line_to_zero)                                            LP_n <= 0;
     else if(set_lp_line_to_one)                                             LP_n <= 1;
+    else if(state_next == STATE_ULPS_01)                                    LP_n <= 1;
     else if(state_next == STATE_HS_PREP)                                    LP_n <= 0;
     else if(set_first_half_bit && !current_lp_data_bit)                     LP_n <= 1;
     else if(set_second_half_bit && !current_lp_data_bit)                    LP_n <= 0;
@@ -201,32 +220,27 @@ assign LP_n_output      = LP_n;
 
 /******* Timeouts *******/
 
-localparam [7:0] T_LPX          = 3;  // 50 ns
-localparam [7:0] T_HS_PREPARE   = 3;   // 40 ns + 4*UI  :  85 ns + 6*UI
-localparam [7:0] T_HS_EXIT      = 3;  // 100 ns
-
-logic [7:0] hs_rqst_counter;
 logic [7:0] hs_prep_counter;
 logic [7:0] hs_exit_counter;
 
 always_ff @(posedge clk or negedge rst_n)
-    if(~rst_n)                              hs_rqst_counter <= 0;
-    else if(state_current == STATE_HS_RQST) hs_rqst_counter <= hs_rqst_counter - 1;
-    else if(state_next == STATE_HS_RQST)    hs_rqst_counter <= T_LPX - 1;
+    if(~rst_n)                                                                      hs_rqst_counter <= 8'd0;
+    else if((state_current == STATE_HS_RQST) | (state_current == STATE_ULPS_01))    hs_rqst_counter <= hs_rqst_counter - 8'd1;
+    else                                                                            hs_rqst_counter <= tlpx_timeout_val - 8'd1;
 
 assign hs_rqst_timeout = (state_current == STATE_HS_RQST) && !(|hs_rqst_counter);
 
 always_ff @(posedge clk or negedge rst_n)
-    if(~rst_n)                              hs_prep_counter <= 0;
-    else if(state_current == STATE_HS_PREP) hs_prep_counter <= hs_prep_counter - 1;
-    else if(state_next == STATE_HS_PREP)    hs_prep_counter <= T_HS_PREPARE - 1;
+    if(~rst_n)                              hs_prep_counter <= 8'd0;
+    else if(state_current == STATE_HS_PREP) hs_prep_counter <= hs_prep_counter - 8'd1;
+    else if(state_next == STATE_HS_PREP)    hs_prep_counter <= hs_prepare_timeout_val - 8'd1;
 
 assign hs_prep_timeout = (state_current == STATE_HS_PREP) && !(|hs_prep_counter);
 
 always_ff @(posedge clk or negedge rst_n)
-    if(~rst_n)                              hs_exit_counter <= 0;
-    else if(state_current == STATE_HS_EXIT) hs_exit_counter <= hs_exit_counter - 1;
-    else if(state_next == STATE_HS_EXIT)    hs_exit_counter <= T_HS_EXIT - 1;
+    if(~rst_n)                              hs_exit_counter <= 8'd0;
+    else if(state_current == STATE_HS_EXIT) hs_exit_counter <= hs_exit_counter - 8'd1;
+    else if(state_next == STATE_HS_EXIT)    hs_exit_counter <= hs_exit_timeout_val - 8'd1;
 
 assign hs_exit_timeout = (state_current == STATE_HS_EXIT) && !(|hs_exit_counter);
 
@@ -255,6 +269,9 @@ dsi_hs_lane  #(
     .data_rqst              (hs_data_rqst               ),
     .active                 (hs_lane_active             ),
     .fin_ack                (hs_fin_ack                 ),
+
+    .hs_go_timeout          (hs_go_timeout_val          ),
+    .hs_trail_timeout       (hs_trail_timeout_val       ),
 
     .hs_output              (hs_output                  ),
     .hs_enable              (hs_enable                  )
