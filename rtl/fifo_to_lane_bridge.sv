@@ -47,7 +47,7 @@ always_ff @(posedge clk or negedge rst_n)
 
 always_ff @(posedge clk or negedge rst_n)
     if(!rst_n)                  mode_lp_reg <= 1'b0;
-    else if(start_rqst)         mode_lp_reg <= mode_lp_in;
+    else if(fifo_read)          mode_lp_reg <= mode_lp_in;
     else if(fin_rqst)           mode_lp_reg <= 1'b0;
 
 always_ff @(posedge clk or negedge rst_n)
@@ -56,7 +56,7 @@ always_ff @(posedge clk or negedge rst_n)
     else if(!fifo_empty && data_rqst && state_active)   middle_buffer <= fifo_data_inv;
 
 assign fin_rqst     = (fifo_empty_delayed ^ fifo_empty) & fifo_empty & state_active;
-assign mode_lp      = mode_lp_reg;
+assign mode_lp      = mode_lp_in;
 assign fifo_read    = state_active & data_rqst & !fifo_empty | start_rqst;
 assign inp_data     = middle_buffer;
 

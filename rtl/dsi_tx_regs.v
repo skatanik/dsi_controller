@@ -29,7 +29,7 @@ module dsi_tx_regs (
     output  wire                                clk_out_enable                  ,
     output  wire                                send_cmd                        ,
     output  wire [2:0]                          lanes_number                    ,
-    output  wire [22:0]                         cmd_packet                      ,
+    output  wire [23:0]                         cmd_packet                      ,
 
     output  wire [7:0]                          tlpx_timeout                    ,
     output  wire [7:0]                          hs_prepare_timeout              ,

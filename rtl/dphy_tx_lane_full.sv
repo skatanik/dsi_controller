@@ -129,6 +129,7 @@ logic       last_lp_byte;
 logic       send_lp_data;
 logic       reset_baud_counter;
 logic       fin_rqst_reg;
+logic       lp_fin_rqst_reg;
 
 assign next_state_lpdt          = (state_next == STATE_LP_SEND_ESC_MODE_ENTRY) && (state_current == STATE_IDLE);
 assign next_state_entry_cmd     = (state_next == STATE_LP_SEND_ENTRY_CMD) && (state_current == STATE_LP_SEND_ESC_MODE_ENTRY);
@@ -142,10 +143,11 @@ always_ff @(posedge clk or negedge rst_n)
     else if(next_state_entry_cmd)                   lp_data_buffer <= ENTRY_CMD;
     else if(send_lp_data)                           lp_data_buffer <= inp_data;
     else if(next_state_mark_one)                    lp_data_buffer <= 8'hff;
+    else if(state_next == STATE_IDLE)               lp_data_buffer <= 8'b0;
 
 always_ff @(posedge clk or negedge rst_n)
     if(~rst_n)                          last_lp_byte <= 1'b0;
-    else if(send_lp_data)               last_lp_byte <= fin_rqst_reg;
+    else if(send_lp_data)               last_lp_byte <= lp_fin_rqst_reg;
     else if(state_next == STATE_IDLE)   last_lp_byte <= 1'b0;
 
 assign lp_data_is_sent = lp_data_rqst & last_lp_byte;
@@ -165,7 +167,17 @@ always_ff @(posedge clk or negedge rst_n)
     else if(send_lp_data)                                           lp_data_bits_counter <= 4'd7;
     else if(inc_lp_data_bits_counter && (|lp_data_bits_counter))    lp_data_bits_counter <= lp_data_bits_counter - 4'd1;
 
-assign lp_data_rqst                 = (state_current == STATE_LP_SEND_LP_CMD) && bits_counter_is_zero || (state_current == STATE_IDLE) || next_state_send_cmd;
+logic lp_data_rqst_delayed;
+
+always_ff @(posedge clk or negedge rst_n)
+    if(!rst_n)  lp_data_rqst_delayed <= 1'b0;
+    else        lp_data_rqst_delayed <= lp_data_rqst;
+
+always_ff @(posedge clk or negedge rst_n)
+    if(!rst_n)                          lp_fin_rqst_reg <= 1'b0;
+    else if(lp_data_rqst_delayed)       lp_fin_rqst_reg <= fin_rqst;
+
+assign lp_data_rqst                 = (state_current == STATE_LP_SEND_LP_CMD) && bits_counter_is_zero  || (state_current == STATE_IDLE) || next_state_send_cmd;
 assign send_esc_mode_entry_done     = (state_current == STATE_LP_SEND_ESC_MODE_ENTRY) && bits_counter_is_zero;
 assign send_entry_cmd_done          = (state_current == STATE_LP_SEND_ENTRY_CMD) && bits_counter_is_zero;
 assign send_mark_one_done           = (state_current == STATE_LP_SEND_MARK_ONE) && set_second_half_bit;

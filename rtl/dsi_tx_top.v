@@ -4,13 +4,12 @@
 module dsi_tx_top #(
     parameter LINE_WIDTH            = 640,
     parameter BITS_PER_PIXEL        = 8,
-    parameter IMAGE_HEIGHT          = 480,
     parameter BLANK_TIME            = 100,
     parameter BLANK_TIME_HBP_ACT    = 100,
     parameter VSA_LINES_NUMBER      = 100,
-    parameter HBP_LINES_NUMBER      = 100,
-    parameter ACT_LINES_NUMBER      = 100,
-    parameter HFP_LINES_NUMBER      = 100
+    parameter VBP_LINES_NUMBER      = 100,
+    parameter IMAGE_HEIGHT          = 100,
+    parameter VFP_LINES_NUMBER      = 100
     ) (
     /********* System signals *********/
     input wire                      clk_sys                             ,
@@ -68,6 +67,8 @@ wire        lanes_enable;
 wire        clk_out_enable;
 wire        lanes_active_sync;
 wire        lanes_active;
+wire        send_cmd;
+wire        send_cmd_sync;
 wire [2:0]  lanes_number;
 wire [23:0] cmd_packet;
 wire        packet_assembler_enable_sync;
@@ -121,6 +122,7 @@ dsi_tx_regs dsi_tx_regs_0(
     .lanes_enable                       (lanes_enable                   ),
     .clk_out_enable                     (clk_out_enable                 ),
     .lanes_number                       (lanes_number                   ),
+    .send_cmd                           (send_cmd                       ),
     .cmd_packet                         (cmd_packet                     ),
     .lanes_active                       (lanes_active_sync              ),
 
@@ -151,6 +153,12 @@ sync_2ff sync_clk_enable(
     .clk_out               (clk_phy             ),    // Clock
     .data_in               (clk_out_enable      ),
     .data_out              (clk_out_enable_sync )
+);
+
+sync_2ff sync_send_cmd(
+    .clk_out               (clk_phy             ),    // Clock
+    .data_in               (send_cmd            ),
+    .data_out              (send_cmd_sync       )
 );
 
 sync_2ff #(.WIDTH(3)) sync_lanes_number(
@@ -259,9 +267,9 @@ dsi_tx_packets_assembler #(
     .BLANK_TIME         (BLANK_TIME         ),
     .BLANK_TIME_HBP_ACT (BLANK_TIME_HBP_ACT ),
     .VSA_LINES_NUMBER   (VSA_LINES_NUMBER   ),
-    .HBP_LINES_NUMBER   (HBP_LINES_NUMBER   ),
+    .VBP_LINES_NUMBER   (VBP_LINES_NUMBER   ),
     .ACT_LINES_NUMBER   (IMAGE_HEIGHT       ),
-    .HFP_LINES_NUMBER   (HFP_LINES_NUMBER   )
+    .VFP_LINES_NUMBER   (VFP_LINES_NUMBER   )
 
     ) dsi_tx_packets_assembler_0 (
     /********* System interface *********/
@@ -281,37 +289,56 @@ dsi_tx_packets_assembler #(
 
     /********* Control signals *********/
     .enable                     (packet_assembler_enable_sync       ),
+    .send_cmd                   (send_cmd_sync                      ),
     .lanes_number               (lanes_number_sync                  ),
     .cmd_packet                 (cmd_packet_sync                    ),
     .pix_buffer_underflow_set   (pix_buffer_underflow_set           )
 );
 
-wire [32:0]             lanes_fifo_data_0;
+wire [8:0]              lanes_fifo_data_0;
+wire [23:0]             lanes_fifo_data_1;
 wire [35:0]             lanes_fifo_data;
 wire [3:0]              lanes_fifo_empty;
 wire [3:0]              lanes_fifo_read;
 
+altera_generic_fifo #(
+    .WIDTH      (9),
+    .DEPTH      (32),
+    .DC_FIFO    (0),
+    .SHOWAHEAD  (1)
+    ) fifo_9x32(
+    .aclr           (!rst_phy_n                                                     ),
+    .data           ({phy_data[32], phy_data[7:0]}  ),
+    .rdclk          (clk_phy                                                        ),
+    .rdreq          (lanes_fifo_read[0]                                             ),
+    .wrreq          (phy_write[0]                                                   ),
+    .q              (lanes_fifo_data_0 ),
+    .empty          (lanes_fifo_empty[0]                                            ),
+    .full           (phy_full[0]                                                    )
+);
+assign lanes_fifo_data[8:0] = lanes_fifo_data_0;
+
 genvar i;
 
 generate
-    for (i = 0; i < 4; i = i + 1) begin: lanes_fifo
+    for (i = 1; i < 4; i = i + 1) begin: lanes_fifo
     altera_generic_fifo #(
-        .WIDTH      (i== 0 ? 9 : 8),
+        .WIDTH      (8),
         .DEPTH      (32),
         .DC_FIFO    (0),
         .SHOWAHEAD  (1)
         ) fifo_8x32_inst(
         .aclr           (!rst_phy_n                                                     ),
-        .data           (i == 0 ? {phy_data[32], phy_data[i*8+:8]} : phy_data[i*8+:8]   ),
+        .data           (phy_data[i*8+:8]   ),
         .rdclk          (clk_phy                                                        ),
         .rdreq          (lanes_fifo_read[i]                                             ),
         .wrreq          (phy_write[i]                                                   ),
-        .q              (i==0?lanes_fifo_data_0[i*8+:9] : lanes_fifo_data_0[(i*8+1)+:8] ),
+        .q              (lanes_fifo_data_1[(i-1)*8+:8] ),
         .empty          (lanes_fifo_empty[i]                                            ),
         .full           (phy_full[i]                                                    )
     );
 
-    assign lanes_fifo_data[i*9+:9] = i==0 ? lanes_fifo_data_0[i*8+:9] : {1'b0, lanes_fifo_data_0[(i*8 + 1)+:8]};
+    assign lanes_fifo_data[i*9+:9] = {1'b0, lanes_fifo_data_1[(i-1)*8+:8]};
 
     end
 endgenerate
