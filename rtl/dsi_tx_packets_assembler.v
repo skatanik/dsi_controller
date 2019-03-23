@@ -30,8 +30,7 @@ module csi_tx_packets_assembler #(
 
     /********* Control signals *********/
     input   wire                    enable                              ,
-    input   wire [2:0]              lanes_number                        ,
-    output  wire                    pix_buffer_underflow_set
+    input   wire [2:0]              lanes_number
 );
 
 localparam BYTES_IN_LINE = LINE_WIDTH * BITS_PER_PIXEL / 8;
@@ -46,26 +45,42 @@ wire wait_h_timeout;
 wire sending_fe_done;
 wire wait_v_timeout;
 
-localparam [2:0]        STATE_IDLE              = 3'd0;
-localparam [2:0]        STATE_SEND_FS           = 3'd1;
-localparam [2:0]        STATE_SEND_DATA_HEADER  = 3'd2;
-localparam [2:0]        STATE_SEND_DATA         = 3'd3;
-localparam [2:0]        STATE_SEND_DATA_CRC     = 3'd4;
-localparam [2:0]        STATE_WAIT_H_BLANK      = 3'd5;
-localparam [2:0]        STATE_SEND_FE           = 3'd6;
-localparam [2:0]        STATE_WAIT_V_BLANK      = 3'd7;
+localparam [4:0]        STATE_IDLE                  = 5'd0;
+localparam [4:0]        STATE_SEND_LP_CMD           = 5'd1;
+localparam [4:0]        STATE_SEND_VSS_VSA          = 5'd2;
+localparam [4:0]        STATE_WAIT_H_BLANK_VSS_VSA  = 5'd3;
+localparam [4:0]        STATE_SEND_HSS_VSA          = 5'd4;
+localparam [4:0]        STATE_WAIT_H_BLANK_VSA      = 5'd5;
+localparam [4:0]        STATE_SEND_HSS_HBP          = 5'd6;
+localparam [4:0]        STATE_WAIT_H_BLANK_HBP      = 5'd7;
+localparam [4:0]        STATE_SEND_HSS_ACT          = 5'd8;
+localparam [4:0]        STATE_WAIT_H_BLANK_ACT_HBP  = 5'd9;
+localparam [4:0]        STATE_SEND_DATA_HEADER      = 5'd10;
+localparam [4:0]        STATE_SEND_DATA             = 5'd11;
+localparam [4:0]        STATE_SEND_DATA_CRC         = 5'd12;
+localparam [4:0]        STATE_WAIT_H_BLANK_ACT_HFP  = 5'd13;
+localparam [4:0]        STATE_SEND_HSS_HFP          = 5'd14;
+localparam [4:0]        STATE_WAIT_H_BLANK_HFP      = 5'd15;
 
-reg [2:0] state_current;
-reg [2:0] state_next;
+reg [4:0] state_current;
+reg [4:0] state_next;
 
-wire state_is_idle             = state_current == STATE_IDLE;
-wire state_is_send_fs          = state_current == STATE_SEND_FS;
-wire state_is_send_data_header = state_current == STATE_SEND_DATA_HEADER;
-wire state_is_send_data        = state_current == STATE_SEND_DATA;
-wire state_is_send_data_crc    = state_current == STATE_SEND_DATA_CRC;
-wire state_is_wait_h_blank     = state_current == STATE_WAIT_H_BLANK;
-wire state_is_send_fe          = state_current == STATE_SEND_FE;
-wire state_is_wait_v_blank     = state_current == STATE_WAIT_V_BLANK;
+wire state_is_idle                  = (state_current == STATE_IDLE);
+wire state_send_lp_cmd              = (state_current == STATE_SEND_LP_CMD);
+wire state_send_vss_vsa             = (state_current == STATE_SEND_VSS_VSA);
+wire state_wait_h_blank_vss_vsa     = (state_current == STATE_WAIT_H_BLANK_VSS_VSA);
+wire state_send_hss_vsa             = (state_current == STATE_SEND_HSS_VSA);
+wire state_wait_h_blank_vsa         = (state_current == STATE_WAIT_H_BLANK_VSA);
+wire state_send_hss_hbp             = (state_current == STATE_SEND_HSS_HBP);
+wire state_wait_h_blank_hbp         = (state_current == STATE_WAIT_H_BLANK_HBP);
+wire state_send_hss_act             = (state_current == STATE_SEND_HSS_ACT);
+wire state_wait_h_blank_act_hbp     = (state_current == STATE_WAIT_H_BLANK_ACT_HBP);
+wire state_send_data_header         = (state_current == STATE_SEND_DATA_HEADER);
+wire state_send_data                = (state_current == STATE_SEND_DATA);
+wire state_send_data_crc            = (state_current == STATE_SEND_DATA_CRC);
+wire state_wait_h_blank_act_hfp     = (state_current == STATE_WAIT_H_BLANK_ACT_HFP);
+wire state_send_hss_hfp             = (state_current == STATE_SEND_HSS_HFP);
+wire state_wait_h_blank_hfp         = (state_current == STATE_WAIT_H_BLANK_HFP);
 
 always @(posedge clk or negedge rst_n)
     if(!rst_n)  state_current <= STATE_IDLE;
@@ -75,28 +90,54 @@ always @(*)
     begin
         case (state_current)
             STATE_IDLE:
-                state_next = fifo_line_ready & enable ? STATE_SEND_FS : STATE_IDLE;
+                state_next = fifo_line_ready & enable ? STATE_SEND_FS : (send_lp_cmd ? STATE_SEND_LP_CMD : STATE_IDLE);
 
-            STATE_SEND_FS:
-                state_next = enable ? (sending_fs_done ? STATE_SEND_DATA_HEADER : STATE_SEND_FS) : STATE_IDLE;
+            STATE_SEND_LP_CMD:
+                state_next =
+
+            STATE_SEND_VSS_VSA:
+                state_next =
+
+            STATE_WAIT_H_BLANK_VSS_VSA:
+                state_next =
+
+            STATE_SEND_HSS_VSA:
+                state_next =
+
+            STATE_WAIT_H_BLANK_VSA:
+                state_next =
+
+            STATE_SEND_HSS_HBP:
+                state_next =
+
+            STATE_WAIT_H_BLANK_HBP:
+                state_next =
+
+            STATE_SEND_HSS_ACT:
+                state_next =
+
+            STATE_WAIT_H_BLANK_ACT_HBP:
+                state_next =
 
             STATE_SEND_DATA_HEADER:
-                state_next = fifo_line_ready & sending_header_done ? STATE_SEND_DATA : STATE_SEND_DATA_HEADER;
+                state_next =
 
             STATE_SEND_DATA:
-                state_next = sending_data_done ? STATE_SEND_DATA_CRC : STATE_SEND_DATA;
+                state_next =
 
             STATE_SEND_DATA_CRC:
-                state_next = sending_crc_done ? (last_line ? STATE_SEND_FE : STATE_WAIT_H_BLANK) : STATE_SEND_DATA_CRC;
+                state_next =
 
-            STATE_WAIT_H_BLANK:
-                state_next = wait_h_timeout ? STATE_SEND_DATA_HEADER : STATE_WAIT_H_BLANK;
+            STATE_WAIT_H_BLANK_ACT_HFP:
+                state_next =
 
-            STATE_SEND_FE:
-                state_next = sending_fe_done ? STATE_WAIT_V_BLANK : STATE_SEND_FE;
+            STATE_SEND_HSS_HFP:
+                state_next =
 
-            STATE_WAIT_V_BLANK:
-                state_next = wait_v_timeout ? STATE_SEND_FS : STATE_WAIT_V_BLANK;
+            STATE_WAIT_H_BLANK_HFP:
+                state_next =
+
+
 
             default:
                 state_next = STATE_IDLE;
@@ -104,15 +145,6 @@ always @(*)
         endcase
     end
 
-reg pix_buffer_underflow_set_reg;
-wire pix_buffer_underflow_set_w;
-
-assign pix_buffer_underflow_set_w   = state_is_send_data_header & !fifo_line_ready;
-assign pix_buffer_underflow_set     = (pix_buffer_underflow_set_w ^ pix_buffer_underflow_set_reg) & pix_buffer_underflow_set_w;
-
-always @(posedge clk or negedge rst_n)
-    if(!rst_n)      pix_buffer_underflow_set_reg <= 1'b0;
-    else            pix_buffer_underflow_set_reg <= pix_buffer_underflow_set_w;
 
 /********* Timeouts *********/
 reg [9:0] h_counter;
