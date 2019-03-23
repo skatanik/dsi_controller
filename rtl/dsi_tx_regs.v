@@ -1,7 +1,7 @@
-`ifndef CSI_TX_REGS
-`define CSI_TX_REGS
+`ifndef DSI_TX_REGS
+`define DSI_TX_REGS
 
-module csi_tx_regs (
+module dsi_tx_regs (
 
     /********* Sys iface *********/
     input   wire                                clk                             ,   // Clock
@@ -27,7 +27,9 @@ module csi_tx_regs (
     output  wire                                packet_assembler_enable         ,
     output  wire                                lanes_enable                    ,
     output  wire                                clk_out_enable                  ,
+    output  wire                                send_cmd                        ,
     output  wire [2:0]                          lanes_number                    ,
+    output  wire [22:0]                         cmd_packet                      ,
 
     output  wire [7:0]                          tlpx_timeout                    ,
     output  wire [7:0]                          hs_prepare_timeout              ,
@@ -37,13 +39,15 @@ module csi_tx_regs (
 
     input   wire                                pix_buffer_underflow_set        ,
     input   wire                                lanes_ready_set                 ,
+    input   wire                                lanes_active                    ,
     input   wire                                clk_ready_set
 
 );
 
-localparam REGISTERS_NUMBER     = 5;
+localparam REGISTERS_NUMBER     = 6;
 localparam ADDR_WIDTH           = 5;
 localparam MEMORY_MAP           = {
+                                    5'h14,
                                     5'h10,
                                     5'h0C,
                                     5'h08,
@@ -95,44 +99,49 @@ avalon_mm_manager  #(
 );
 
 /********* Registers *********/
-wire [31:0]  csi_reg_cr;
-wire [31:0]  csi_reg_isr;
-wire [31:0]  csi_reg_ier;
-wire [31:0]  csi_reg_tr1;
-wire [31:0]  csi_reg_tr2;
+wire [31:0]  dsi_reg_cr;
+wire [31:0]  dsi_reg_isr;
+wire [31:0]  dsi_reg_ier;
+wire [31:0]  dsi_reg_tr1;
+wire [31:0]  dsi_reg_tr2;
+wire [31:0]  dsi_reg_cmd;
 
 /********* write signals *********/
-wire csi_reg_cr_w;
-wire csi_reg_isr_w;
-wire csi_reg_ier_w;
-wire csi_reg_tr1_w;
-wire csi_reg_tr2_w;
+wire dsi_reg_cr_w;
+wire dsi_reg_isr_w;
+wire dsi_reg_ier_w;
+wire dsi_reg_tr1_w;
+wire dsi_reg_tr2_w;
+wire dsi_reg_cmd_w;
 
-assign csi_reg_cr_w             = sys_write_req[0];
-assign csi_reg_isr_w            = sys_write_req[1];
-assign csi_reg_ier_w            = sys_write_req[2];
-assign csi_reg_tr1_w            = sys_write_req[3];
-assign csi_reg_tr2_w            = sys_write_req[4];
+assign dsi_reg_cr_w             = sys_write_req[0];
+assign dsi_reg_isr_w            = sys_write_req[1];
+assign dsi_reg_ier_w            = sys_write_req[2];
+assign dsi_reg_tr1_w            = sys_write_req[3];
+assign dsi_reg_tr2_w            = sys_write_req[4];
+assign dsi_reg_cmd_w            = sys_write_req[5];
 
 /********* Read signals *********/
-wire csi_reg_cr_r;
-wire csi_reg_isr_r;
-wire csi_reg_ier_r;
-wire csi_reg_tr1_r;
-wire csi_reg_tr2_r;
+wire dsi_reg_cr_r;
+wire dsi_reg_isr_r;
+wire dsi_reg_ier_r;
+wire dsi_reg_tr1_r;
+wire dsi_reg_tr2_r;
+wire dsi_reg_cmd_r;
 
-assign csi_reg_cr_r        = sys_read_req[0];
-assign csi_reg_isr_r       = sys_read_req[1];
-assign csi_reg_ier_r       = sys_read_req[2];
-assign csi_reg_tr1_r       = sys_read_req[3];
-assign csi_reg_tr2_r       = sys_read_req[4];
+assign dsi_reg_cr_r        = sys_read_req[0];
+assign dsi_reg_isr_r       = sys_read_req[1];
+assign dsi_reg_ier_r       = sys_read_req[2];
+assign dsi_reg_tr1_r       = sys_read_req[3];
+assign dsi_reg_tr2_r       = sys_read_req[4];
+assign dsi_reg_cmd_r       = sys_read_req[5];
 
 /********* IRQ *********/
 reg irq_reg;
 
 always @(posedge clk or negedge rst_n)
     if(!rst_n)      irq_reg <= 1'b0;
-    else            irq_reg <= |(csi_reg_isr & csi_reg_ier);
+    else            irq_reg <= |(dsi_reg_isr & dsi_reg_ier);
 
 assign irq = irq_reg;
 
@@ -153,11 +162,12 @@ always @(posedge clk or negedge rst_n)
 assign sys_read_data    = reg_read_reg;
 assign sys_read_ready   = read_ack;
 assign sys_read_resp    = 2'b0;
-assign reg_read         =   ({32{csi_reg_cr_r}}         & csi_reg_cr)           |
-                            ({32{csi_reg_isr_r}}        & csi_reg_isr)          |
-                            ({32{csi_reg_ier_r}}        & csi_reg_ier)          |
-                            ({32{csi_reg_tr1_r}}        & csi_reg_tr1)          |
-                            ({32{csi_reg_tr2_r}}        & csi_reg_tr2);
+assign reg_read         =   ({32{dsi_reg_cr_r}}         & dsi_reg_cr)           |
+                            ({32{dsi_reg_isr_r}}        & dsi_reg_isr)          |
+                            ({32{dsi_reg_ier_r}}        & dsi_reg_ier)          |
+                            ({32{dsi_reg_tr1_r}}        & dsi_reg_tr1)          |
+                            ({32{dsi_reg_cmd_r}}        & dsi_reg_cmd)          |
+                            ({32{dsi_reg_tr2_r}}        & dsi_reg_tr2);
 
 /********* Write regs *********/
 reg write_ack;
@@ -170,44 +180,58 @@ assign sys_write_ready = write_ack;
 
 /********* Regs fields *********/
 // CR
-reg         csi_reg_cr_assembler_enable;
-reg         csi_reg_cr_lanes_enable;
-reg         csi_reg_cr_clk_enable;
-reg [1:0]   csi_reg_cr_lanes_number;
+reg         dsi_reg_cr_assembler_enable;
+reg         dsi_reg_cr_lanes_enable;
+reg         dsi_reg_cr_clk_enable;
+reg         dsi_reg_cr_send_cmd;
+reg [1:0]   dsi_reg_cr_lanes_number;
 
 // ISR
-reg         csi_reg_isr_pix_buff_underflow;
-reg         csi_reg_isr_lanes_ready;
-reg         csi_reg_isr_clk_ready;
+reg         dsi_reg_isr_pix_buff_underflow;
+reg         dsi_reg_isr_lanes_ready;
+reg         dsi_reg_isr_clk_ready;
+reg         dsi_reg_isr_lanes_became_active;
+reg         dsi_reg_isr_lanes_became_unactive;
 
 // IER
-reg         csi_reg_ier_pix_buff_underflow;
-reg         csi_reg_ier_lanes_ready;
-reg         csi_reg_ier_clk_ready;
+reg         dsi_reg_ier_pix_buff_underflow;
+reg         dsi_reg_ier_lanes_ready;
+reg         dsi_reg_ier_clk_ready;
+reg         dsi_reg_ier_lanes_became_active;
+reg         dsi_reg_ier_lanes_became_unactive;
 
 
 //TR1
-reg [7:0]   csi_reg_tr1_tlpx_timeout;
-reg [7:0]   csi_reg_tr1_hs_prepare_timeout;
-reg [7:0]   csi_reg_tr1_hs_exit_timeout;
+reg [7:0]   dsi_reg_tr1_tlpx_timeout;
+reg [7:0]   dsi_reg_tr1_hs_prepare_timeout;
+reg [7:0]   dsi_reg_tr1_hs_exit_timeout;
 
 // TR2
-reg [7:0]   csi_reg_tr1_hs_go_timeout;
-reg [7:0]   csi_reg_tr1_hs_trail_timeout;
+reg [7:0]   dsi_reg_tr1_hs_go_timeout;
+reg [7:0]   dsi_reg_tr1_hs_trail_timeout;
+
+reg [23:0]  dsi_reg_cmd_field;
 
 /********* Assigns *********/
 
-assign lanes_number                 = csi_reg_cr_lanes_number + 3'd1;
-assign packet_assembler_enable      = csi_reg_cr_assembler_enable;
-assign lanes_enable                 = csi_reg_cr_lanes_enable;
-assign clk_out_enable               = csi_reg_cr_clk_enable;
+assign lanes_number                 = dsi_reg_cr_lanes_number + 3'd1;
+assign packet_assembler_enable      = dsi_reg_cr_assembler_enable;
+assign send_cmd                     = dsi_reg_cr_send_cmd;
+assign lanes_enable                 = dsi_reg_cr_lanes_enable;
+assign clk_out_enable               = dsi_reg_cr_clk_enable;
+assign cmd_packet                   = dsi_reg_cmd_field;
 
-assign tlpx_timeout         = csi_reg_tr1_tlpx_timeout;
-assign hs_prepare_timeout   = csi_reg_tr1_hs_prepare_timeout;
-assign hs_exit_timeout      = csi_reg_tr1_hs_exit_timeout;
-assign hs_go_timeout        = csi_reg_tr1_hs_go_timeout;
-assign hs_trail_timeout     = csi_reg_tr1_hs_trail_timeout;
+assign tlpx_timeout         = dsi_reg_tr1_tlpx_timeout;
+assign hs_prepare_timeout   = dsi_reg_tr1_hs_prepare_timeout;
+assign hs_exit_timeout      = dsi_reg_tr1_hs_exit_timeout;
+assign hs_go_timeout        = dsi_reg_tr1_hs_go_timeout;
+assign hs_trail_timeout     = dsi_reg_tr1_hs_trail_timeout;
 
+
+wire lanes_became_active_set;
+wire lanes_became_unactive_set;
+
+reg lanes_active_reg;
 
 /********* Registers block *********/
 
@@ -219,34 +243,41 @@ Field                   offset    width     access
 -----------------------------------------------------------
 assembler_enable        0         1         RW
 lanes_enable            1         1         RW
-clk_enable              3         1         RW
+clk_enable              2         1         RW
+send_cmd                3         1         RW
 lanes_number            8         2         RW
 ********************************************************************/
 
-assign csi_reg_cr = {
+assign dsi_reg_cr = {
                     20'd0,
-                    csi_reg_cr_lanes_number,
+                    dsi_reg_cr_lanes_number,
                     5'b0,
-                    csi_reg_cr_clk_enable,
-                    csi_reg_cr_lanes_enable,
-                    csi_reg_cr_assembler_enable
+                    dsi_reg_cr_send_cmd,
+                    dsi_reg_cr_clk_enable,
+                    dsi_reg_cr_lanes_enable,
+                    dsi_reg_cr_assembler_enable
                     };
 
 always @(posedge clk or negedge rst_n)
-    if(!rst_n)                  csi_reg_cr_assembler_enable <= 1'b0;
-    else if(csi_reg_cr_w)       csi_reg_cr_assembler_enable <= sys_write_data[0];
+    if(!rst_n)                  dsi_reg_cr_send_cmd <= 1'b0;
+    else if(dsi_reg_cr_w)       dsi_reg_cr_send_cmd <= sys_write_data[3];
+    else if(lanes_active)       dsi_reg_cr_send_cmd <= 1'b0;
 
 always @(posedge clk or negedge rst_n)
-    if(!rst_n)                  csi_reg_cr_lanes_enable <= 1'b0;
-    else if(csi_reg_cr_w)       csi_reg_cr_lanes_enable <= sys_write_data[1];
+    if(!rst_n)                  dsi_reg_cr_assembler_enable <= 1'b0;
+    else if(dsi_reg_cr_w)       dsi_reg_cr_assembler_enable <= sys_write_data[0];
 
 always @(posedge clk or negedge rst_n)
-    if(!rst_n)                  csi_reg_cr_clk_enable <= 1'b0;
-    else if(csi_reg_cr_w)       csi_reg_cr_clk_enable <= sys_write_data[2];
+    if(!rst_n)                  dsi_reg_cr_lanes_enable <= 1'b0;
+    else if(dsi_reg_cr_w)       dsi_reg_cr_lanes_enable <= sys_write_data[1];
 
 always @(posedge clk or negedge rst_n)
-    if(!rst_n)                  csi_reg_cr_lanes_number <= 2'd3;
-    else if(csi_reg_cr_w)       csi_reg_cr_lanes_number <= sys_write_data[9:8];
+    if(!rst_n)                  dsi_reg_cr_clk_enable <= 1'b0;
+    else if(dsi_reg_cr_w)       dsi_reg_cr_clk_enable <= sys_write_data[2];
+
+always @(posedge clk or negedge rst_n)
+    if(!rst_n)                  dsi_reg_cr_lanes_number <= 2'd3;
+    else if(dsi_reg_cr_w)       dsi_reg_cr_lanes_number <= sys_write_data[9:8];
 
 /********************************************************************
 reg:        ISR
@@ -254,32 +285,53 @@ offset:     0x04
 
 Field                   offset    width     access
 -----------------------------------------------------------
-pix_buff_underflow         0         1         RW1C
-lanes_ready                1         1         RW1C
-clk_ready                  2         1         RW1C
+pix_buff_underflow          0         1         RW1C
+lanes_ready                 1         1         RW1C
+clk_ready                   2         1         RW1C
+lanes_became_active         3         1         RW1C
+lanes_became_unactive       4         1         RW1C
 ********************************************************************/
 
-assign csi_reg_isr = {
-                    29'd0,
-                    csi_reg_isr_clk_ready,
-                    csi_reg_isr_lanes_ready,
-                    csi_reg_isr_pix_buff_underflow
+assign dsi_reg_isr = {
+                    27'd0,
+                    dsi_reg_isr_lanes_became_active,
+                    dsi_reg_isr_lanes_became_unactive,
+                    dsi_reg_isr_clk_ready,
+                    dsi_reg_isr_lanes_ready,
+                    dsi_reg_isr_pix_buff_underflow
                     };
 
 always @(posedge clk or negedge rst_n)
-    if(!rst_n)                                  csi_reg_isr_pix_buff_underflow <= 1'b0;
-    else if(csi_reg_isr_w & sys_write_data[0])   csi_reg_isr_pix_buff_underflow <= 1'b0;
-    else if(pix_buffer_underflow_set)           csi_reg_isr_pix_buff_underflow <= 1'b1;
+    if(!rst_n)                                      dsi_reg_isr_pix_buff_underflow <= 1'b0;
+    else if(dsi_reg_isr_w & sys_write_data[0])      dsi_reg_isr_pix_buff_underflow <= 1'b0;
+    else if(pix_buffer_underflow_set)               dsi_reg_isr_pix_buff_underflow <= 1'b1;
 
 always @(posedge clk or negedge rst_n)
-    if(!rst_n)                                  csi_reg_isr_lanes_ready <= 1'b0;
-    else if(csi_reg_isr_w & sys_write_data[1])   csi_reg_isr_lanes_ready <= 1'b0;
-    else if(lanes_ready_set)                    csi_reg_isr_lanes_ready <= 1'b1;
+    if(!rst_n)                                      dsi_reg_isr_lanes_ready <= 1'b0;
+    else if(dsi_reg_isr_w & sys_write_data[1])      dsi_reg_isr_lanes_ready <= 1'b0;
+    else if(lanes_ready_set)                        dsi_reg_isr_lanes_ready <= 1'b1;
 
 always @(posedge clk or negedge rst_n)
-    if(!rst_n)                                  csi_reg_isr_clk_ready <= 1'b0;
-    else if(csi_reg_isr_w & sys_write_data[2])   csi_reg_isr_clk_ready <= 1'b0;
-    else if(clk_ready_set)                      csi_reg_isr_clk_ready <= 1'b1;
+    if(!rst_n)                                      dsi_reg_isr_clk_ready <= 1'b0;
+    else if(dsi_reg_isr_w & sys_write_data[2])      dsi_reg_isr_clk_ready <= 1'b0;
+    else if(clk_ready_set)                          dsi_reg_isr_clk_ready <= 1'b1;
+
+always @(posedge clk or negedge rst_n)
+    if(!rst_n)                                      dsi_reg_isr_lanes_became_active <= 1'b0;
+    else if(dsi_reg_isr_w & sys_write_data[3])      dsi_reg_isr_lanes_became_active <= 1'b0;
+    else if(lanes_became_active_set)                dsi_reg_isr_lanes_became_active <= 1'b1;
+
+always @(posedge clk or negedge rst_n)
+    if(!rst_n)                                      dsi_reg_isr_lanes_became_unactive <= 1'b0;
+    else if(dsi_reg_isr_w & sys_write_data[4])      dsi_reg_isr_lanes_became_unactive <= 1'b0;
+    else if(lanes_became_unactive_set)              dsi_reg_isr_lanes_became_unactive <= 1'b1;
+
+always @(posedge clk or negedge rst_n)
+    if(!rst_n)      lanes_active_reg <= 1'b0;
+    else            lanes_active_reg <= lanes_active;
+
+assign lanes_became_active_set      = (lanes_active_reg ^ lanes_active) & lanes_active;
+assign lanes_became_unactive_set    = (lanes_active_reg ^ lanes_active) & !lanes_active;
 
 /********************************************************************
 reg:        IER
@@ -291,24 +343,34 @@ pix_buff_underflow_ier   0         1         RW1C
 
 ********************************************************************/
 
-assign csi_reg_ier = {
-                    29'd0,
-                    csi_reg_ier_clk_ready,
-                    csi_reg_ier_lanes_ready,
-                    csi_reg_ier_pix_buff_underflow
+assign dsi_reg_ier = {
+                    27'd0,
+                    dsi_reg_ier_lanes_became_active,
+                    dsi_reg_ier_lanes_became_unactive,
+                    dsi_reg_ier_clk_ready,
+                    dsi_reg_ier_lanes_ready,
+                    dsi_reg_ier_pix_buff_underflow
                     };
 
 always @(posedge clk or negedge rst_n)
-    if(!rst_n)              csi_reg_ier_pix_buff_underflow <= 1'b0;
-    else if(csi_reg_ier_w)   csi_reg_ier_pix_buff_underflow <= sys_write_data[0];
+    if(!rst_n)                  dsi_reg_ier_pix_buff_underflow <= 1'b0;
+    else if(dsi_reg_ier_w)      dsi_reg_ier_pix_buff_underflow <= sys_write_data[0];
 
 always @(posedge clk or negedge rst_n)
-    if(!rst_n)              csi_reg_ier_lanes_ready <= 1'b0;
-    else if(csi_reg_ier_w)   csi_reg_ier_lanes_ready <= sys_write_data[1];
+    if(!rst_n)                  dsi_reg_ier_lanes_ready <= 1'b0;
+    else if(dsi_reg_ier_w)      dsi_reg_ier_lanes_ready <= sys_write_data[1];
 
 always @(posedge clk or negedge rst_n)
-    if(!rst_n)              csi_reg_ier_clk_ready <= 1'b0;
-    else if(csi_reg_ier_w)   csi_reg_ier_clk_ready <= sys_write_data[2];
+    if(!rst_n)                  dsi_reg_ier_clk_ready <= 1'b0;
+    else if(dsi_reg_ier_w)      dsi_reg_ier_clk_ready <= sys_write_data[2];
+
+always @(posedge clk or negedge rst_n)
+    if(!rst_n)                  dsi_reg_ier_lanes_became_unactive <= 1'b0;
+    else if(dsi_reg_ier_w)      dsi_reg_ier_lanes_became_unactive <= sys_write_data[3];
+
+always @(posedge clk or negedge rst_n)
+    if(!rst_n)                  dsi_reg_ier_lanes_became_active <= 1'b0;
+    else if(dsi_reg_ier_w)      dsi_reg_ier_lanes_became_active <= sys_write_data[4];
 
 /********************************************************************
 reg:        TR1
@@ -322,24 +384,24 @@ hs_exit_timeout           0         8         RW
 
 ********************************************************************/
 
-assign csi_reg_tr1 = {
+assign dsi_reg_tr1 = {
                     8'd0,
-                    csi_reg_tr1_tlpx_timeout,
-                    csi_reg_tr1_hs_prepare_timeout,
-                    csi_reg_tr1_hs_exit_timeout
+                    dsi_reg_tr1_tlpx_timeout,
+                    dsi_reg_tr1_hs_prepare_timeout,
+                    dsi_reg_tr1_hs_exit_timeout
                     };
 
 always @(posedge clk or negedge rst_n)
-    if(!rst_n)              csi_reg_tr1_tlpx_timeout <= 8'd8;
-    else if(csi_reg_tr1_w)  csi_reg_tr1_tlpx_timeout <= sys_write_data[23:16];
+    if(!rst_n)              dsi_reg_tr1_tlpx_timeout <= 8'd8;
+    else if(dsi_reg_tr1_w)  dsi_reg_tr1_tlpx_timeout <= sys_write_data[23:16];
 
 always @(posedge clk or negedge rst_n)
-    if(!rst_n)              csi_reg_tr1_hs_prepare_timeout <= 8'd15;
-    else if(csi_reg_tr1_w)  csi_reg_tr1_hs_prepare_timeout <= sys_write_data[15:8];
+    if(!rst_n)              dsi_reg_tr1_hs_prepare_timeout <= 8'd15;
+    else if(dsi_reg_tr1_w)  dsi_reg_tr1_hs_prepare_timeout <= sys_write_data[15:8];
 
 always @(posedge clk or negedge rst_n)
-    if(!rst_n)              csi_reg_tr1_hs_exit_timeout <= 8'd3;
-    else if(csi_reg_tr1_w)  csi_reg_tr1_hs_exit_timeout <= sys_write_data[7:0];
+    if(!rst_n)              dsi_reg_tr1_hs_exit_timeout <= 8'd3;
+    else if(dsi_reg_tr1_w)  dsi_reg_tr1_hs_exit_timeout <= sys_write_data[7:0];
 
 /********************************************************************
 reg:        TR2
@@ -352,19 +414,39 @@ hs_trail_timeout          0         8         RW
 
 ********************************************************************/
 
-assign csi_reg_tr2 = {
+assign dsi_reg_tr2 = {
                     16'd0,
-                    csi_reg_tr1_hs_go_timeout,
-                    csi_reg_tr1_hs_trail_timeout
+                    dsi_reg_tr1_hs_go_timeout,
+                    dsi_reg_tr1_hs_trail_timeout
                     };
 
 always @(posedge clk or negedge rst_n)
-    if(!rst_n)              csi_reg_tr1_hs_go_timeout <= 8'd30;
-    else if(csi_reg_tr2_w)  csi_reg_tr1_hs_go_timeout <= sys_write_data[15:8];
+    if(!rst_n)              dsi_reg_tr1_hs_go_timeout <= 8'd30;
+    else if(dsi_reg_tr2_w)  dsi_reg_tr1_hs_go_timeout <= sys_write_data[15:8];
 
 always @(posedge clk or negedge rst_n)
-    if(!rst_n)              csi_reg_tr1_hs_trail_timeout <= 8'd2;
-    else if(csi_reg_tr2_w)  csi_reg_tr1_hs_trail_timeout <= sys_write_data[7:0];
+    if(!rst_n)              dsi_reg_tr1_hs_trail_timeout <= 8'd2;
+    else if(dsi_reg_tr2_w)  dsi_reg_tr1_hs_trail_timeout <= sys_write_data[7:0];
+
+/********************************************************************
+reg:        TR2
+offset:     0x14
+
+Field                   offset    width     access
+-----------------------------------------------------------
+cmd_field             8         8         RW
+hs_trail_timeout          0         8         RW
+
+********************************************************************/
+
+assign dsi_reg_cmd = {
+                    8'd0,
+                    dsi_reg_cmd_field
+                    };
+
+always @(posedge clk or negedge rst_n)
+    if(!rst_n)              dsi_reg_cmd_field <= 24'd0;
+    else if(dsi_reg_cmd_w)  dsi_reg_cmd_field <= sys_write_data[23:0];
 
 endmodule
 

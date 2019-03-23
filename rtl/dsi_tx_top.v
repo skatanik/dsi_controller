@@ -1,16 +1,16 @@
-`ifndef CSI_TX_TOP
-`define CSI_TX_TOP
+`ifndef DSI_TX_TOP
+`define DSI_TX_TOP
 
-`include "packet_types.vh"
-
-module csi_tx_top #(
-    parameter LINE_WIDTH        = 640,
-    parameter BITS_PER_PIXEL    = 10,
-    parameter IMAGE_HEIGHT      = 480,
-    parameter BLANK_HORIZONTAL  = 80,
-    parameter BLANK_VERTICAL    = 80,
-    parameter [5:0] DATA_TYPE   = `LP_RAW10_CODE
-
+module dsi_tx_top #(
+    parameter LINE_WIDTH            = 640,
+    parameter BITS_PER_PIXEL        = 8,
+    parameter IMAGE_HEIGHT          = 480,
+    parameter BLANK_TIME            = 100,
+    parameter BLANK_TIME_HBP_ACT    = 100,
+    parameter VSA_LINES_NUMBER      = 100,
+    parameter HBP_LINES_NUMBER      = 100,
+    parameter ACT_LINES_NUMBER      = 100,
+    parameter HFP_LINES_NUMBER      = 100
     ) (
     /********* System signals *********/
     input wire                      clk_sys                             ,
@@ -50,7 +50,7 @@ module csi_tx_top #(
     `endif
 
     /********* Avalon-MM iface *********/
-    input   wire [4:0]              avl_mm_addr                         ,
+    input   wire [4:0]              avl_mm_address                      ,
 
     input   wire                    avl_mm_read                         ,
     output  wire [31:0]             avl_mm_readdata                     ,
@@ -66,11 +66,15 @@ module csi_tx_top #(
 wire        packet_assembler_enable;
 wire        lanes_enable;
 wire        clk_out_enable;
+wire        lanes_active_sync;
+wire        lanes_active;
 wire [2:0]  lanes_number;
+wire [23:0] cmd_packet;
 wire        packet_assembler_enable_sync;
 wire        lanes_enable_sync;
 wire        clk_out_enable_sync;
 wire [2:0]  lanes_number_sync;
+wire [23:0] cmd_packet_sync;
 wire        lanes_ready_set_sync;
 wire        clk_ready_set_sync;
 wire        pix_buffer_underflow_set;
@@ -90,7 +94,7 @@ wire [7:0]  hs_exit_timeout_sync;
 wire [7:0]  hs_go_timeout_sync;
 wire [7:0]  hs_trail_timeout_sync;
 
-csi_tx_regs csi_tx_regs_0(
+dsi_tx_regs dsi_tx_regs_0(
 
     /********* Sys iface *********/
     .clk                                (clk_sys                        ),   // Clock
@@ -99,7 +103,7 @@ csi_tx_regs csi_tx_regs_0(
     .irq                                (irq                            ),
 
     /********* Avalon-MM iface *********/
-    .avl_mm_addr                        (avl_mm_addr                    ),
+    .avl_mm_addr                        (avl_mm_address                 ),
 
     .avl_mm_read                        (avl_mm_read                    ),
     .avl_mm_readdata                    (avl_mm_readdata                ),
@@ -117,6 +121,8 @@ csi_tx_regs csi_tx_regs_0(
     .lanes_enable                       (lanes_enable                   ),
     .clk_out_enable                     (clk_out_enable                 ),
     .lanes_number                       (lanes_number                   ),
+    .cmd_packet                         (cmd_packet                     ),
+    .lanes_active                       (lanes_active_sync              ),
 
     .tlpx_timeout                       (tlpx_timeout                   ),
     .hs_prepare_timeout                 (hs_prepare_timeout             ),
@@ -153,6 +159,12 @@ sync_2ff #(.WIDTH(3)) sync_lanes_number(
     .data_out              (lanes_number_sync   )
 );
 
+sync_2ff #(.WIDTH(24)) sync_cmd_packet(
+    .clk_out               (clk_phy             ),    // Clock
+    .data_in               (cmd_packet          ),
+    .data_out              (cmd_packet_sync     )
+);
+
 sync_2ff sync_clk_ready(
     .clk_out               (clk_sys             ),    // Clock
     .data_in               (clk_ready_set       ),
@@ -163,6 +175,12 @@ sync_2ff sync_lanes_ready(
     .clk_out               (clk_sys                 ),    // Clock
     .data_in               (lanes_ready_set         ),
     .data_out              (lanes_ready_set_sync    )
+);
+
+sync_2ff sync_lanes_active(
+    .clk_out               (clk_sys                 ),    // Clock
+    .data_in               (lanes_active            ),
+    .data_out              (lanes_active_sync       )
 );
 
 sync_2ff sync_pix_underflow(
@@ -206,10 +224,10 @@ wire                    fifo_not_empty;
 wire                    fifo_line_ready;
 wire                    fifo_read_ack;
 
-csi_tx_pixel_buffer #(
+dsi_tx_pixel_buffer #(
     .NOT_EMPTY_TRESHOLD (LINE_WIDTH*BITS_PER_PIXEL/8),
     .FIFO_DEPTH         (1024)
-    ) csi_tx_pixel_buffer_0 (
+    ) dsi_tx_pixel_buffer_0 (
     /********* System interface *********/
     .clk                        (clk_sys                    ),    // Clock
     .rst_n                      (rst_sys_n                  ),  // Asynchronous reset active low
@@ -231,19 +249,21 @@ csi_tx_pixel_buffer #(
     .fifo_read_ack              (fifo_read_ack              )
 );
 
-wire [31:0]             phy_data;
+wire [32:0]             phy_data;
 wire [3:0]              phy_write;
 wire [3:0]              phy_full;
 
-csi_tx_packets_assembler #(
-    .LINE_WIDTH        (LINE_WIDTH          ),
-    .BITS_PER_PIXEL    (BITS_PER_PIXEL      ),
-    .IMAGE_HEIGHT      (IMAGE_HEIGHT        ),
-    .BLANK_HORIZONTAL  (BLANK_HORIZONTAL    ),
-    .BLANK_VERTICAL    (BLANK_VERTICAL      ),
-    .DATA_TYPE         (DATA_TYPE           )
+dsi_tx_packets_assembler #(
+    .LINE_WIDTH         (LINE_WIDTH         ),
+    .BITS_PER_PIXEL     (BITS_PER_PIXEL     ),
+    .BLANK_TIME         (BLANK_TIME         ),
+    .BLANK_TIME_HBP_ACT (BLANK_TIME_HBP_ACT ),
+    .VSA_LINES_NUMBER   (VSA_LINES_NUMBER   ),
+    .HBP_LINES_NUMBER   (HBP_LINES_NUMBER   ),
+    .ACT_LINES_NUMBER   (IMAGE_HEIGHT       ),
+    .HFP_LINES_NUMBER   (HFP_LINES_NUMBER   )
 
-    ) csi_tx_packets_assembler_0 (
+    ) dsi_tx_packets_assembler_0 (
     /********* System interface *********/
     .clk                        (clk_phy                            ),  // Clock. The same as in PHY
     .rst_n                      (rst_phy_n                          ),  // Asynchronous reset active low
@@ -262,10 +282,11 @@ csi_tx_packets_assembler #(
     /********* Control signals *********/
     .enable                     (packet_assembler_enable_sync       ),
     .lanes_number               (lanes_number_sync                  ),
+    .cmd_packet                 (cmd_packet_sync                    ),
     .pix_buffer_underflow_set   (pix_buffer_underflow_set           )
 );
 
-wire [31:0]             lanes_fifo_data_0;
+wire [32:0]             lanes_fifo_data_0;
 wire [35:0]             lanes_fifo_data;
 wire [3:0]              lanes_fifo_empty;
 wire [3:0]              lanes_fifo_read;
@@ -275,22 +296,22 @@ genvar i;
 generate
     for (i = 0; i < 4; i = i + 1) begin: lanes_fifo
     altera_generic_fifo #(
-        .WIDTH      (8),
+        .WIDTH      (i== 0 ? 9 : 8),
         .DEPTH      (32),
         .DC_FIFO    (0),
         .SHOWAHEAD  (1)
         ) fifo_8x32_inst(
-        .aclr           (!rst_phy_n                 ),
-        .data           (phy_data[i*8+:8]           ),
-        .rdclk          (clk_phy                    ),
-        .rdreq          (lanes_fifo_read[i]         ),
-        .wrreq          (phy_write[i]               ),
-        .q              (lanes_fifo_data_0[i*8+:8]  ),
-        .empty          (lanes_fifo_empty[i]        ),
-        .full           (phy_full[i]                )
+        .aclr           (!rst_phy_n                                                     ),
+        .data           (i == 0 ? {phy_data[32], phy_data[i*8+:8]} : phy_data[i*8+:8]   ),
+        .rdclk          (clk_phy                                                        ),
+        .rdreq          (lanes_fifo_read[i]                                             ),
+        .wrreq          (phy_write[i]                                                   ),
+        .q              (i==0?lanes_fifo_data_0[i*8+:9] : lanes_fifo_data_0[(i*8+1)+:8] ),
+        .empty          (lanes_fifo_empty[i]                                            ),
+        .full           (phy_full[i]                                                    )
     );
 
-    assign lanes_fifo_data[i*9+:9] = {1'b0, lanes_fifo_data_0[i*8+:8]};
+    assign lanes_fifo_data[i*9+:9] = i==0 ? lanes_fifo_data_0[i*8+:9] : {1'b0, lanes_fifo_data_0[(i*8 + 1)+:8]};
 
     end
 endgenerate
@@ -326,7 +347,7 @@ dsi_lanes_controller dsi_lanes_controller_0
     /********* Output signals *********/
     .lines_ready                (lanes_ready_set            ),
     .clock_ready                (clk_ready_set              ),
-    .lines_active               (),
+    .lines_active               (lanes_active               ),
 
     .tlpx_timeout               (tlpx_timeout_sync          ),
     .hs_prepare_timeout         (hs_prepare_timeout_sync    ),

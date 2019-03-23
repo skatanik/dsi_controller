@@ -1,7 +1,7 @@
-`ifndef CSI_TX_PIXEL_BUFFER
-`define CSI_TX_PIXEL_BUFFER
+`ifndef DSI_TX_PIXEL_BUFFER
+`define DSI_TX_PIXEL_BUFFER
 
-module csi_tx_pixel_buffer #(
+module dsi_tx_pixel_buffer #(
     parameter NOT_EMPTY_TRESHOLD = 640, // bytes
     parameter FIFO_DEPTH         = 1024
 
