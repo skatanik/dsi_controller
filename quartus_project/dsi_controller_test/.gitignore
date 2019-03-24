@@ -3,5 +3,5 @@ incremental_db/
 software/dsi_soft_test/obj/
 software/dsi_soft_test_bsp/
 top_level_system/testbench/cadence
-top_level_system/testbench/top_level_system_tb/simulation/
+top_level_system/testbench/top_level_system_tb/simulation/submodules
 top_level_system/synthesis/

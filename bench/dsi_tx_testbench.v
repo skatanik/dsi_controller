@@ -17,7 +17,7 @@ localparam STITCH_PACKETS = 0;
 localparam LANES_NUMBER = 4;
 localparam LINE_SIZE_REAL = 640;
 localparam LINE_SIZE = LINE_SIZE_REAL;
-localparam ROWS_NUM = 480;
+localparam ROWS_NUM = 48;
 localparam DATA_SIZE = LINE_SIZE*ROWS_NUM;
 localparam [7:0] SYNC_PATTERN   = 8'b00011101;
 localparam LANE_MAX_DELAY   = 30;
@@ -385,7 +385,7 @@ avalon_st_loader_sem.put();
 
 endtask
 
- avalon_st_video_2_avalon_st avalon_st_video_2_avalon_st_0(
+ avalon_st_video_2_avalon_st avl_st_video_2_avl_st_top (
     .clk                                (clk                            ),
     .rst_n                              (rst_n                          ),
 
@@ -417,50 +417,50 @@ dsi_tx_top #(
     .VFP_LINES_NUMBER   (4                  )
     ) dsi_tx_top_0(
     /********* System signals *********/
-    .clk_sys                                (clk                        ),
-    .rst_sys_n                              (rst_n                      ),
+    .clk_sys                                (clk                            ),
+    .rst_sys_n                              (rst_n                          ),
 
-    .clk_phy                                (clk_phy                    ),
-    .rst_phy_n                              (rst_phy_n                  ),
+    .clk_phy                                (clk_phy                        ),
+    .rst_phy_n                              (rst_phy_n                      ),
 
-    .clk_hs_latch                           (clk_hs_latch               ),
-    .clk_hs                                 (clk_hs                     ),
-    .clk_hs_clk                             (clk_hs_clk                 ),
+    .clk_hs_latch                           (clk_hs_latch                   ),
+    .clk_hs                                 (clk_hs                         ),
+    .clk_hs_clk                             (clk_hs_clk                     ),
 
-    .irq                                    (irq_tx                     ),
+    .irq                                    (irq_tx                         ),
 
     /********* Avalon-ST input *********/
-    .avl_st_in_data                         (tx_avl_st_out_data            ),
-    .avl_st_in_valid                        (tx_avl_st_out_valid           ),
-    .avl_st_in_endofpacket                  (tx_avl_st_out_endofpacket     ),
-    .avl_st_in_startofpacket                (tx_avl_st_out_startofpacket   ),
-    .avl_st_in_ready                        (tx_avl_st_out_ready           ),
+    .in_avl_st_data                         (tx_avl_st_out_data             ),
+    .in_avl_st_valid                        (tx_avl_st_out_valid            ),
+    .in_avl_st_endofpacket                  (tx_avl_st_out_endofpacket      ),
+    .in_avl_st_startofpacket                (tx_avl_st_out_startofpacket    ),
+    .in_avl_st_ready                        (tx_avl_st_out_ready            ),
 
     /********* Output interface *********/
     .dphy_data_hs_out_p                     (),
     .dphy_data_hs_out_n                     (),
-    .dphy_data_lp_out_p                     (dphy_lane_data_lp_p    ),
-    .dphy_data_lp_out_n                     (dphy_lane_data_lp_n    ),
+    .dphy_data_lp_out_p                     (dphy_lane_data_lp_p            ),
+    .dphy_data_lp_out_n                     (dphy_lane_data_lp_n            ),
 
     .dphy_clk_hs_out_p                      (),
     .dphy_clk_hs_out_n                      (),
-    .dphy_clk_lp_out_p                      (dphy_lane_clk_lp_p     ),
-    .dphy_clk_lp_out_n                      (dphy_lane_clk_lp_n     ),
+    .dphy_clk_lp_out_p                      (dphy_lane_clk_lp_p             ),
+    .dphy_clk_lp_out_n                      (dphy_lane_clk_lp_n             ),
 
-    .dphy_clk_hs_out                        (dphy_lane_clk_hs       ),
-    .dphy_data_hs_out                       (dphy_lane_data_hs      ),
+    .dphy_clk_hs_out                        (dphy_lane_clk_hs               ),
+    .dphy_data_hs_out                       (dphy_lane_data_hs              ),
 
     /********* Avalon-MM iface *********/
-    .avl_mm_address                         (avl_mm_addr[0]),
+    .avl_mm_address                         (avl_mm_addr[0]                 ),
 
-    .avl_mm_read                            (avl_mm_read[0]),
-    .avl_mm_readdata                        (avl_mm_readdata[0]),
-    .avl_mm_response                        (avl_mm_response[0]),
+    .avl_mm_read                            (avl_mm_read[0]                 ),
+    .avl_mm_readdata                        (avl_mm_readdata[0]             ),
+    .avl_mm_response                        (avl_mm_response[0]             ),
 
-    .avl_mm_write                           (avl_mm_write[0]),
-    .avl_mm_writedata                       (avl_mm_writedata[0]),
-    .avl_mm_byteenable                      (avl_mm_byteenable[0]),
-    .avl_mm_waitrequest                     (avl_mm_waitrequest[0])
+    .avl_mm_write                           (avl_mm_write[0]                ),
+    .avl_mm_writedata                       (avl_mm_writedata[0]            ),
+    .avl_mm_byteenable                      (avl_mm_byteenable[0]           ),
+    .avl_mm_waitrequest                     (avl_mm_waitrequest[0]          )
 
 );
 

@@ -1,0 +1,164 @@
+Info: Starting: Create block symbol file (.bsf)
+Info: qsys-generate D:\git\dsi_controller\quartus_project\dsi_controller_test\top_level_system.qsys --block-symbol-file --output-directory=D:\git\dsi_controller\quartus_project\dsi_controller_test\top_level_system --family="MAX 10" --part=10M50DAF484C6GES
+Progress: Loading dsi_controller_test/top_level_system.qsys
+Progress: Reading input file
+Progress: Adding alt_vip_cl_tpg_0 [alt_vip_cl_tpg 18.0]
+Progress: Parameterizing module alt_vip_cl_tpg_0
+Progress: Adding altpll_0 [altpll 18.0]
+Progress: Parameterizing module altpll_0
+Progress: Adding avl_st_vid_2_st_0 [avl_st_vid_2_st 1.0]
+Progress: Parameterizing module avl_st_vid_2_st_0
+Progress: Adding clk_0 [clock_source 18.0]
+Progress: Parameterizing module clk_0
+Progress: Adding dsi_tx_controller_0 [dsi_tx_controller 1.0]
+Progress: Parameterizing module dsi_tx_controller_0
+Progress: Adding jtag_uart_0 [altera_avalon_jtag_uart 18.0]
+Progress: Parameterizing module jtag_uart_0
+Progress: Adding nios2_gen2_0 [altera_nios2_gen2 18.0]
+Progress: Parameterizing module nios2_gen2_0
+Progress: Adding onchip_memory2_0 [altera_avalon_onchip_memory2 18.0]
+Progress: Parameterizing module onchip_memory2_0
+Progress: Adding sysid_qsys_0 [altera_avalon_sysid_qsys 18.0]
+Progress: Parameterizing module sysid_qsys_0
+Progress: Building connections
+Progress: Parameterizing connections
+Progress: Validating
+Progress: Done reading input file
+Info: top_level_system.jtag_uart_0: JTAG UART IP input clock need to be at least double (2x) the operating frequency of JTAG TCK on board
+Info: top_level_system.sysid_qsys_0: System ID is not assigned automatically. Edit the System ID parameter to provide a unique ID
+Info: top_level_system.sysid_qsys_0: Time stamp will be automatically updated when this component is generated.
+Info: top_level_system.alt_vip_cl_tpg_0.dout/avl_st_vid_2_st_0.in_avl_st: Ready latency is 1 for source and 0 for sink. Avalon-ST Adapter will be inserted..
+Info: qsys-generate succeeded.
+Info: Finished: Create block symbol file (.bsf)
+Info: 
+Info: Starting: Create HDL design files for synthesis
+Info: qsys-generate D:\git\dsi_controller\quartus_project\dsi_controller_test\top_level_system.qsys --synthesis=VERILOG --output-directory=D:\git\dsi_controller\quartus_project\dsi_controller_test\top_level_system\synthesis --family="MAX 10" --part=10M50DAF484C6GES
+Progress: Loading dsi_controller_test/top_level_system.qsys
+Progress: Reading input file
+Progress: Adding alt_vip_cl_tpg_0 [alt_vip_cl_tpg 18.0]
+Progress: Parameterizing module alt_vip_cl_tpg_0
+Progress: Adding altpll_0 [altpll 18.0]
+Progress: Parameterizing module altpll_0
+Progress: Adding avl_st_vid_2_st_0 [avl_st_vid_2_st 1.0]
+Progress: Parameterizing module avl_st_vid_2_st_0
+Progress: Adding clk_0 [clock_source 18.0]
+Progress: Parameterizing module clk_0
+Progress: Adding dsi_tx_controller_0 [dsi_tx_controller 1.0]
+Progress: Parameterizing module dsi_tx_controller_0
+Progress: Adding jtag_uart_0 [altera_avalon_jtag_uart 18.0]
+Progress: Parameterizing module jtag_uart_0
+Progress: Adding nios2_gen2_0 [altera_nios2_gen2 18.0]
+Progress: Parameterizing module nios2_gen2_0
+Progress: Adding onchip_memory2_0 [altera_avalon_onchip_memory2 18.0]
+Progress: Parameterizing module onchip_memory2_0
+Progress: Adding sysid_qsys_0 [altera_avalon_sysid_qsys 18.0]
+Progress: Parameterizing module sysid_qsys_0
+Progress: Building connections
+Progress: Parameterizing connections
+Progress: Validating
+Progress: Done reading input file
+Info: top_level_system.jtag_uart_0: JTAG UART IP input clock need to be at least double (2x) the operating frequency of JTAG TCK on board
+Info: top_level_system.sysid_qsys_0: System ID is not assigned automatically. Edit the System ID parameter to provide a unique ID
+Info: top_level_system.sysid_qsys_0: Time stamp will be automatically updated when this component is generated.
+Info: top_level_system.alt_vip_cl_tpg_0.dout/avl_st_vid_2_st_0.in_avl_st: Ready latency is 1 for source and 0 for sink. Avalon-ST Adapter will be inserted..
+Info: top_level_system: Generating top_level_system "top_level_system" for QUARTUS_SYNTH
+Info: Inserting clock-crossing logic between cmd_demux.src5 and cmd_mux_005.sink0
+Info: Inserting clock-crossing logic between rsp_demux_005.src0 and rsp_mux.sink5
+Info: avalon_st_adapter: Inserting timing_adapter: timing_adapter_0
+Info: alt_vip_cl_tpg_0: "top_level_system" instantiated alt_vip_cl_tpg "alt_vip_cl_tpg_0"
+Info: altpll_0: "top_level_system" instantiated altpll "altpll_0"
+Info: avl_st_vid_2_st_0: "top_level_system" instantiated avl_st_vid_2_st "avl_st_vid_2_st_0"
+Info: dsi_tx_controller_0: "top_level_system" instantiated dsi_tx_controller "dsi_tx_controller_0"
+Info: jtag_uart_0: Starting RTL generation for module 'top_level_system_jtag_uart_0'
+Info: jtag_uart_0:   Generation command is [exec C:/intelfpga_lite/18.0/quartus/bin64/perl/bin/perl.exe -I C:/intelfpga_lite/18.0/quartus/bin64/perl/lib -I C:/intelfpga_lite/18.0/quartus/sopc_builder/bin/europa -I C:/intelfpga_lite/18.0/quartus/sopc_builder/bin/perl_lib -I C:/intelfpga_lite/18.0/quartus/sopc_builder/bin -I C:/intelfpga_lite/18.0/quartus/../ip/altera/sopc_builder_ip/common -I C:/intelfpga_lite/18.0/quartus/../ip/altera/sopc_builder_ip/altera_avalon_jtag_uart -- C:/intelfpga_lite/18.0/quartus/../ip/altera/sopc_builder_ip/altera_avalon_jtag_uart/generate_rtl.pl --name=top_level_system_jtag_uart_0 --dir=C:/Users/Hedgehog/AppData/Local/Temp/alt7979_8745798795175367853.dir/0541_jtag_uart_0_gen/ --quartus_dir=C:/intelfpga_lite/18.0/quartus --verilog --config=C:/Users/Hedgehog/AppData/Local/Temp/alt7979_8745798795175367853.dir/0541_jtag_uart_0_gen//top_level_system_jtag_uart_0_component_configuration.pl  --do_build_sim=0  ]
+Info: jtag_uart_0: Done RTL generation for module 'top_level_system_jtag_uart_0'
+Info: jtag_uart_0: "top_level_system" instantiated altera_avalon_jtag_uart "jtag_uart_0"
+Info: nios2_gen2_0: "top_level_system" instantiated altera_nios2_gen2 "nios2_gen2_0"
+Info: onchip_memory2_0: Starting RTL generation for module 'top_level_system_onchip_memory2_0'
+Info: onchip_memory2_0:   Generation command is [exec C:/intelfpga_lite/18.0/quartus/bin64/perl/bin/perl.exe -I C:/intelfpga_lite/18.0/quartus/bin64/perl/lib -I C:/intelfpga_lite/18.0/quartus/sopc_builder/bin/europa -I C:/intelfpga_lite/18.0/quartus/sopc_builder/bin/perl_lib -I C:/intelfpga_lite/18.0/quartus/sopc_builder/bin -I C:/intelfpga_lite/18.0/quartus/../ip/altera/sopc_builder_ip/common -I C:/intelfpga_lite/18.0/quartus/../ip/altera/sopc_builder_ip/altera_avalon_onchip_memory2 -- C:/intelfpga_lite/18.0/quartus/../ip/altera/sopc_builder_ip/altera_avalon_onchip_memory2/generate_rtl.pl --name=top_level_system_onchip_memory2_0 --dir=C:/Users/Hedgehog/AppData/Local/Temp/alt7979_8745798795175367853.dir/0542_onchip_memory2_0_gen/ --quartus_dir=C:/intelfpga_lite/18.0/quartus --verilog --config=C:/Users/Hedgehog/AppData/Local/Temp/alt7979_8745798795175367853.dir/0542_onchip_memory2_0_gen//top_level_system_onchip_memory2_0_component_configuration.pl  --do_build_sim=0  ]
+Info: onchip_memory2_0: Done RTL generation for module 'top_level_system_onchip_memory2_0'
+Info: onchip_memory2_0: "top_level_system" instantiated altera_avalon_onchip_memory2 "onchip_memory2_0"
+Info: sysid_qsys_0: "top_level_system" instantiated altera_avalon_sysid_qsys "sysid_qsys_0"
+Info: avalon_st_adapter: Inserting error_adapter: error_adapter_0
+Info: avalon_st_adapter_001: Inserting error_adapter: error_adapter_0
+Info: avalon_st_adapter_002: Inserting error_adapter: error_adapter_0
+Info: avalon_st_adapter_003: Inserting error_adapter: error_adapter_0
+Info: avalon_st_adapter_004: Inserting error_adapter: error_adapter_0
+Info: avalon_st_adapter_005: Inserting error_adapter: error_adapter_0
+Info: avalon_st_adapter_006: Inserting error_adapter: error_adapter_0
+Info: mm_interconnect_0: "top_level_system" instantiated altera_mm_interconnect "mm_interconnect_0"
+Info: irq_mapper: "top_level_system" instantiated altera_irq_mapper "irq_mapper"
+Info: avalon_st_adapter: "top_level_system" instantiated altera_avalon_st_adapter "avalon_st_adapter"
+Info: rst_controller: "top_level_system" instantiated altera_reset_controller "rst_controller"
+Info: tpg_core: "alt_vip_cl_tpg_0" instantiated alt_vip_tpg_alg_core "tpg_core"
+Info: video_out: "alt_vip_cl_tpg_0" instantiated alt_vip_video_output_bridge "video_out"
+Info: Reusing file D:/git/dsi_controller/quartus_project/dsi_controller_test/top_level_system/synthesis/submodules/common/alt_vip_common_pkg.sv
+Info: Reusing file D:/git/dsi_controller/quartus_project/dsi_controller_test/top_level_system/synthesis/submodules/modules/alt_vip_common_event_packet_decode/src_hdl/alt_vip_common_event_packet_decode.sv
+Info: Reusing file D:/git/dsi_controller/quartus_project/dsi_controller_test/top_level_system/synthesis/submodules/modules/alt_vip_common_event_packet_encode/src_hdl/alt_vip_common_event_packet_encode.sv
+Info: scheduler: "alt_vip_cl_tpg_0" instantiated alt_vip_tpg_scheduler "scheduler"
+Info: Reusing file D:/git/dsi_controller/quartus_project/dsi_controller_test/top_level_system/synthesis/submodules/common/alt_vip_common_pkg.sv
+Info: Reusing file D:/git/dsi_controller/quartus_project/dsi_controller_test/top_level_system/synthesis/submodules/modules/alt_vip_common_event_packet_decode/src_hdl/alt_vip_common_event_packet_decode.sv
+Info: Reusing file D:/git/dsi_controller/quartus_project/dsi_controller_test/top_level_system/synthesis/submodules/modules/alt_vip_common_event_packet_encode/src_hdl/alt_vip_common_event_packet_encode.sv
+Info: control_slave: "alt_vip_cl_tpg_0" instantiated alt_vip_control_slave "control_slave"
+Info: Reusing file D:/git/dsi_controller/quartus_project/dsi_controller_test/top_level_system/synthesis/submodules/common/alt_vip_common_pkg.sv
+Info: Reusing file D:/git/dsi_controller/quartus_project/dsi_controller_test/top_level_system/synthesis/submodules/modules/alt_vip_common_event_packet_decode/src_hdl/alt_vip_common_event_packet_decode.sv
+Info: Reusing file D:/git/dsi_controller/quartus_project/dsi_controller_test/top_level_system/synthesis/submodules/modules/alt_vip_common_event_packet_encode/src_hdl/alt_vip_common_event_packet_encode.sv
+Info: cpu: Starting RTL generation for module 'top_level_system_nios2_gen2_0_cpu'
+Info: cpu:   Generation command is [exec C:/intelFPGA_lite/18.0/quartus/bin64//eperlcmd.exe -I C:/intelFPGA_lite/18.0/quartus/bin64//perl/lib -I C:/intelfpga_lite/18.0/quartus/sopc_builder/bin/europa -I C:/intelfpga_lite/18.0/quartus/sopc_builder/bin/perl_lib -I C:/intelfpga_lite/18.0/quartus/sopc_builder/bin -I C:/intelfpga_lite/18.0/quartus/../ip/altera/nios2_ip/altera_nios2_gen2/cpu_lib -I C:/intelfpga_lite/18.0/quartus/../ip/altera/nios2_ip/altera_nios2_gen2/nios_lib -I C:/intelfpga_lite/18.0/quartus/../ip/altera/nios2_ip/altera_nios2_gen2 -I C:/intelfpga_lite/18.0/quartus/../ip/altera/nios2_ip/altera_nios2_gen2 -- C:/intelfpga_lite/18.0/quartus/../ip/altera/nios2_ip/altera_nios2_gen2/generate_rtl.epl --name=top_level_system_nios2_gen2_0_cpu --dir=C:/Users/Hedgehog/AppData/Local/Temp/alt7979_8745798795175367853.dir/0550_cpu_gen/ --quartus_bindir=C:/intelFPGA_lite/18.0/quartus/bin64/ --verilog --config=C:/Users/Hedgehog/AppData/Local/Temp/alt7979_8745798795175367853.dir/0550_cpu_gen//top_level_system_nios2_gen2_0_cpu_processor_configuration.pl  --do_build_sim=0  ]
+Info: cpu: # 2019.03.24 22:56:40 (*) Starting Nios II generation
+Info: cpu: # 2019.03.24 22:56:40 (*)   Checking for plaintext license.
+Info: cpu: # 2019.03.24 22:56:41 (*)   Couldn't query license setup in Quartus directory C:/intelFPGA_lite/18.0/quartus/bin64/
+Info: cpu: # 2019.03.24 22:56:41 (*)   Defaulting to contents of LM_LICENSE_FILE environment variable
+Info: cpu: # 2019.03.24 22:56:41 (*)   LM_LICENSE_FILE environment variable is empty
+Info: cpu: # 2019.03.24 22:56:41 (*)   Plaintext license not found.
+Info: cpu: # 2019.03.24 22:56:41 (*)   Checking for encrypted license (non-evaluation).
+Info: cpu: # 2019.03.24 22:56:42 (*)   Couldn't query license setup in Quartus directory C:/intelFPGA_lite/18.0/quartus/bin64/
+Info: cpu: # 2019.03.24 22:56:42 (*)   Defaulting to contents of LM_LICENSE_FILE environment variable
+Info: cpu: # 2019.03.24 22:56:42 (*)   LM_LICENSE_FILE environment variable is empty
+Info: cpu: # 2019.03.24 22:56:42 (*)   Encrypted license not found.  Defaulting to OCP evaluation license (produces a time-limited SOF)
+Info: cpu: # 2019.03.24 22:56:42 (*)   Elaborating CPU configuration settings
+Info: cpu: # 2019.03.24 22:56:42 (*)   Creating all objects for CPU
+Info: cpu: # 2019.03.24 22:56:42 (*)     Testbench
+Info: cpu: # 2019.03.24 22:56:42 (*)     Instruction decoding
+Info: cpu: # 2019.03.24 22:56:42 (*)       Instruction fields
+Info: cpu: # 2019.03.24 22:56:42 (*)       Instruction decodes
+Info: cpu: # 2019.03.24 22:56:42 (*)       Signals for RTL simulation waveforms
+Info: cpu: # 2019.03.24 22:56:42 (*)       Instruction controls
+Info: cpu: # 2019.03.24 22:56:42 (*)     Pipeline frontend
+Info: cpu: # 2019.03.24 22:56:42 (*)     Pipeline backend
+Info: cpu: # 2019.03.24 22:56:45 (*)   Generating RTL from CPU objects
+Info: cpu: # 2019.03.24 22:56:47 (*)   Creating encrypted RTL
+Info: cpu: # 2019.03.24 22:56:47 (*) Done Nios II generation
+Info: cpu: Done RTL generation for module 'top_level_system_nios2_gen2_0_cpu'
+Info: cpu: "nios2_gen2_0" instantiated altera_nios2_gen2_unit "cpu"
+Info: nios2_gen2_0_data_master_translator: "mm_interconnect_0" instantiated altera_merlin_master_translator "nios2_gen2_0_data_master_translator"
+Info: jtag_uart_0_avalon_jtag_slave_translator: "mm_interconnect_0" instantiated altera_merlin_slave_translator "jtag_uart_0_avalon_jtag_slave_translator"
+Info: nios2_gen2_0_data_master_agent: "mm_interconnect_0" instantiated altera_merlin_master_agent "nios2_gen2_0_data_master_agent"
+Info: jtag_uart_0_avalon_jtag_slave_agent: "mm_interconnect_0" instantiated altera_merlin_slave_agent "jtag_uart_0_avalon_jtag_slave_agent"
+Info: jtag_uart_0_avalon_jtag_slave_agent_rsp_fifo: "mm_interconnect_0" instantiated altera_avalon_sc_fifo "jtag_uart_0_avalon_jtag_slave_agent_rsp_fifo"
+Info: router: "mm_interconnect_0" instantiated altera_merlin_router "router"
+Info: router_001: "mm_interconnect_0" instantiated altera_merlin_router "router_001"
+Info: router_002: "mm_interconnect_0" instantiated altera_merlin_router "router_002"
+Info: router_006: "mm_interconnect_0" instantiated altera_merlin_router "router_006"
+Info: nios2_gen2_0_data_master_limiter: "mm_interconnect_0" instantiated altera_merlin_traffic_limiter "nios2_gen2_0_data_master_limiter"
+Info: Reusing file D:/git/dsi_controller/quartus_project/dsi_controller_test/top_level_system/synthesis/submodules/altera_avalon_sc_fifo.v
+Info: cmd_demux: "mm_interconnect_0" instantiated altera_merlin_demultiplexer "cmd_demux"
+Info: cmd_demux_001: "mm_interconnect_0" instantiated altera_merlin_demultiplexer "cmd_demux_001"
+Info: cmd_mux: "mm_interconnect_0" instantiated altera_merlin_multiplexer "cmd_mux"
+Info: cmd_mux_004: "mm_interconnect_0" instantiated altera_merlin_multiplexer "cmd_mux_004"
+Info: Reusing file D:/git/dsi_controller/quartus_project/dsi_controller_test/top_level_system/synthesis/submodules/altera_merlin_arbitrator.sv
+Info: rsp_demux: "mm_interconnect_0" instantiated altera_merlin_demultiplexer "rsp_demux"
+Info: rsp_demux_004: "mm_interconnect_0" instantiated altera_merlin_demultiplexer "rsp_demux_004"
+Info: rsp_demux_005: "mm_interconnect_0" instantiated altera_merlin_demultiplexer "rsp_demux_005"
+Info: rsp_mux: "mm_interconnect_0" instantiated altera_merlin_multiplexer "rsp_mux"
+Info: Reusing file D:/git/dsi_controller/quartus_project/dsi_controller_test/top_level_system/synthesis/submodules/altera_merlin_arbitrator.sv
+Info: rsp_mux_001: "mm_interconnect_0" instantiated altera_merlin_multiplexer "rsp_mux_001"
+Info: Reusing file D:/git/dsi_controller/quartus_project/dsi_controller_test/top_level_system/synthesis/submodules/altera_merlin_arbitrator.sv
+Info: crosser: "mm_interconnect_0" instantiated altera_avalon_st_handshake_clock_crosser "crosser"
+Info: Reusing file D:/git/dsi_controller/quartus_project/dsi_controller_test/top_level_system/synthesis/submodules/altera_avalon_st_pipeline_base.v
+Info: avalon_st_adapter: "mm_interconnect_0" instantiated altera_avalon_st_adapter "avalon_st_adapter"
+Info: timing_adapter_0: "avalon_st_adapter" instantiated timing_adapter "timing_adapter_0"
+Info: error_adapter_0: "avalon_st_adapter" instantiated error_adapter "error_adapter_0"
+Info: top_level_system: Done "top_level_system" with 41 modules, 91 files
+Info: qsys-generate succeeded.
+Info: Finished: Create HDL design files for synthesis

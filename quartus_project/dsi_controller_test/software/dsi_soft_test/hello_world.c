@@ -61,7 +61,17 @@ int main()
 
 	// enable controller
 	settings_word |= MIPI_DSI_TX_CTRL_ASSEMBLER_ENABLE_MASK;
+    settings_word &= ~MIPI_DSI_TX_CTRL_SEND_CMD_MASK;
+
 	IOWR(DSI_TX_CONTROLLER_0_BASE, MIPI_DSI_TX_CTRL_BASE, settings_word);
+
+	printf("\n[Soft init] Controller enabled!\n\n");
+
+	for(int i = 0; i < 200; i++){}
+
+	IOWR(ALT_VIP_CL_TPG_0_BASE, 0, 0x1);
+
+	printf("\n[Soft init] TPG enabled;\n\n");
 
   return 0;
 }

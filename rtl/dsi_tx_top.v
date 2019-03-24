@@ -32,13 +32,13 @@ module dsi_tx_top #(
     output  wire                    in_avl_st_ready                     ,
 
     /********* Output interface *********/
-    output  wire [3:0]              dphy_data_hs_out_p                  ,
-    output  wire [3:0]              dphy_data_hs_out_n                  ,
+    output  wire [3:0]              dphy_data_hs_out_p                  ,  // active
+    output  wire [3:0]              dphy_data_hs_out_n                  ,  // unactive. do not connect
     output  wire [3:0]              dphy_data_lp_out_p                  ,
     output  wire [3:0]              dphy_data_lp_out_n                  ,
 
-    output  wire                    dphy_clk_hs_out_p                   ,
-    output  wire                    dphy_clk_hs_out_n                   ,
+    output  wire                    dphy_clk_hs_out_p                   ,  // active
+    output  wire                    dphy_clk_hs_out_n                   ,  // unactive. do not connect
     output  wire                    dphy_clk_lp_out_p                   ,
     output  wire                    dphy_clk_lp_out_n                   ,
 

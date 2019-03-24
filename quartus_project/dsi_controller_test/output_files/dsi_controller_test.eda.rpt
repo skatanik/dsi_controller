@@ -1,0 +1,77 @@
+EDA Netlist Writer report for dsi_controller_test
+Sun Mar 24 22:59:24 2019
+Quartus Prime Version 18.0.0 Build 614 04/24/2018 SJ Lite Edition
+
+
+---------------------
+; Table of Contents ;
+---------------------
+  1. Legal Notice
+  2. EDA Netlist Writer Summary
+  3. EDA Netlist Writer Messages
+
+
+
+----------------
+; Legal Notice ;
+----------------
+Copyright (C) 2018  Intel Corporation. All rights reserved.
+Your use of Intel Corporation's design tools, logic functions 
+and other software and tools, and its AMPP partner logic 
+functions, and any output files from any of the foregoing 
+(including device programming or simulation files), and any 
+associated documentation or information are expressly subject 
+to the terms and conditions of the Intel Program License 
+Subscription Agreement, the Intel Quartus Prime License Agreement,
+the Intel FPGA IP License Agreement, or other applicable license
+agreement, including, without limitation, that your use is for
+the sole purpose of programming logic devices manufactured by
+Intel and sold by Intel or its authorized distributors.  Please
+refer to the applicable agreement for further details.
+
+
+
++---------------------------------------------------------------+
+; EDA Netlist Writer Summary                                    ;
++---------------------------+-----------------------------------+
+; EDA Netlist Writer Status ; Failed - Sun Mar 24 22:59:24 2019 ;
+; Revision Name             ; dsi_controller_test               ;
+; Top-level Entity Name     ; top_level_system                  ;
+; Family                    ; MAX 10                            ;
++---------------------------+-----------------------------------+
+
+
++-----------------------------+
+; EDA Netlist Writer Messages ;
++-----------------------------+
+Info: *******************************************************************
+Info: Running Quartus Prime EDA Netlist Writer
+    Info: Version 18.0.0 Build 614 04/24/2018 SJ Lite Edition
+    Info: Processing started: Sun Mar 24 22:59:21 2019
+Info: Command: quartus_eda --read_settings_files=off --write_settings_files=off dsi_controller_test -c dsi_controller_test
+Warning (18236): Number of processors has not been specified which may cause overloading on shared machines.  Set the global assignment NUM_PARALLEL_PROCESSORS in your QSF to an appropriate value for best performance.
+Error (204012): Can't generate netlist output files because the file "D:/git/dsi_controller/quartus_project/dsi_controller_test/top_level_system/synthesis/submodules/src_hdl/alt_vip_tpg_scheduler.sv" is an OpenCore Plus time-limited file. Remove the unlicensed cores or obtain a license for those OpenCore Plus time-limited IP cores used in the design. The Intel FPGA Knowledge Database contains many articles with specific details on how to resolve this error. Visit the Knowledge Database at https://www.altera.com/support/support-resources/knowledge-base/search.html and search for this specific error message number.
+Error (204012): Can't generate netlist output files because the file "D:/git/dsi_controller/quartus_project/dsi_controller_test/top_level_system/synthesis/submodules/top_level_system_nios2_gen2_0_cpu.v" is an OpenCore Plus time-limited file. Remove the unlicensed cores or obtain a license for those OpenCore Plus time-limited IP cores used in the design. The Intel FPGA Knowledge Database contains many articles with specific details on how to resolve this error. Visit the Knowledge Database at https://www.altera.com/support/support-resources/knowledge-base/search.html and search for this specific error message number.
+Error (204012): Can't generate netlist output files because the file "D:/git/dsi_controller/quartus_project/dsi_controller_test/top_level_system/synthesis/submodules/src_hdl/alt_vip_tpg_alg_core.sv" is an OpenCore Plus time-limited file. Remove the unlicensed cores or obtain a license for those OpenCore Plus time-limited IP cores used in the design. The Intel FPGA Knowledge Database contains many articles with specific details on how to resolve this error. Visit the Knowledge Database at https://www.altera.com/support/support-resources/knowledge-base/search.html and search for this specific error message number.
+Error (204009): Can't generate netlist output files because the license for encrypted file "D:/git/dsi_controller/quartus_project/dsi_controller_test/top_level_system/synthesis/submodules/src_hdl/alt_vip_tpg_scheduler.sv" is not available
+Error (204009): Can't generate netlist output files because the license for encrypted file "D:/git/dsi_controller/quartus_project/dsi_controller_test/top_level_system/synthesis/submodules/top_level_system_nios2_gen2_0_cpu.v" is not available
+Error (204009): Can't generate netlist output files because the license for encrypted file "D:/git/dsi_controller/quartus_project/dsi_controller_test/top_level_system/synthesis/submodules/src_hdl/alt_vip_tpg_alg_core.sv" is not available
+Error (204012): Can't generate netlist output files because the file "D:/git/dsi_controller/quartus_project/dsi_controller_test/top_level_system/synthesis/submodules/src_hdl/alt_vip_tpg_scheduler.sv" is an OpenCore Plus time-limited file. Remove the unlicensed cores or obtain a license for those OpenCore Plus time-limited IP cores used in the design. The Intel FPGA Knowledge Database contains many articles with specific details on how to resolve this error. Visit the Knowledge Database at https://www.altera.com/support/support-resources/knowledge-base/search.html and search for this specific error message number.
+Error (204012): Can't generate netlist output files because the file "D:/git/dsi_controller/quartus_project/dsi_controller_test/top_level_system/synthesis/submodules/top_level_system_nios2_gen2_0_cpu.v" is an OpenCore Plus time-limited file. Remove the unlicensed cores or obtain a license for those OpenCore Plus time-limited IP cores used in the design. The Intel FPGA Knowledge Database contains many articles with specific details on how to resolve this error. Visit the Knowledge Database at https://www.altera.com/support/support-resources/knowledge-base/search.html and search for this specific error message number.
+Error (204012): Can't generate netlist output files because the file "D:/git/dsi_controller/quartus_project/dsi_controller_test/top_level_system/synthesis/submodules/src_hdl/alt_vip_tpg_alg_core.sv" is an OpenCore Plus time-limited file. Remove the unlicensed cores or obtain a license for those OpenCore Plus time-limited IP cores used in the design. The Intel FPGA Knowledge Database contains many articles with specific details on how to resolve this error. Visit the Knowledge Database at https://www.altera.com/support/support-resources/knowledge-base/search.html and search for this specific error message number.
+Error (204009): Can't generate netlist output files because the license for encrypted file "D:/git/dsi_controller/quartus_project/dsi_controller_test/top_level_system/synthesis/submodules/src_hdl/alt_vip_tpg_scheduler.sv" is not available
+Error (204009): Can't generate netlist output files because the license for encrypted file "D:/git/dsi_controller/quartus_project/dsi_controller_test/top_level_system/synthesis/submodules/top_level_system_nios2_gen2_0_cpu.v" is not available
+Error (204009): Can't generate netlist output files because the license for encrypted file "D:/git/dsi_controller/quartus_project/dsi_controller_test/top_level_system/synthesis/submodules/src_hdl/alt_vip_tpg_alg_core.sv" is not available
+Error (204012): Can't generate netlist output files because the file "D:/git/dsi_controller/quartus_project/dsi_controller_test/top_level_system/synthesis/submodules/src_hdl/alt_vip_tpg_scheduler.sv" is an OpenCore Plus time-limited file. Remove the unlicensed cores or obtain a license for those OpenCore Plus time-limited IP cores used in the design. The Intel FPGA Knowledge Database contains many articles with specific details on how to resolve this error. Visit the Knowledge Database at https://www.altera.com/support/support-resources/knowledge-base/search.html and search for this specific error message number.
+Error (204012): Can't generate netlist output files because the file "D:/git/dsi_controller/quartus_project/dsi_controller_test/top_level_system/synthesis/submodules/top_level_system_nios2_gen2_0_cpu.v" is an OpenCore Plus time-limited file. Remove the unlicensed cores or obtain a license for those OpenCore Plus time-limited IP cores used in the design. The Intel FPGA Knowledge Database contains many articles with specific details on how to resolve this error. Visit the Knowledge Database at https://www.altera.com/support/support-resources/knowledge-base/search.html and search for this specific error message number.
+Error (204012): Can't generate netlist output files because the file "D:/git/dsi_controller/quartus_project/dsi_controller_test/top_level_system/synthesis/submodules/src_hdl/alt_vip_tpg_alg_core.sv" is an OpenCore Plus time-limited file. Remove the unlicensed cores or obtain a license for those OpenCore Plus time-limited IP cores used in the design. The Intel FPGA Knowledge Database contains many articles with specific details on how to resolve this error. Visit the Knowledge Database at https://www.altera.com/support/support-resources/knowledge-base/search.html and search for this specific error message number.
+Error (204009): Can't generate netlist output files because the license for encrypted file "D:/git/dsi_controller/quartus_project/dsi_controller_test/top_level_system/synthesis/submodules/src_hdl/alt_vip_tpg_scheduler.sv" is not available
+Error (204009): Can't generate netlist output files because the license for encrypted file "D:/git/dsi_controller/quartus_project/dsi_controller_test/top_level_system/synthesis/submodules/top_level_system_nios2_gen2_0_cpu.v" is not available
+Error (204009): Can't generate netlist output files because the license for encrypted file "D:/git/dsi_controller/quartus_project/dsi_controller_test/top_level_system/synthesis/submodules/src_hdl/alt_vip_tpg_alg_core.sv" is not available
+Error: Quartus Prime EDA Netlist Writer was unsuccessful. 18 errors, 1 warning
+    Error: Peak virtual memory: 4699 megabytes
+    Error: Processing ended: Sun Mar 24 22:59:24 2019
+    Error: Elapsed time: 00:00:03
+    Error: Total CPU time (on all processors): 00:00:04
+
+

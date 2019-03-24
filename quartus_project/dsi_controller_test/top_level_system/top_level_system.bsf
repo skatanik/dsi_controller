@@ -1,0 +1,137 @@
+/*
+WARNING: Do NOT edit the input and output ports in this file in a text
+editor if you plan to continue editing the block that represents it in
+the Block Editor! File corruption is VERY likely to occur.
+*/
+/*
+Copyright (C) 2018  Intel Corporation. All rights reserved.
+Your use of Intel Corporation's design tools, logic functions 
+and other software and tools, and its AMPP partner logic 
+functions, and any output files from any of the foregoing 
+(including device programming or simulation files), and any 
+associated documentation or information are expressly subject 
+to the terms and conditions of the Intel Program License 
+Subscription Agreement, the Intel Quartus Prime License Agreement,
+the Intel FPGA IP License Agreement, or other applicable license
+agreement, including, without limitation, that your use is for
+the sole purpose of programming logic devices manufactured by
+Intel and sold by Intel or its authorized distributors.  Please
+refer to the applicable agreement for further details.
+*/
+(header "symbol" (version "1.1"))
+(symbol
+	(rect 0 0 752 336)
+	(text "top_level_system" (rect 325 -1 396 11)(font "Arial" (font_size 10)))
+	(text "inst" (rect 8 320 20 332)(font "Arial" ))
+	(port
+		(pt 0 72)
+		(input)
+		(text "altpll_0_areset_conduit_export" (rect 0 0 120 12)(font "Arial" (font_size 8)))
+		(text "altpll_0_areset_conduit_export" (rect 4 61 184 72)(font "Arial" (font_size 8)))
+		(line (pt 0 72)(pt 320 72)(line_width 1))
+	)
+	(port
+		(pt 0 112)
+		(input)
+		(text "clk_clk" (rect 0 0 27 12)(font "Arial" (font_size 8)))
+		(text "clk_clk" (rect 4 101 46 112)(font "Arial" (font_size 8)))
+		(line (pt 0 112)(pt 320 112)(line_width 1))
+	)
+	(port
+		(pt 0 304)
+		(input)
+		(text "reset_reset_n" (rect 0 0 56 12)(font "Arial" (font_size 8)))
+		(text "reset_reset_n" (rect 4 293 82 304)(font "Arial" (font_size 8)))
+		(line (pt 0 304)(pt 320 304)(line_width 1))
+	)
+	(port
+		(pt 0 152)
+		(output)
+		(text "dsi_tx_controller_0_dsi_interface_dphy_data_hs_out_p[3..0]" (rect 0 0 244 12)(font "Arial" (font_size 8)))
+		(text "dsi_tx_controller_0_dsi_interface_dphy_data_hs_out_p[3..0]" (rect 4 141 352 152)(font "Arial" (font_size 8)))
+		(line (pt 0 152)(pt 320 152)(line_width 3))
+	)
+	(port
+		(pt 0 168)
+		(output)
+		(text "dsi_tx_controller_0_dsi_interface_dphy_data_hs_out_n[3..0]" (rect 0 0 244 12)(font "Arial" (font_size 8)))
+		(text "dsi_tx_controller_0_dsi_interface_dphy_data_hs_out_n[3..0]" (rect 4 157 352 168)(font "Arial" (font_size 8)))
+		(line (pt 0 168)(pt 320 168)(line_width 3))
+	)
+	(port
+		(pt 0 184)
+		(output)
+		(text "dsi_tx_controller_0_dsi_interface_dphy_data_lp_out_p[3..0]" (rect 0 0 240 12)(font "Arial" (font_size 8)))
+		(text "dsi_tx_controller_0_dsi_interface_dphy_data_lp_out_p[3..0]" (rect 4 173 352 184)(font "Arial" (font_size 8)))
+		(line (pt 0 184)(pt 320 184)(line_width 3))
+	)
+	(port
+		(pt 0 200)
+		(output)
+		(text "dsi_tx_controller_0_dsi_interface_dphy_data_lp_out_n[3..0]" (rect 0 0 240 12)(font "Arial" (font_size 8)))
+		(text "dsi_tx_controller_0_dsi_interface_dphy_data_lp_out_n[3..0]" (rect 4 189 352 200)(font "Arial" (font_size 8)))
+		(line (pt 0 200)(pt 320 200)(line_width 3))
+	)
+	(port
+		(pt 0 216)
+		(output)
+		(text "dsi_tx_controller_0_dsi_interface_dphy_clk_hs_out_p" (rect 0 0 218 12)(font "Arial" (font_size 8)))
+		(text "dsi_tx_controller_0_dsi_interface_dphy_clk_hs_out_p" (rect 4 205 310 216)(font "Arial" (font_size 8)))
+		(line (pt 0 216)(pt 320 216)(line_width 1))
+	)
+	(port
+		(pt 0 232)
+		(output)
+		(text "dsi_tx_controller_0_dsi_interface_dphy_clk_hs_out_n" (rect 0 0 218 12)(font "Arial" (font_size 8)))
+		(text "dsi_tx_controller_0_dsi_interface_dphy_clk_hs_out_n" (rect 4 221 310 232)(font "Arial" (font_size 8)))
+		(line (pt 0 232)(pt 320 232)(line_width 1))
+	)
+	(port
+		(pt 0 248)
+		(output)
+		(text "dsi_tx_controller_0_dsi_interface_dphy_clk_lp_out_p" (rect 0 0 214 12)(font "Arial" (font_size 8)))
+		(text "dsi_tx_controller_0_dsi_interface_dphy_clk_lp_out_p" (rect 4 237 310 248)(font "Arial" (font_size 8)))
+		(line (pt 0 248)(pt 320 248)(line_width 1))
+	)
+	(port
+		(pt 0 264)
+		(output)
+		(text "dsi_tx_controller_0_dsi_interface_dphy_clk_lp_out_n" (rect 0 0 214 12)(font "Arial" (font_size 8)))
+		(text "dsi_tx_controller_0_dsi_interface_dphy_clk_lp_out_n" (rect 4 253 310 264)(font "Arial" (font_size 8)))
+		(line (pt 0 264)(pt 320 264)(line_width 1))
+	)
+	(drawing
+		(text "altpll_0_areset_conduit" (rect 185 43 508 99)(font "Arial" (color 128 0 0)(font_size 9)))
+		(text "export" (rect 325 67 686 144)(font "Arial" (color 0 0 0)))
+		(text "clk" (rect 305 83 628 179)(font "Arial" (color 128 0 0)(font_size 9)))
+		(text "clk" (rect 325 107 668 224)(font "Arial" (color 0 0 0)))
+		(text "dsi_tx_controller_0_dsi_interface" (rect 125 123 448 259)(font "Arial" (color 128 0 0)(font_size 9)))
+		(text "dphy_data_hs_out_p" (rect 325 147 758 304)(font "Arial" (color 0 0 0)))
+		(text "dphy_data_hs_out_n" (rect 325 163 758 336)(font "Arial" (color 0 0 0)))
+		(text "dphy_data_lp_out_p" (rect 325 179 758 368)(font "Arial" (color 0 0 0)))
+		(text "dphy_data_lp_out_n" (rect 325 195 758 400)(font "Arial" (color 0 0 0)))
+		(text "dphy_clk_hs_out_p" (rect 325 211 752 432)(font "Arial" (color 0 0 0)))
+		(text "dphy_clk_hs_out_n" (rect 325 227 752 464)(font "Arial" (color 0 0 0)))
+		(text "dphy_clk_lp_out_p" (rect 325 243 752 496)(font "Arial" (color 0 0 0)))
+		(text "dphy_clk_lp_out_n" (rect 325 259 752 528)(font "Arial" (color 0 0 0)))
+		(text "reset" (rect 291 275 612 563)(font "Arial" (color 128 0 0)(font_size 9)))
+		(text "reset_n" (rect 325 299 692 608)(font "Arial" (color 0 0 0)))
+		(text " top_level_system " (rect 672 320 1452 650)(font "Arial" ))
+		(line (pt 320 32)(pt 432 32)(line_width 1))
+		(line (pt 432 32)(pt 432 320)(line_width 1))
+		(line (pt 320 320)(pt 432 320)(line_width 1))
+		(line (pt 320 32)(pt 320 320)(line_width 1))
+		(line (pt 321 52)(pt 321 76)(line_width 1))
+		(line (pt 322 52)(pt 322 76)(line_width 1))
+		(line (pt 321 92)(pt 321 116)(line_width 1))
+		(line (pt 322 92)(pt 322 116)(line_width 1))
+		(line (pt 321 132)(pt 321 268)(line_width 1))
+		(line (pt 322 132)(pt 322 268)(line_width 1))
+		(line (pt 321 284)(pt 321 308)(line_width 1))
+		(line (pt 322 284)(pt 322 308)(line_width 1))
+		(line (pt 0 0)(pt 752 0)(line_width 1))
+		(line (pt 752 0)(pt 752 336)(line_width 1))
+		(line (pt 0 336)(pt 752 336)(line_width 1))
+		(line (pt 0 0)(pt 0 336)(line_width 1))
+	)
+)
