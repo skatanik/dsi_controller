@@ -25,11 +25,11 @@ module dsi_tx_top #(
     output  wire                    irq                                 ,
 
     /********* Avalon-ST input *********/
-    input   wire [31:0]             avl_st_in_data                      ,
-    input   wire                    avl_st_in_valid                     ,
-    input   wire                    avl_st_in_endofpacket               ,
-    input   wire                    avl_st_in_startofpacket             ,
-    output  wire                    avl_st_in_ready                     ,
+    input   wire [31:0]             in_avl_st_data                      ,
+    input   wire                    in_avl_st_valid                     ,
+    input   wire                    in_avl_st_endofpacket               ,
+    input   wire                    in_avl_st_startofpacket             ,
+    output  wire                    in_avl_st_ready                     ,
 
     /********* Output interface *********/
     output  wire [3:0]              dphy_data_hs_out_p                  ,
@@ -244,11 +244,11 @@ dsi_tx_pixel_buffer #(
     .rst_phy_n                  (rst_phy_n                  ),
 
     /********* Avalon-ST Sink *********/
-    .avl_st_in_data             (avl_st_in_data             ),
-    .avl_st_in_valid            (avl_st_in_valid            ),
-    .avl_st_in_endofpacket      (avl_st_in_endofpacket      ),
-    .avl_st_in_startofpacket    (avl_st_in_startofpacket    ),
-    .avl_st_in_ready            (avl_st_in_ready            ),
+    .avl_st_in_data             (in_avl_st_data             ),
+    .avl_st_in_valid            (in_avl_st_valid            ),
+    .avl_st_in_endofpacket      (in_avl_st_endofpacket      ),
+    .avl_st_in_startofpacket    (in_avl_st_startofpacket    ),
+    .avl_st_in_ready            (in_avl_st_ready            ),
 
     /********* Output interface *********/
     .fifo_data                  (fifo_data                  ),

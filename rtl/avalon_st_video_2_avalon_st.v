@@ -1,4 +1,4 @@
-module avalon_st_video_2_avalon_st (
+module avl_st_video_2_avl_st_top (
     input wire                      clk                             ,
     input wire                      rst_n                           ,
 
