@@ -24,8 +24,8 @@ reg in_avl_st_valid_delayed;
 wire set_skip_frame;
 
 always @(posedge clk or negedge rst_n)
-    if(!rst_n)                      in_avl_st_valid_delayed <= 1'b0;
-    else if(!set_skip_frame)        in_avl_st_valid_delayed <= in_avl_st_valid;
+    if(!rst_n)              in_avl_st_valid_delayed <= 1'b0;
+    else if(!skip_frame)    in_avl_st_valid_delayed <= in_avl_st_valid;
 
 wire inp_data_valid;
 
