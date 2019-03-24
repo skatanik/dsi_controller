@@ -248,7 +248,7 @@ always @(*)
     begin
         case(state_current)
             STATE_SEND_LP_CMD:
-                packet_id = {2'b0, cmd_packet[7:0]};
+                packet_id = cmd_packet[7:0];
 
             STATE_SEND_VSS_VSA:
                 packet_id = {2'b0, `PACKET_VSS};

@@ -5,6 +5,14 @@ module top_level_csi_tx_tb;
 `define MODELING
 `define MAX_10
 
+/********************************************************************
+16 ms per frame
+40 000 000 bit per frame
+1666666 rgb pixels per frame
+1136x640 = 727040 pixels
+********************************************************************/
+
+
 localparam STITCH_PACKETS = 0;
 localparam LANES_NUMBER = 4;
 localparam LINE_SIZE_REAL = 640;
@@ -239,7 +247,7 @@ repeat(10) @(posedge clk);
 
 $display("Write CMD");
 
-avalon_mm_write(32'h14, 32'h0055_5555, `AVL_MM_TX);
+avalon_mm_write(32'h14, 32'h005F_7538, `AVL_MM_TX);
 repeat(10) @(posedge clk);
 
 settings_word = (32'b1 << 3) | (31'b1 << 2) | (31'b1 << 1) | (LANES_NUMBER - 1) << 8;
@@ -306,11 +314,17 @@ begin
 end
 
 /********* Data loader *********/
-bit [31:0] tx_avl_st_in_data;
+bit [23:0] tx_avl_st_in_data;
 bit tx_avl_st_in_valid;
 bit tx_avl_st_in_endofpacket;
 bit tx_avl_st_in_startofpacket;
 wire tx_avl_st_in_ready;
+
+wire [31:0]     tx_avl_st_out_data;
+wire            tx_avl_st_out_valid;
+wire            tx_avl_st_out_endofpacket;
+wire            tx_avl_st_out_startofpacket;
+wire            tx_avl_st_out_ready;
 
 semaphore avalon_st_loader_sem = new(1);
 
@@ -340,7 +354,7 @@ while(k < DATA_SIZE/4) begin
 
     if(tx_avl_st_in_ready)
     begin
-        tx_avl_st_in_data= {test_data_array[k*4 + 3], test_data_array[k*4 + 2], test_data_array[k*4 + 1], test_data_array[k*4]};
+        tx_avl_st_in_data = {test_data_array[k*3 + 2], test_data_array[k*3 + 1], test_data_array[k*3]};
     end
     @(posedge clk);
 
@@ -371,6 +385,25 @@ avalon_st_loader_sem.put();
 
 endtask
 
+ avalon_st_video_2_avalon_st avalon_st_video_2_avalon_st_0(
+    .clk                                (clk                            ),
+    .rst_n                              (rst_n                          ),
+
+    /********* Avalon-ST input *********/
+    .in_avl_st_data                      (tx_avl_st_in_data             ),
+    .in_avl_st_valid                     (tx_avl_st_in_valid            ),
+    .in_avl_st_endofpacket               (tx_avl_st_in_endofpacket      ),
+    .in_avl_st_startofpacket             (tx_avl_st_in_startofpacket    ),
+    .in_avl_st_ready                     (tx_avl_st_in_ready            ),
+
+    /********* Avalon-ST output *********/
+    .out_avl_st_data                     (tx_avl_st_out_data            ),
+    .out_avl_st_valid                    (tx_avl_st_out_valid           ),
+    .out_avl_st_endofpacket              (tx_avl_st_out_endofpacket     ),
+    .out_avl_st_startofpacket            (tx_avl_st_out_startofpacket   ),
+    .out_avl_st_ready                    (tx_avl_st_out_ready           )
+
+);
 
 /********* CSI TX *********/
 dsi_tx_top #(
@@ -397,11 +430,11 @@ dsi_tx_top #(
     .irq                                    (irq_tx                     ),
 
     /********* Avalon-ST input *********/
-    .avl_st_in_data                         (tx_avl_st_in_data          ),
-    .avl_st_in_valid                        (tx_avl_st_in_valid         ),
-    .avl_st_in_endofpacket                  (tx_avl_st_in_endofpacket   ),
-    .avl_st_in_startofpacket                (tx_avl_st_in_startofpacket ),
-    .avl_st_in_ready                        (tx_avl_st_in_ready         ),
+    .avl_st_in_data                         (tx_avl_st_out_data            ),
+    .avl_st_in_valid                        (tx_avl_st_out_valid           ),
+    .avl_st_in_endofpacket                  (tx_avl_st_out_endofpacket     ),
+    .avl_st_in_startofpacket                (tx_avl_st_out_startofpacket   ),
+    .avl_st_in_ready                        (tx_avl_st_out_ready           ),
 
     /********* Output interface *********/
     .dphy_data_hs_out_p                     (),

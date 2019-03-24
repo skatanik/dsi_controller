@@ -14,10 +14,7 @@ module fifo_to_lane_bridge (
     output  wire                start_rqst          ,
     output  wire                fin_rqst            ,
     output  wire [7:0]          inp_data            ,
-    input   wire                data_rqst           ,
-
-    /********* packet to packet timeout *********/
-    input   wire [15:0]         p2p_timeout
+    input   wire                data_rqst
 
 );
 
@@ -59,15 +56,5 @@ assign fin_rqst     = (fifo_empty_delayed ^ fifo_empty) & fifo_empty & state_act
 assign mode_lp      = mode_lp_in;
 assign fifo_read    = state_active & data_rqst & !fifo_empty | start_rqst;
 assign inp_data     = middle_buffer;
-
-/********* timeout counter *********/
-logic [15:0]    counter;
-
-always_ff @(posedge clk or negedge rst_n)
-    if(!rst_n)          counter <= 16'b0;
-    else if(fin_rqst)   counter <= p2p_timeout;
-    else if(|counter)   counter <= counter - 16'd1;
-
-assign fifo_not_empty = !fifo_empty & !(|counter);
 
 endmodule

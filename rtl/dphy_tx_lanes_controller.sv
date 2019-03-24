@@ -127,8 +127,7 @@ for(i = 0; i < 4; i = i + 1) begin : fifo_to_lane_bridge
     .start_rqst              (dsi_start_rqst[i]                     ),
     .fin_rqst                (dsi_fin_rqst[i]                       ),
     .inp_data                (dsi_inp_data[i*8 + 7 : i*8]           ),
-    .data_rqst               (dsi_data_rqst[i]                      ),
-    .p2p_timeout             (16'hf                                 )
+    .data_rqst               (dsi_data_rqst[i]                      )
 
     );
     end // fifo_to_lane_bridge

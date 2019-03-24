@@ -130,6 +130,8 @@ logic       send_lp_data;
 logic       reset_baud_counter;
 logic       fin_rqst_reg;
 logic       lp_fin_rqst_reg;
+logic       next_state_entry_cmd;
+logic       next_state_mark_one;
 
 assign next_state_lpdt          = (state_next == STATE_LP_SEND_ESC_MODE_ENTRY) && (state_current == STATE_IDLE);
 assign next_state_entry_cmd     = (state_next == STATE_LP_SEND_ENTRY_CMD) && (state_current == STATE_LP_SEND_ESC_MODE_ENTRY);
