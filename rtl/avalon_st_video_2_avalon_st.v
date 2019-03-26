@@ -30,7 +30,7 @@ always @(posedge clk or negedge rst_n)
 wire inp_data_valid;
 
 assign set_skip_frame   = inp_data_valid && in_avl_st_startofpacket && (in_avl_st_data[3:0] == 4'hF) && !prev_frame_ctrl;
-assign inp_data_valid   = in_avl_st_valid_delayed | in_avl_st_valid;
+assign inp_data_valid   = in_avl_st_valid;
 
 always @(posedge clk or negedge rst_n)
     if(!rst_n)                                          skip_frame <= 1'b0;
@@ -58,7 +58,7 @@ wire        fifo_empty;
 wire        fifo_read;
 wire [33:0] fifo_data_out;
 
-assign global_enable        = in_avl_st_ready && inp_data_valid && !set_skip_frame && !skip_frame;
+assign global_enable        = in_avl_st_ready && inp_data_valid && !set_skip_frame && !skip_frame && !in_avl_st_startofpacket;
 assign read_bytes_number    = ({4{isr_read}} & 4'd4);
 assign pipeline_enable      = isr_read & fifo_not_full;
 
