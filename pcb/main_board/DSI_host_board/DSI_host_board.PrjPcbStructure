@@ -1,0 +1,2 @@
+Record=TopLevelDocument|FileName=host_board.SchDoc
+Record=SheetSymbol|SourceDocument=host_board.SchDoc|Designator=SDRAM DDR3|SchDesignator=SDRAM DDR3|FileName=sdram_block.SchDoc|SymbolType=Normal|RawFileName=sdram_block.SchDoc|DesignItemId= |SourceLibraryName= |ObjectKind=Sheet Symbol|RevisionGUID= |ItemGUID= |VaultGUID= 
