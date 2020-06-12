@@ -293,10 +293,14 @@ GenerateClassCluster=0
 DocumentUniqueId=NEMERKBJ
 
 [GeneratedDocument1]
-DocumentPath=Project Outputs for DSI_host_board\Design Rule Check - host_board.html
+DocumentPath=Project Outputs for DSI_host_board\BGA Escape Route - host_board.html
 DItemRevisionGUID=
 
 [GeneratedDocument2]
+DocumentPath=Project Outputs for DSI_host_board\Design Rule Check - host_board.html
+DItemRevisionGUID=
+
+[GeneratedDocument3]
 DocumentPath=Project Outputs for DSI_host_board\DSI_host_board.nsx
 DItemRevisionGUID=
 
