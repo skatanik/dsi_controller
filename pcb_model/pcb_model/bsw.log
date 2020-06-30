@@ -1,0 +1,16 @@
+2020-06-30 21:39:37 21896     [INFO] ****** HyperLynx v2.6 build 14488140 
+2020-06-30 21:39:37 21896     [INFO]        C:\mentorgraphics\HLVX.2.6\SDD_HOME\hyperlynx64\bsw.exe 
+2020-06-30 21:42:59 21896     [INFO] Opening Project D:\git\dsi_controller\pcb_model\pcb_model\host_board.hyp
+2020-06-30 21:43:00 21896     [INFO] Opened Board: host_board.hyp <D:\git\dsi_controller\pcb_model\pcb_model\>
+2020-06-30 21:47:31 21896     [INFO] Generated HyperLynx IC Model Index: C:\mentorgraphics\HLVX.2.6\SDD_HOME\hyperlynx64\Libs\HyperLynxIcModels.csv
+2020-06-30 21:47:40 21896    [ERROR] Open file: File "D:\git\dsi_controller\pcb_model\pcb_model\host_board.ref" cannot be opened Starting with new file
+2020-06-30 21:51:14 21896  [WARNING] There are no drivers assigned.
+2020-06-30 22:42:33 21896     [INFO] Generating HTML report...
+2020-06-30 22:42:33 21896     [INFO] Opening report...
+2020-06-30 22:42:33 21896     [INFO] D:\git\dsi_controller\pcb_model\pcb_model\DDR_Results_Jun-30-2020_22h-40m>start "" C:\mentorgraphics\HLVX.2.6\SDD_HOME\hyperlynx64\EM\nWaveHL\nwjs/nw --nwapp="D:\git\dsi_controller\pcb_model\pcb_model\DDR_Results_Jun-30-2020_22h-40m\DDR_Report" --user-data-dir="D:\git\dsi_controller\pcb_model\pcb_model\DDR_Results_Jun-30-2020_22h-40m\DDR_Report/nw_data" 
+2020-06-30 22:42:33 21896     [INFO] DDRx report:     Simulation has completed! Reports, waveforms, and log file are saved in the folder:        D:\git\dsi_controller\pcb_model\pcb_model\DDR_Results_Jun-30-2020_22h-40m     
+2020-06-30 22:48:33 1976     [INFO] ****** HyperLynx v2.6 build 14488140 
+2020-06-30 22:48:33 1976     [INFO]        C:\mentorgraphics\HLVX.2.6\SDD_HOME\hyperlynx64\bsw.exe -FEATM:HYP -INIF:C:\mentorgraphics\HLVX.2.6\SDD_HOME\hyperlynx64\bsw.ini D:\git\dsi_controller\pcb_model\pcb_model\DDR_UDQS_P.ffs 
+2020-06-30 22:48:33 1976     [INFO] Opening Project D:\git\dsi_controller\pcb_model\pcb_model\DDR_UDQS_P.ffs
+2020-06-30 22:48:34 1976     [INFO] Opened Schematic: D:\git\dsi_controller\pcb_model\pcb_model\DDR_UDQS_P.ffs
+2020-06-30 22:49:10 1976  [WARNING] Warning: No probes are enabled. Please enable at least one before simulating.
