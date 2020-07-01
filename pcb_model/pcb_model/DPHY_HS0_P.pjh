@@ -1,15 +1,3 @@
-[POWER_INTEGRITY]
-CapAutoGrouping=0
-ConvertLargePadsToAreas_Convert=1
-ConvertLargePadsToAreas_ApplyTo=0
-AutoReferenceLayers=1
-[EXPORT_TO_FFS]
-EXPAND_INTO_EBD=1
-EXPORT_VIA=0
-USE_IC_COMPONENT=0
-PINS_FOR_IC_COMPONENT=5
-MERGE_SHORT_SEGMENTS=0
-MERGE_SHORT_SEGMENTS_LEN=0.000508
 [VER]
 Name=HyperLynx Project File
 Major=1
@@ -46,7 +34,7 @@ SiXtalk=0
 ResultsFolder=Batch_Results
 ResultsFolderTimeTag=1
 SelNetMode=0
-UseGlobalSimSettings=1
+UseGlobalSimSettings=0
 WasSavedInWizard=0
 UseDefModel=0
 DefModel_Library=modvsez.ibs
@@ -171,15 +159,19 @@ SimResolution=1.000000e-11
 [BATCH_DRIVERS]
 NumberOfDrvCases=0
 [PROBING]
-Lsw=2
-Bsw=2
+Lsw=0
+Bsw=0
 [DEVICE_KIT]
 INIFILE=
 [ANTISETUP]
-SHOWANTI=1
+SHOWANTI=0
 FORCEUSER=0
 APAD=2.540000e-04
 ASEG=2.032000e-04
+[POWER_INTEGRITY]
+ConvertLargePadsToAreas_Convert=1
+ConvertLargePadsToAreas_ApplyTo=0
+AutoReferenceLayers=1
 [SI_SIM]
 TraceConsiderDistance=3.810000e-04
 MinTotalCoupledTraceLength=1.270000e-02
@@ -190,7 +182,7 @@ InclSelfCoupling=1
 ArbitrayAngles=0
 XtalkDataElectrical=0
 CrosstalkVoltage=1.500000e-01
-InclTraceToAreaCoupling=1
+InclTraceToAreaCoupling=0
 AreaConsiderDistance=1.016000e-03
 AreaFillGrid=1.016000e-03
 InclSparamCoupling=0

@@ -29,117 +29,117 @@
 
 
 ***
-*** current delay: 1.250, average skew: 0.049 
-Net: DDR_LDQS_P  Skew: 0.049  SimCase: W1  Corner: Typ 
+*** current delay: 1.250, average skew: 0.014 
+Net: DDR_LDQS_P  Skew: 0.014  SimCase: W1  Corner: Typ 
 ***
-*** current delay: 0.625, stb skew: 0.049, local skew: 0.105 
-Net: DDR_D0  Skew: 0.105  SimCase: W1  Corner: Typ 
+*** current delay: 0.625, stb skew: 0.014, local skew: 0.104 
+Net: DDR_D0  Skew: 0.104  SimCase: W1  Corner: Typ 
 ***
-*** current delay: 0.625, stb skew: 0.049, local skew: 0.106 
+*** current delay: 0.625, stb skew: 0.014, local skew: 0.106 
 Net: DDR_D1  Skew: 0.106  SimCase: W1  Corner: Typ 
 ***
-*** current delay: 0.625, stb skew: 0.049, local skew: 0.095 
-Net: DDR_D2  Skew: 0.095  SimCase: W1  Corner: Typ 
+*** current delay: 0.625, stb skew: 0.014, local skew: 0.094 
+Net: DDR_D2  Skew: 0.094  SimCase: W1  Corner: Typ 
 ***
-*** current delay: 0.625, stb skew: 0.049, local skew: 0.115 
-Net: DDR_D3  Skew: 0.115  SimCase: W1  Corner: Typ 
+*** current delay: 0.625, stb skew: 0.014, local skew: 0.121 
+Net: DDR_D3  Skew: 0.121  SimCase: W1  Corner: Typ 
 ***
-*** current delay: 0.625, stb skew: 0.049, local skew: 0.130 
-Net: DDR_D4  Skew: 0.130  SimCase: W1  Corner: Typ 
+*** current delay: 0.625, stb skew: 0.014, local skew: 0.132 
+Net: DDR_D4  Skew: 0.132  SimCase: W1  Corner: Typ 
 ***
-*** current delay: 0.625, stb skew: 0.049, local skew: 0.100 
-Net: DDR_D5  Skew: 0.100  SimCase: W1  Corner: Typ 
+*** current delay: 0.625, stb skew: 0.014, local skew: 0.103 
+Net: DDR_D5  Skew: 0.103  SimCase: W1  Corner: Typ 
 ***
-*** current delay: 0.625, stb skew: 0.049, local skew: 0.099 
+*** current delay: 0.625, stb skew: 0.014, local skew: 0.099 
 Net: DDR_D6  Skew: 0.099  SimCase: W1  Corner: Typ 
 ***
-*** current delay: 0.625, stb skew: 0.049, local skew: 0.113 
-Net: DDR_D7  Skew: 0.113  SimCase: W1  Corner: Typ 
+*** current delay: 0.625, stb skew: 0.014, local skew: 0.118 
+Net: DDR_D7  Skew: 0.118  SimCase: W1  Corner: Typ 
 ***
-*** current delay: 0.625, stb skew: 0.049, local skew: 0.085 
-Net: DDR_DM0  Skew: 0.085  SimCase: W1  Corner: Typ 
+*** current delay: 0.625, stb skew: 0.014, local skew: 0.087 
+Net: DDR_DM0  Skew: 0.087  SimCase: W1  Corner: Typ 
 ***
 *** current delay: 0.000, stb skew: 0.000, local skew: -0.069 
 Net: DDR_D0  Skew: -0.069  SimCase: R(1,1)  Corner: Typ 
 ***
-*** current delay: 0.000, stb skew: 0.000, local skew: -0.071 
-Net: DDR_D1  Skew: -0.071  SimCase: R(1,1)  Corner: Typ 
-***
-*** current delay: 0.000, stb skew: 0.000, local skew: -0.071 
-Net: DDR_D2  Skew: -0.071  SimCase: R(1,1)  Corner: Typ 
-***
-*** current delay: 0.000, stb skew: 0.000, local skew: -0.051 
-Net: DDR_D3  Skew: -0.051  SimCase: R(1,1)  Corner: Typ 
-***
-*** current delay: 0.000, stb skew: 0.000, local skew: -0.046 
-Net: DDR_D4  Skew: -0.046  SimCase: R(1,1)  Corner: Typ 
-***
 *** current delay: 0.000, stb skew: 0.000, local skew: -0.070 
-Net: DDR_D5  Skew: -0.070  SimCase: R(1,1)  Corner: Typ 
+Net: DDR_D1  Skew: -0.070  SimCase: R(1,1)  Corner: Typ 
+***
+*** current delay: 0.000, stb skew: 0.000, local skew: -0.072 
+Net: DDR_D2  Skew: -0.072  SimCase: R(1,1)  Corner: Typ 
+***
+*** current delay: 0.000, stb skew: 0.000, local skew: -0.045 
+Net: DDR_D3  Skew: -0.045  SimCase: R(1,1)  Corner: Typ 
+***
+*** current delay: 0.000, stb skew: 0.000, local skew: -0.044 
+Net: DDR_D4  Skew: -0.044  SimCase: R(1,1)  Corner: Typ 
+***
+*** current delay: 0.000, stb skew: 0.000, local skew: -0.066 
+Net: DDR_D5  Skew: -0.066  SimCase: R(1,1)  Corner: Typ 
 ***
 *** current delay: 0.000, stb skew: 0.000, local skew: -0.069 
 Net: DDR_D6  Skew: -0.069  SimCase: R(1,1)  Corner: Typ 
 ***
-*** current delay: 0.000, stb skew: 0.000, local skew: -0.062 
-Net: DDR_D7  Skew: -0.062  SimCase: R(1,1)  Corner: Typ 
+*** current delay: 0.000, stb skew: 0.000, local skew: -0.057 
+Net: DDR_D7  Skew: -0.057  SimCase: R(1,1)  Corner: Typ 
 ***
-*** current delay: 0.675, average skew: 0.058 
-Net: DDR_LDQS_P  Skew: 0.058  SimCase: R(1,1)  Corner: Typ 
+*** current delay: 0.675, average skew: 0.056 
+Net: DDR_LDQS_P  Skew: 0.056  SimCase: R(1,1)  Corner: Typ 
 ***
-*** current delay: 1.250, average skew: 0.050 
-Net: DDR_UDQS_P  Skew: 0.050  SimCase: W1  Corner: Typ 
+*** current delay: 1.250, average skew: 0.015 
+Net: DDR_UDQS_P  Skew: 0.015  SimCase: W1  Corner: Typ 
 ***
-*** current delay: 0.625, stb skew: 0.050, local skew: 0.140 
-Net: DDR_D10  Skew: 0.140  SimCase: W1  Corner: Typ 
+*** current delay: 0.625, stb skew: 0.015, local skew: 0.141 
+Net: DDR_D10  Skew: 0.141  SimCase: W1  Corner: Typ 
 ***
-*** current delay: 0.625, stb skew: 0.050, local skew: 0.100 
-Net: DDR_D11  Skew: 0.100  SimCase: W1  Corner: Typ 
+*** current delay: 0.625, stb skew: 0.015, local skew: 0.104 
+Net: DDR_D11  Skew: 0.104  SimCase: W1  Corner: Typ 
 ***
-*** current delay: 0.625, stb skew: 0.050, local skew: 0.138 
-Net: DDR_D12  Skew: 0.138  SimCase: W1  Corner: Typ 
+*** current delay: 0.625, stb skew: 0.015, local skew: 0.142 
+Net: DDR_D12  Skew: 0.142  SimCase: W1  Corner: Typ 
 ***
-*** current delay: 0.625, stb skew: 0.050, local skew: 0.079 
+*** current delay: 0.625, stb skew: 0.015, local skew: 0.079 
 Net: DDR_D13  Skew: 0.079  SimCase: W1  Corner: Typ 
 ***
-*** current delay: 0.625, stb skew: 0.050, local skew: 0.133 
-Net: DDR_D14  Skew: 0.133  SimCase: W1  Corner: Typ 
+*** current delay: 0.625, stb skew: 0.015, local skew: 0.136 
+Net: DDR_D14  Skew: 0.136  SimCase: W1  Corner: Typ 
 ***
-*** current delay: 0.625, stb skew: 0.050, local skew: 0.094 
-Net: DDR_D15  Skew: 0.094  SimCase: W1  Corner: Typ 
+*** current delay: 0.625, stb skew: 0.015, local skew: 0.093 
+Net: DDR_D15  Skew: 0.093  SimCase: W1  Corner: Typ 
 ***
-*** current delay: 0.625, stb skew: 0.050, local skew: 0.140 
-Net: DDR_D8  Skew: 0.140  SimCase: W1  Corner: Typ 
+*** current delay: 0.625, stb skew: 0.015, local skew: 0.142 
+Net: DDR_D8  Skew: 0.142  SimCase: W1  Corner: Typ 
 ***
-*** current delay: 0.625, stb skew: 0.050, local skew: 0.093 
-Net: DDR_D9  Skew: 0.093  SimCase: W1  Corner: Typ 
+*** current delay: 0.625, stb skew: 0.015, local skew: 0.096 
+Net: DDR_D9  Skew: 0.096  SimCase: W1  Corner: Typ 
 ***
-*** current delay: 0.625, stb skew: 0.050, local skew: 0.053 
+*** current delay: 0.625, stb skew: 0.015, local skew: 0.053 
 Net: DDR_DM1  Skew: 0.053  SimCase: W1  Corner: Typ 
 ***
-*** current delay: 0.000, stb skew: 0.000, local skew: -0.027 
-Net: DDR_D10  Skew: -0.027  SimCase: R(1,1)  Corner: Typ 
+*** current delay: 0.000, stb skew: 0.000, local skew: -0.025 
+Net: DDR_D10  Skew: -0.025  SimCase: R(1,1)  Corner: Typ 
 ***
-*** current delay: 0.000, stb skew: 0.000, local skew: -0.072 
-Net: DDR_D11  Skew: -0.072  SimCase: R(1,1)  Corner: Typ 
+*** current delay: 0.000, stb skew: 0.000, local skew: -0.067 
+Net: DDR_D11  Skew: -0.067  SimCase: R(1,1)  Corner: Typ 
 ***
-*** current delay: 0.000, stb skew: 0.000, local skew: -0.038 
-Net: DDR_D12  Skew: -0.038  SimCase: R(1,1)  Corner: Typ 
+*** current delay: 0.000, stb skew: 0.000, local skew: -0.033 
+Net: DDR_D12  Skew: -0.033  SimCase: R(1,1)  Corner: Typ 
 ***
 *** current delay: 0.000, stb skew: 0.000, local skew: -0.086 
 Net: DDR_D13  Skew: -0.086  SimCase: R(1,1)  Corner: Typ 
 ***
-*** current delay: 0.000, stb skew: 0.000, local skew: -0.033 
-Net: DDR_D14  Skew: -0.033  SimCase: R(1,1)  Corner: Typ 
+*** current delay: 0.000, stb skew: 0.000, local skew: -0.029 
+Net: DDR_D14  Skew: -0.029  SimCase: R(1,1)  Corner: Typ 
 ***
-*** current delay: 0.000, stb skew: 0.000, local skew: -0.079 
-Net: DDR_D15  Skew: -0.079  SimCase: R(1,1)  Corner: Typ 
+*** current delay: 0.000, stb skew: 0.000, local skew: -0.080 
+Net: DDR_D15  Skew: -0.080  SimCase: R(1,1)  Corner: Typ 
 ***
-*** current delay: 0.000, stb skew: 0.000, local skew: -0.038 
-Net: DDR_D8  Skew: -0.038  SimCase: R(1,1)  Corner: Typ 
+*** current delay: 0.000, stb skew: 0.000, local skew: -0.035 
+Net: DDR_D8  Skew: -0.035  SimCase: R(1,1)  Corner: Typ 
 ***
-*** current delay: 0.000, stb skew: 0.000, local skew: -0.088 
-Net: DDR_D9  Skew: -0.088  SimCase: R(1,1)  Corner: Typ 
+*** current delay: 0.000, stb skew: 0.000, local skew: -0.085 
+Net: DDR_D9  Skew: -0.085  SimCase: R(1,1)  Corner: Typ 
 ***
-*** current delay: 0.675, average skew: 0.052 
-Net: DDR_UDQS_P  Skew: 0.052  SimCase: R(1,1)  Corner: Typ 
+*** current delay: 0.675, average skew: 0.050 
+Net: DDR_UDQS_P  Skew: 0.050  SimCase: R(1,1)  Corner: Typ 
 
