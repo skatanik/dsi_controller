@@ -312,6 +312,7 @@ wire [33:0] fifo_mux_data_out;
 wire        fifo_mux_empty;
 wire        fifo_mux_full;
 
+`ifdef ALTERA
 altera_generic_fifo #(
         .WIDTH      (34),
         .DEPTH      (4),
@@ -327,6 +328,10 @@ altera_generic_fifo #(
         .empty          (fifo_mux_empty     ), //            .empty
         .full           (fifo_mux_full      )   //            .full
     );
+
+`elsif XILINX
+
+`endif
 
 always @(*)
     begin

@@ -64,6 +64,7 @@ wire [REGISTERS_NUMBER - 1 : 0] sys_write_req;
 wire [3:0]                      sys_write_strb;
 wire [31:0]                     sys_write_data;
 
+`ifdef ALTERA
 avalon_mm_manager  #(
         .REGISTERS_NUMBER (REGISTERS_NUMBER     ),
         .ADDR_WIDTH       (ADDR_WIDTH           ),
@@ -97,6 +98,10 @@ avalon_mm_manager  #(
     .sys_write_strb          (sys_write_strb                ),
     .sys_write_data          (sys_write_data                )
 );
+
+`elsif XILINX
+
+`endif
 
 /********* Registers *********/
 wire [31:0]  dsi_reg_cr;

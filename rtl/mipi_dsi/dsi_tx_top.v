@@ -401,7 +401,7 @@ dsi_lanes_controller dsi_lanes_controller_0
 /********* Primitives instanciation *********/
 
 /********* CLK lane *********/
-`ifdef MAX_10
+`ifdef ALTERA
 
 wire clk_lvds_out;
 
@@ -414,13 +414,24 @@ lvds_soft lvds_clk(
 
 `ifdef MIPI_TX_TRI_STATED_HS_OUTPUTS
 
+
+wire clk_lvds_out_n_temp;
+wire clk_lvds_out_p_temp;
 wire clk_lvds_out_n;
 wire clk_lvds_out_p;
 
-gpio gpio_clk(
-        .din            (clk_lvds_out       ),       //       din.export
+assign clk_lvds_out_n_temp = clk_lvds_out;
+assign clk_lvds_out_p_temp = ~clk_lvds_out;
+
+gpio gpio_clk_p(
+        .din            (clk_lvds_out_p_temp       ),       //       din.export
         .pad_out        (clk_lvds_out_p     ),   //   pad_out.export
-        .pad_out_b      (clk_lvds_out_n     ), // pad_out_b.export
+        .oe             (!clk_lp_enable     )         //        oe.export
+    );
+
+gpio gpio_clk_n(
+        .din            (clk_lvds_out_n_temp       ),       //       din.export
+        .pad_out        (clk_lvds_out_n     ),   //   pad_out.export
         .oe             (!clk_lp_enable     )         //        oe.export
     );
 
@@ -444,6 +455,8 @@ assign dphy_clk_lp_out_n = clk_lp_enable ? clock_LP_n_output : 1'bZ;
 /********* Data lanes *********/
 
 wire [3:0] data_lvds_out;
+wire [3:0] data_lvds_out_n_temp;
+wire [3:0] data_lvds_out_p_temp;
 wire [3:0] data_lvds_out_n;
 wire [3:0] data_lvds_out_p;
 
@@ -458,10 +471,18 @@ generate
             );
 `ifdef MIPI_TX_TRI_STATED_HS_OUTPUTS
 
-        gpio gpio_data(
-                .din            (data_lvds_out[i]   ),       //       din.export
+    assign data_lvds_out_p_temp[i] = data_lvds_out[i];
+    assign data_lvds_out_n_temp[i] = ~data_lvds_out[i];
+
+        gpio gpio_data_p(
+                .din            (data_lvds_out_p_temp[i]   ),       //       din.export
                 .pad_out        (data_lvds_out_p[i] ),   //   pad_out.export
-                .pad_out_b      (data_lvds_out_n[i] ), // pad_out_b.export
+                .oe             (!data_lp_enable[i] )         //        oe.export
+            );
+
+        gpio gpio_data_n(
+                .din            (data_lvds_out_n_temp[i]   ),       //       din.export
+                .pad_out        (data_lvds_out_n[i] ),   //   pad_out.export
                 .oe             (!data_lp_enable[i] )         //        oe.export
             );
 
@@ -483,7 +504,7 @@ generate
     end
 endgenerate
 
-`elsif CYCLONE_10
+`elsif XILINX
 
 `endif
 

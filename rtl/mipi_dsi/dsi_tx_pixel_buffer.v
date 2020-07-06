@@ -57,6 +57,7 @@ assign fifo_line_ready  = fifo_line_ready_reg;
 assign fifo_read        = fifo_read_ack;
 
 /********* FIFO 32xFIFO_DEPTH *********/
+`ifdef ALTERA
 altera_generic_fifo #(
     .WIDTH      (32     ),
     .DEPTH      (FIFO_DEPTH   ),
@@ -76,6 +77,9 @@ altera_generic_fifo #(
     .wrusedw    (fifo_wrusedw       )
     );
 
+`elsif XILINX
+
+`endif
 
 endmodule
 
