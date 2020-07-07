@@ -78,7 +78,19 @@ altera_generic_fifo #(
     );
 
 `elsif XILINX
-
+fifo_generator_v9_3 your_instance_name (
+  .rst                  (!rst_n         ), // input rst
+  .wr_clk               (clk            ), // input wr_clk
+  .rd_clk               (clk_phy        ), // input rd_clk
+  .din                  (fifo_data_in   ), // input [31 : 0] din
+  .wr_en                (fifo_write     ), // input wr_en
+  .rd_en                (fifo_read      ), // input rd_en
+  .dout                 (fifo_data_out  ), // output [31 : 0] dout
+  .full                 (fifo_full      ), // output full
+  .empty                (fifo_empty     ), // output empty
+  .rd_data_count        (fifo_usedw     ), // output [10 : 0] rd_data_count
+  .wr_data_count        (fifo_wrusedw   ) // output [10 : 0] wr_data_count
+);
 `endif
 
 endmodule

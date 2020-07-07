@@ -506,6 +506,100 @@ endgenerate
 
 `elsif XILINX
 
+/* CLK */
+wire hs_clock_en;
+wire hs_clock_out;
+
+OBUFT #(
+      .DRIVE(12),   // Specify the output drive strength
+      .IOSTANDARD("DEFAULT"), // Specify the output I/O standard
+      .SLEW("SLOW") // Specify the output slew rate
+   ) OBUFT_LP_P (
+      .O(dphy_clk_lp_out_p  ),     // Buffer output (connect directly to top-level port)
+      .I(clock_LP_p_output  ),     // Buffer input
+      .T(clk_lp_enable      )      // 3-state enable input
+   );
+
+OBUFT #(
+      .DRIVE(12),   // Specify the output drive strength
+      .IOSTANDARD("DEFAULT"), // Specify the output I/O standard
+      .SLEW("SLOW") // Specify the output slew rate
+   ) OBUFT_LP_N (
+      .O(dphy_clk_lp_out_n  ),     // Buffer output (connect directly to top-level port)
+      .I(clock_LP_n_output  ),     // Buffer input
+      .T(clk_lp_enable      )      // 3-state enable input
+   );
+
+lvds_soft_x clk_lane(
+		.rst                (!rst_phy_n             ),   // tx_inclock.rst
+		.tx_clock_logic     (clk_phy                ),   // tx_inclock.tx_inclock
+		.tx_clock_io        (clk_hs                 ),      // tx_syncclock.tx_syncclock
+		.tx_clock_strobe    (clk_hs_latch           ),  // tx_syncclock.tx_syncclock
+		.tx_en              (!clk_lp_enable         ),  // tx_syncclock.tx_syncclock
+		.tx_in              (clock_hs_output_bus    ),            // tx_in.tx_in
+		.tx_out             (hs_clock_out           )            // tx_out.tx_out
+		.tx_out_en          (hs_clock_en            )         // tx_out.tx_out_en
+	);
+
+OBUFTDS #(
+      .IOSTANDARD("DIFF_SSTL18_II") // Specify the output I/O standard
+) OBUFTDS_clk (
+      .O(dphy_clk_hs_out_p      ),     // Diff_p output (connect directly to top-level port)
+      .OB(dphy_clk_hs_out_n     ),   // Diff_n output (connect directly to top-level port)
+      .I(hs_clock_out           ),     // Buffer input
+      .T(hs_clock_en            )      // 3-state enable input
+   );
+
+/* Data */
+wire [3:0] hs_data_en;
+wire [3:0] hs_data_out;
+
+generate
+for (i = 0; i < 4; i = i + 1) begin:lanes_lvds
+
+OBUFT #(
+      .DRIVE(12),   // Specify the output drive strength
+      .IOSTANDARD("DEFAULT"), // Specify the output I/O standard
+      .SLEW("SLOW") // Specify the output slew rate
+   ) OBUFT_DATA_LP_P (
+      .O    (dphy_data_lp_out_p[i]  ),     // Buffer output (connect directly to top-level port)
+      .I    (LP_p_output[i]         ),     // Buffer input
+      .T    (data_lp_enable[i]      )      // 3-state enable input
+   );
+
+OBUFT #(
+      .DRIVE(12),   // Specify the output drive strength
+      .IOSTANDARD("DEFAULT"), // Specify the output I/O standard
+      .SLEW("SLOW") // Specify the output slew rate
+   ) OBUFT_DATA_LP_N (
+      .O    (dphy_data_lp_out_n[i]  ),     // Buffer output (connect directly to top-level port)
+      .I    (LP_n_output[i]         ),     // Buffer input
+      .T    (data_lp_enable[i]      )      // 3-state enable input
+   );
+
+lvds_soft_x data_lane(
+		.rst                (!rst_phy_n                 ),   // tx_inclock.rst
+		.tx_clock_logic     (clk_phy                    ),   // tx_inclock.tx_inclock
+		.tx_clock_io        (clk_hs                     ),      // tx_syncclock.tx_syncclock
+		.tx_clock_strobe    (clk_hs_latch               ),  // tx_syncclock.tx_syncclock
+		.tx_en              (!data_lp_enable[i]         ),  // tx_syncclock.tx_syncclock
+		.tx_in              (hs_lane_output_bus[i*8+:8] ),            // tx_in.tx_in
+		.tx_out             (hs_data_out[i]             )            // tx_out.tx_out
+		.tx_out_en          (hs_data_en[i]              )         // tx_out.tx_out_en
+	);
+
+OBUFTDS #(
+      .IOSTANDARD("DIFF_SSTL18_II") // Specify the output I/O standard
+   ) OBUFTDS_data (
+      .O    (dphy_data_hs_out_p[i]      ),     // Diff_p output (connect directly to top-level port)
+      .OB   (dphy_data_hs_out_n[i]      ),   // Diff_n output (connect directly to top-level port)
+      .I    (hs_data_out[i]             ),     // Buffer input
+      .T    (hs_data_en[i]              )      // 3-state enable input
+   );
+
+end
+endgenerate
+
 `endif
 
 endmodule

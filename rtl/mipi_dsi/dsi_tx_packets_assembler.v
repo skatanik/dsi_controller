@@ -331,6 +331,17 @@ altera_generic_fifo #(
 
 `elsif XILINX
 
+scfifo_34 fifo_mux (
+  .clk          (clk                ), // input clk
+  .rst          (!rst_n             ), // input rst
+  .din          (data_mux           ), // input [33 : 0] din
+  .wr_en        (fifo_mux_write     ), // input wr_en
+  .rd_en        (fifo_mux_read      ), // input rd_en
+  .dout         (fifo_mux_data_out  ), // output [33 : 0] dout
+  .full         (fifo_mux_full      ), // output full
+  .empty        (fifo_mux_empty     ) // output empty
+);
+
 `endif
 
 always @(*)
