@@ -24,12 +24,19 @@ module dsi_tx_top #(
 
     output  wire                    irq                                 ,
 
+    `ifdef ALTERA
     /********* Avalon-ST input *********/
     input   wire [31:0]             in_avl_st_data                      ,
     input   wire                    in_avl_st_valid                     ,
     input   wire                    in_avl_st_endofpacket               ,
     input   wire                    in_avl_st_startofpacket             ,
     output  wire                    in_avl_st_ready                     ,
+
+    `elsif XILINX
+    /********* AXI4-ST input *********/
+
+
+    `endif
 
     /********* Output interface *********/
     output  wire [3:0]              dphy_data_hs_out_p                  ,  // active
@@ -48,6 +55,7 @@ module dsi_tx_top #(
 
     `endif
 
+    `ifdef ALTERA
     /********* Avalon-MM iface *********/
     input   wire [4:0]              avl_mm_address                      ,
 
@@ -59,6 +67,11 @@ module dsi_tx_top #(
     input   wire [31:0]             avl_mm_writedata                    ,
     input   wire [3:0]              avl_mm_byteenable                   ,
     output  wire                    avl_mm_waitrequest
+
+    `elsif XILINX
+    /********* AXI4(lite) iface *********/
+
+    `endif
 
 );
 
@@ -301,6 +314,7 @@ wire [35:0]             lanes_fifo_data;
 wire [3:0]              lanes_fifo_empty;
 wire [3:0]              lanes_fifo_read;
 
+`ifdef ALTERA
 altera_generic_fifo #(
     .WIDTH      (9),
     .DEPTH      (32),
@@ -316,12 +330,30 @@ altera_generic_fifo #(
     .empty          (lanes_fifo_empty[0]                                            ),
     .full           (phy_full[0]                                                    )
 );
+
+`elsif XILINX
+
+fifo_9x32 fifo_9x32_inst (
+  .clk      (clk_phy                            ), // input clk
+  .rst      (!rst_phy_n                         ), // input rst
+  .din      ({phy_data[32], phy_data[7:0]}      ), // input [8 : 0] din
+  .wr_en    (phy_write[0]                       ), // input wr_en
+  .rd_en    (lanes_fifo_read[0]                 ), // input rd_en
+  .dout     (lanes_fifo_data_0                  ), // output [8 : 0] dout
+  .full     (phy_full[0]                        ), // output full
+  .empty    (lanes_fifo_empty[0]                ) // output empty
+);
+
+`endif
+
 assign lanes_fifo_data[8:0] = lanes_fifo_data_0;
 
 genvar i;
 
 generate
     for (i = 1; i < 4; i = i + 1) begin: lanes_fifo
+`ifdef ALTERA
+
     altera_generic_fifo #(
         .WIDTH      (8),
         .DEPTH      (32),
@@ -338,6 +370,20 @@ generate
         .full           (phy_full[i]                                                    )
     );
 
+`elsif XILINX
+
+    fifo_9x32 fifo_9x32_inst (
+    .clk    (clk_phy                        ), // input clk
+    .rst    (!rst_phy_n                     ), // input rst
+    .din    (phy_data[i*8+:8]               ), // input [8 : 0] din
+    .wr_en  (phy_write[i]                   ), // input wr_en
+    .rd_en  (lanes_fifo_read[i]             ), // input rd_en
+    .dout   (lanes_fifo_data_1[(i-1)*8+:8]  ), // output [8 : 0] dout
+    .full   (phy_full[i]                    ), // output full
+    .empty  (lanes_fifo_empty[i]            ) // output empty
+    );
+
+`endif
     assign lanes_fifo_data[i*9+:9] = {1'b0, lanes_fifo_data_1[(i-1)*8+:8]};
 
     end

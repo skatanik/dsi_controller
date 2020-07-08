@@ -78,7 +78,7 @@ altera_generic_fifo #(
     );
 
 `elsif XILINX
-fifo_generator_v9_3 your_instance_name (
+fifo_generator_v9_3 pixel_fifo (
   .rst                  (!rst_n         ), // input rst
   .wr_clk               (clk            ), // input wr_clk
   .rd_clk               (clk_phy        ), // input rd_clk
