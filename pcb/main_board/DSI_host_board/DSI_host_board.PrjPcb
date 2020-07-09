@@ -290,7 +290,7 @@ ClassGenCCAutoRoomEnabled=1
 ClassGenNCAutoScope=None
 DItemRevisionGUID=
 GenerateClassCluster=0
-DocumentUniqueId=
+DocumentUniqueId=ARTSGHRA
 
 [GeneratedDocument1]
 DocumentPath=Project Outputs for DSI_host_board\BGA Escape Route - host_board.html
