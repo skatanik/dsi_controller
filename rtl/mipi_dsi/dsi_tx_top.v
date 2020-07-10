@@ -24,19 +24,12 @@ module dsi_tx_top #(
 
     output  wire                    irq                                 ,
 
-    `ifdef ALTERA
     /********* Avalon-ST input *********/
     input   wire [31:0]             in_avl_st_data                      ,
     input   wire                    in_avl_st_valid                     ,
     input   wire                    in_avl_st_endofpacket               ,
     input   wire                    in_avl_st_startofpacket             ,
     output  wire                    in_avl_st_ready                     ,
-
-    `elsif XILINX
-    /********* AXI4-ST input *********/
-
-
-    `endif
 
     /********* Output interface *********/
     output  wire [3:0]              dphy_data_hs_out_p                  ,  // active
@@ -55,7 +48,6 @@ module dsi_tx_top #(
 
     `endif
 
-    `ifdef ALTERA
     /********* Avalon-MM iface *********/
     input   wire [4:0]              avl_mm_address                      ,
 
@@ -67,11 +59,6 @@ module dsi_tx_top #(
     input   wire [31:0]             avl_mm_writedata                    ,
     input   wire [3:0]              avl_mm_byteenable                   ,
     output  wire                    avl_mm_waitrequest
-
-    `elsif XILINX
-    /********* AXI4(lite) iface *********/
-
-    `endif
 
 );
 
