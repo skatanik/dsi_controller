@@ -1,3 +1,9 @@
 [submodule "rtl/processor_core/picorv32"]
 	path = rtl/processor_core/picorv32
 	url = https://github.com/cliffordwolf/picorv32.git
+[submodule "rtl/verilog-uart"]
+	path = rtl/verilog-uart
+	url = https://github.com/alexforencich/verilog-uart.git
+[submodule "rtl/verilog-i2c"]
+	path = rtl/verilog-i2c
+	url = https://github.com/alexforencich/verilog-i2c
