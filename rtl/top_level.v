@@ -29,12 +29,12 @@
 //              +-------------+                     |
 //        <-----+    GPIO     +<-----+              |                            +--------------+
 //              |             |      |        +-----v-----+      +-------------->+    I2C       +<---------->
-//              +-------------+      +--------+           |      |               |              |
+//              +-------------+      +--------+           |      |               |  EEPROM      |
 //                                +---------->+   MUX     <------+               +--------------+
 //              +-------------+   |           |           |---------------+
 //              |             +<--+   +------->           +------------+  |      +--------------+
 //        <----->    I2C      |       |       +-+--+----+-+            |  |      |    UART      +<--------->
-//              |             |       |         ^  |    |              |  +----->+              |
+//              |    HDMI     |       |         ^  |    |              |  +----->+              |
 //              +-------------+       |         |  |    |              |         +--------------+
 //                                    |         |  |    +-----------+  +-------------+
 //                         +----------+         |  v                |                |
@@ -62,32 +62,9 @@ module top_level(
     );
 
 
-//* RISC V core
-picorv32 #(
-		.STACKADDR(STACKADDR),
-		.PROGADDR_RESET(PROGADDR_RESET),
-		.PROGADDR_IRQ(PROGADDR_IRQ),
-		.BARREL_SHIFTER(BARREL_SHIFTER),
-		.COMPRESSED_ISA(ENABLE_COMPRESSED),
-		.ENABLE_COUNTERS(ENABLE_COUNTERS),
-		.ENABLE_MUL(ENABLE_MULDIV),
-		.ENABLE_DIV(ENABLE_MULDIV),
-		.ENABLE_IRQ(1),
-		.ENABLE_IRQ_QREGS(ENABLE_IRQ_QREGS)
-	) cpu (
-		.clk         (clk        ),
-		.resetn      (resetn     ),
-		.mem_valid   (mem_valid  ),
-		.mem_instr   (mem_instr  ),
-		.mem_ready   (mem_ready  ),
-		.mem_addr    (mem_addr   ),
-		.mem_wdata   (mem_wdata  ),
-		.mem_wstrb   (mem_wstrb  ),
-		.mem_rdata   (mem_rdata  ),
-		.irq         (irq        )
-	);
+//* RISC V core +
 
-//* Data bus Multiplexer
+//* Interconnect (MUX) +
 
 //* DDR3 controller
 
@@ -217,7 +194,7 @@ u_mig_ddr3 (
 
 //* Pixel reader
 
-//* DSI
+//* DSI +
 
 //* I2C master
 
@@ -228,5 +205,7 @@ u_mig_ddr3 (
 //* GPIO
 
 //* Timer
+
+//* Clocking
 
 endmodule
