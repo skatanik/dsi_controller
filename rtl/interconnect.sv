@@ -1,22 +1,22 @@
-module name #(
-    parameter M0_BASE = 32'h0000_0100;
-    parameter M0_MASK = 32'hFFFF_FF00;
-    parameter M1_BASE = 1*256;
-    parameter M1_MASK = 1*256;
-    parameter M2_BASE = 2*256;
-    parameter M2_MASK = 2*256;
-    parameter M3_BASE = 3*256;
-    parameter M3_MASK = 3*256;
-    parameter M4_BASE = 4*256;
-    parameter M4_MASK = 4*256;
-    parameter M5_BASE = 5*256;
-    parameter M5_MASK = 5*256;
-    parameter M6_BASE = 6*256;
-    parameter M6_MASK = 6*256;
-    parameter M7_BASE = 7*256;
-    parameter M7_MASK = 7*256;
-    parameter M8_BASE = 8*256;
-    parameter M8_MASK = 8*256;
+module interconnect_mod #(
+    parameter M0_BASE = 32'h0000_0100,
+    parameter M0_MASK = 32'hFFFF_FF00,
+    parameter M1_BASE = 1*256,
+    parameter M1_MASK = 1*256,
+    parameter M2_BASE = 2*256,
+    parameter M2_MASK = 2*256,
+    parameter M3_BASE = 3*256,
+    parameter M3_MASK = 3*256,
+    parameter M4_BASE = 4*256,
+    parameter M4_MASK = 4*256,
+    parameter M5_BASE = 5*256,
+    parameter M5_MASK = 5*256,
+    parameter M6_BASE = 6*256,
+    parameter M6_MASK = 6*256,
+    parameter M7_BASE = 7*256,
+    parameter M7_MASK = 7*256,
+    parameter M8_BASE = 8*256,
+    parameter M8_MASK = 8*256
 )(
     // Slave port 0
     s0_bus_addr                ,
@@ -116,7 +116,7 @@ module name #(
     m8_bus_write               ,
     m8_bus_writedata           ,
     m8_bus_byteenable          ,
-    m8_bus_waitrequest         ,
+    m8_bus_waitrequest
 );
 
 localparam M0_ADDR_WIDTH = $clog2(!(M0_MASK+1));

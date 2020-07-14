@@ -57,136 +57,165 @@ module top_level(
     /* HDMI native */
     /* I2C EEPROM */
     /* LED */
-    /* USART */
+    /* UART */
     /* BUTTON */
     );
 
 
 //* RISC V core +
+ picorv32_wrapper #(
+    .ENABLE_COUNTERS(),
+	.BARREL_SHIFTER(),
+	.COMPRESSED_ISA(),
+	.ENABLE_MUL(),
+	.ENABLE_DIV(),
+	.ENABLE_IRQ_QREGS(),
+	.PROGADDR_RESET(),
+	.PROGADDR_IRQ(),
+	.STACKADDR()
+ ) picorv32_core (
+    .clk                     (),
+    .rst_n                   (),
+
+    .bus_addr                (),
+
+    .bus_read                (),
+    .bus_readdata            (),
+    .bus_response            (),
+
+    .bus_write               (),
+    .bus_writedata           (),
+    .bus_byteenable          (),
+
+    .bus_waitrequest         (),
+
+    .irq                     ()
+);
 
 //* Interconnect (MUX) +
 
-//* DDR3 controller
+interconnect_mod #(
+    .M0_BASE(),
+    .M0_MASK(),
+    .M1_BASE(),
+    .M1_MASK(),
+    .M2_BASE(),
+    .M2_MASK(),
+    .M3_BASE(),
+    .M3_MASK(),
+    .M4_BASE(),
+    .M4_MASK(),
+    .M5_BASE(),
+    .M5_MASK(),
+    .M6_BASE(),
+    .M6_MASK(),
+    .M7_BASE(),
+    .M7_MASK(),
+    .M8_BASE(),
+    .M8_MASK()
+)(
+    // Slave port 0
+    .s0_bus_addr                (),
+    .s0_bus_read                (),
+    .s0_bus_readdata            (),
+    .s0_bus_response            (),
+    .s0_bus_write               (),
+    .s0_bus_writedata           (),
+    .s0_bus_byteenable          (),
+    .s0_bus_waitrequest         (),
 
- mig_ddr3 # (
-    .C3_P0_MASK_SIZE(4),
-    .C3_P0_DATA_PORT_SIZE(32),
-    .C3_P1_MASK_SIZE(4),
-    .C3_P1_DATA_PORT_SIZE(32),
-    .DEBUG_EN(0),
-    .C3_MEMCLK_PERIOD(3000),
-    .C3_CALIB_SOFT_IP("TRUE"),
-    .C3_SIMULATION("FALSE"),
-    .C3_RST_ACT_LOW(0),
-    .C3_INPUT_CLK_TYPE("SINGLE_ENDED"),
-    .C3_MEM_ADDR_ORDER("BANK_ROW_COLUMN"),
-    .C3_NUM_DQ_PINS(16),
-    .C3_MEM_ADDR_WIDTH(14),
-    .C3_MEM_BANKADDR_WIDTH(3)
-)
-u_mig_ddr3 (
+    //* Master port 0
+    .m0_bus_addr                (),
+    .m0_bus_read                (),
+    .m0_bus_readdata            (),
+    .m0_bus_response            (),
+    .m0_bus_write               (),
+    .m0_bus_writedata           (),
+    .m0_bus_byteenable          (),
+    .m0_bus_waitrequest         (),
 
-    .c3_sys_clk                             (c3_sys_clk),
-    .c3_sys_rst_i                           (c3_sys_rst_i),
+    //* Master port 1
+    .m1_bus_addr                (),
+    .m1_bus_read                (),
+    .m1_bus_readdata            (),
+    .m1_bus_response            (),
+    .m1_bus_write               (),
+    .m1_bus_writedata           (),
+    .m1_bus_byteenable          (),
+    .m1_bus_waitrequest         (),
 
-    .mcb3_dram_dq                           (mcb3_dram_dq),
-    .mcb3_dram_a                            (mcb3_dram_a),
-    .mcb3_dram_ba                           (mcb3_dram_ba),
-    .mcb3_dram_ras_n                        (mcb3_dram_ras_n),
-    .mcb3_dram_cas_n                        (mcb3_dram_cas_n),
-    .mcb3_dram_we_n                         (mcb3_dram_we_n),
-    .mcb3_dram_odt                          (mcb3_dram_odt),
-    .mcb3_dram_cke                          (mcb3_dram_cke),
-    .mcb3_dram_ck                           (mcb3_dram_ck),
-    .mcb3_dram_ck_n                         (mcb3_dram_ck_n),
-    .mcb3_dram_dqs                          (mcb3_dram_dqs),
-    .mcb3_dram_dqs_n                        (mcb3_dram_dqs_n),
-    .mcb3_dram_udqs                         (mcb3_dram_udqs),    // for X16 parts
-    .mcb3_dram_udqs_n                       (mcb3_dram_udqs_n),  // for X16 parts
-    .mcb3_dram_udm                          (mcb3_dram_udm),     // for X16 parts
-    .mcb3_dram_dm                           (mcb3_dram_dm),
-    .mcb3_dram_reset_n                      (mcb3_dram_reset_n),
-    .c3_clk0		                        (c3_clk0),
-    .c3_rst0		                        (c3_rst0),
+    //* Master port 2
+    .m2_bus_addr                (),
+    .m2_bus_read                (),
+    .m2_bus_readdata            (),
+    .m2_bus_response            (),
+    .m2_bus_write               (),
+    .m2_bus_writedata           (),
+    .m2_bus_byteenable          (),
+    .m2_bus_waitrequest         (),
 
-    .c3_calib_done                          (c3_calib_done),
-    .mcb3_rzq                               (rzq3),
+    //* Master port 3
+    .m3_bus_addr                (),
+    .m3_bus_read                (),
+    .m3_bus_readdata            (),
+    .m3_bus_response            (),
+    .m3_bus_write               (),
+    .m3_bus_writedata           (),
+    .m3_bus_byteenable          (),
+    .m3_bus_waitrequest         (),
 
-    .mcb3_zio                               (zio3),
+    //* Master port 4
+    .m4_bus_addr                (),
+    .m4_bus_read                (),
+    .m4_bus_readdata            (),
+    .m4_bus_response            (),
+    .m4_bus_write               (),
+    .m4_bus_writedata           (),
+    .m4_bus_byteenable          (),
+    .m4_bus_waitrequest         (),
 
-    .c3_p0_cmd_clk                          (c3_p0_cmd_clk),
-    .c3_p0_cmd_en                           (c3_p0_cmd_en),
-    .c3_p0_cmd_instr                        (c3_p0_cmd_instr),
-    .c3_p0_cmd_bl                           (c3_p0_cmd_bl),
-    .c3_p0_cmd_byte_addr                    (c3_p0_cmd_byte_addr),
-    .c3_p0_cmd_empty                        (c3_p0_cmd_empty),
-    .c3_p0_cmd_full                         (c3_p0_cmd_full),
-    .c3_p0_wr_clk                           (c3_p0_wr_clk),
-    .c3_p0_wr_en                            (c3_p0_wr_en),
-    .c3_p0_wr_mask                          (c3_p0_wr_mask),
-    .c3_p0_wr_data                          (c3_p0_wr_data),
-    .c3_p0_wr_full                          (c3_p0_wr_full),
-    .c3_p0_wr_empty                         (c3_p0_wr_empty),
-    .c3_p0_wr_count                         (c3_p0_wr_count),
-    .c3_p0_wr_underrun                      (c3_p0_wr_underrun),
-    .c3_p0_wr_error                         (c3_p0_wr_error),
-    .c3_p0_rd_clk                           (c3_p0_rd_clk),
-    .c3_p0_rd_en                            (c3_p0_rd_en),
-    .c3_p0_rd_data                          (c3_p0_rd_data),
-    .c3_p0_rd_full                          (c3_p0_rd_full),
-    .c3_p0_rd_empty                         (c3_p0_rd_empty),
-    .c3_p0_rd_count                         (c3_p0_rd_count),
-    .c3_p0_rd_overflow                      (c3_p0_rd_overflow),
-    .c3_p0_rd_error                         (c3_p0_rd_error),
-    .c3_p1_cmd_clk                          (c3_p1_cmd_clk),
-    .c3_p1_cmd_en                           (c3_p1_cmd_en),
-    .c3_p1_cmd_instr                        (c3_p1_cmd_instr),
-    .c3_p1_cmd_bl                           (c3_p1_cmd_bl),
-    .c3_p1_cmd_byte_addr                    (c3_p1_cmd_byte_addr),
-    .c3_p1_cmd_empty                        (c3_p1_cmd_empty),
-    .c3_p1_cmd_full                         (c3_p1_cmd_full),
-    .c3_p1_wr_clk                           (c3_p1_wr_clk),
-    .c3_p1_wr_en                            (c3_p1_wr_en),
-    .c3_p1_wr_mask                          (c3_p1_wr_mask),
-    .c3_p1_wr_data                          (c3_p1_wr_data),
-    .c3_p1_wr_full                          (c3_p1_wr_full),
-    .c3_p1_wr_empty                         (c3_p1_wr_empty),
-    .c3_p1_wr_count                         (c3_p1_wr_count),
-    .c3_p1_wr_underrun                      (c3_p1_wr_underrun),
-    .c3_p1_wr_error                         (c3_p1_wr_error),
-    .c3_p1_rd_clk                           (c3_p1_rd_clk),
-    .c3_p1_rd_en                            (c3_p1_rd_en),
-    .c3_p1_rd_data                          (c3_p1_rd_data),
-    .c3_p1_rd_full                          (c3_p1_rd_full),
-    .c3_p1_rd_empty                         (c3_p1_rd_empty),
-    .c3_p1_rd_count                         (c3_p1_rd_count),
-    .c3_p1_rd_overflow                      (c3_p1_rd_overflow),
-    .c3_p1_rd_error                         (c3_p1_rd_error),
-    .c3_p2_cmd_clk                          (c3_p2_cmd_clk),
-    .c3_p2_cmd_en                           (c3_p2_cmd_en),
-    .c3_p2_cmd_instr                        (c3_p2_cmd_instr),
-    .c3_p2_cmd_bl                           (c3_p2_cmd_bl),
-    .c3_p2_cmd_byte_addr                    (c3_p2_cmd_byte_addr),
-    .c3_p2_cmd_empty                        (c3_p2_cmd_empty),
-    .c3_p2_cmd_full                         (c3_p2_cmd_full),
-    .c3_p2_wr_clk                           (c3_p2_wr_clk),
-    .c3_p2_wr_en                            (c3_p2_wr_en),
-    .c3_p2_wr_mask                          (c3_p2_wr_mask),
-    .c3_p2_wr_data                          (c3_p2_wr_data),
-    .c3_p2_wr_full                          (c3_p2_wr_full),
-    .c3_p2_wr_empty                         (c3_p2_wr_empty),
-    .c3_p2_wr_count                         (c3_p2_wr_count),
-    .c3_p2_wr_underrun                      (c3_p2_wr_underrun),
-    .c3_p2_wr_error                         (c3_p2_wr_error),
-    .c3_p2_rd_clk                           (c3_p2_rd_clk),
-    .c3_p2_rd_en                            (c3_p2_rd_en),
-    .c3_p2_rd_data                          (c3_p2_rd_data),
-    .c3_p2_rd_full                          (c3_p2_rd_full),
-    .c3_p2_rd_empty                         (c3_p2_rd_empty),
-    .c3_p2_rd_count                         (c3_p2_rd_count),
-    .c3_p2_rd_overflow                      (c3_p2_rd_overflow),
-    .c3_p2_rd_error                         (c3_p2_rd_error)
+    //* Master port 5
+    .m5_bus_addr                (),
+    .m5_bus_read                (),
+    .m5_bus_readdata            (),
+    .m5_bus_response            (),
+    .m5_bus_write               (),
+    .m5_bus_writedata           (),
+    .m5_bus_byteenable          (),
+    .m5_bus_waitrequest         (),
+
+    //* Master port 6
+    .m6_bus_addr                (),
+    .m6_bus_read                (),
+    .m6_bus_readdata            (),
+    .m6_bus_response            (),
+    .m6_bus_write               (),
+    .m6_bus_writedata           (),
+    .m6_bus_byteenable          (),
+    .m6_bus_waitrequest         (),
+
+    //* Master port 7
+    .m7_bus_addr                (),
+    .m7_bus_read                (),
+    .m7_bus_readdata            (),
+    .m7_bus_response            (),
+    .m7_bus_write               (),
+    .m7_bus_writedata           (),
+    .m7_bus_byteenable          (),
+    .m7_bus_waitrequest         (),
+
+    //* Master port 8
+    .m8_bus_addr                (),
+    .m8_bus_read                (),
+    .m8_bus_readdata            (),
+    .m8_bus_response            (),
+    .m8_bus_write               (),
+    .m8_bus_writedata           (),
+    .m8_bus_byteenable          (),
+    .m8_bus_waitrequest         ()
 );
+
+//* DDR3 controller
 
 //* HDMI ADV Recv
 
@@ -195,10 +224,88 @@ u_mig_ddr3 (
 //* Pixel reader
 
 //* DSI +
+dsi_tx_top #(
+    parameter LINE_WIDTH            = 640,
+    parameter BITS_PER_PIXEL        = 8,
+    parameter BLANK_TIME            = 100,
+    parameter BLANK_TIME_HBP_ACT    = 100,
+    parameter VSA_LINES_NUMBER      = 100,
+    parameter VBP_LINES_NUMBER      = 100,
+    parameter IMAGE_HEIGHT          = 100,
+    parameter VFP_LINES_NUMBER      = 100
+    ) (
+    /********* System signals *********/
+    .clk_sys                                (),
+    .rst_sys_n                              (),
+
+    .clk_phy                                (),
+    .rst_phy_n                              (),
+
+    .clk_hs_latch                           (),
+    .clk_hs                                 (),
+    .clk_hs_clk                             (),
+
+    .irq                                    (),
+
+    /********* Avalon-ST input *********/
+    .in_avl_st_data                         (),
+    .in_avl_st_valid                        (),
+    .in_avl_st_endofpacket                  (),
+    .in_avl_st_startofpacket                (),
+    .in_avl_st_ready                        (),
+
+    /********* Output interface *********/
+    .dphy_data_hs_out_p                     (),  // active
+    .dphy_data_hs_out_n                     (),  // unactive. do not connect
+    .dphy_data_lp_out_p                     (),
+    .dphy_data_lp_out_n                     (),
+
+    .dphy_clk_hs_out_p                      (),  // active
+    .dphy_clk_hs_out_n                      (),  // unactive. do not connect
+    .dphy_clk_lp_out_p                      (),
+    .dphy_clk_lp_out_n                      (),
+
+    /********* Avalon-MM iface *********/
+    .avl_mm_address                         (),
+
+    .avl_mm_read                            (),
+    .avl_mm_readdata                        (),
+    .avl_mm_response                        (),
+
+    .avl_mm_write                           (),
+    .avl_mm_writedata                       (),
+    .avl_mm_byteenable                      (),
+    .avl_mm_waitrequest                     ()
+
+);
 
 //* I2C master
 
 //* Usart RX/TX
+
+uart_wrapper uart_wrapper_0(
+    //* system signals
+    .clk                  (),
+    .rst                  (),
+
+    //* external interface
+    .rxd                  (),
+    .txd                  (),
+
+    //* system interface
+    .ctrl_address        (),
+
+    .ctrl_read           (),
+    .ctrl_readdata       (),
+    .ctrl_response       (),
+
+    .ctrl_write          (),
+    .ctrl_writedata      (),
+    .ctrl_byteenable     (),
+    .ctrl_waitrequest    (),
+
+    .irq                 ()
+);
 
 //* Programm Mem
 
