@@ -588,7 +588,7 @@ wire [3:0] hs_data_en;
 wire [3:0] hs_data_out;
 
 generate
-for (i = 0; i < 4; i = i + 1) begin:lanes_lvds
+for (i = 0; i < 4; i = i + 1) begin:lanes_dphy
 
 OBUFT #(
       .DRIVE(12),   // Specify the output drive strength

@@ -130,7 +130,7 @@ localparam M7_ADDR_WIDTH = $clog2(!(M7_MASK+1));
 localparam M8_ADDR_WIDTH = $clog2(!(M8_MASK+1));
 
 input   logic    [32 - 1:0]             s0_bus_addr;
-input logic                             s0_bus_read;
+input   logic                           s0_bus_read;
 output  logic    [32-1:0]               s0_bus_readdata;
 output  logic    [1:0]                  s0_bus_response;
 input   logic                           s0_bus_write;
@@ -202,9 +202,9 @@ output   logic   [3:0]                  m6_bus_byteenable;
 input  logic                            m6_bus_waitrequest;
 //* Master port 7
 output   logic   [M7_ADDR_WIDTH - 1:0]  m7_bus_addr;
-output logic                            m7_bus_read;
-input  logic     [32-1:0]               m7_bus_readdata;
-input  logic     [1:0]                  m7_bus_response;
+output   logic                          m7_bus_read;
+input    logic     [32-1:0]             m7_bus_readdata;
+input    logic     [1:0]                m7_bus_response;
 output   logic                          m7_bus_write;
 output   logic   [32-1:0]               m7_bus_writedata;
 output   logic   [3:0]                  m7_bus_byteenable;

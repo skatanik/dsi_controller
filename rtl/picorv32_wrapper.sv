@@ -14,17 +14,17 @@ module picorv32_wrapper #(
     input   wire                                clk                     ,
     input   wire                                rst_n                   ,
 
-    output   wire [32 - 1:0]                    bus_addr                ,
+    output  wire [32 - 1:0]                     bus_addr                ,
 
-    output   wire                               bus_read                ,
-    input  wire [32-1:0]                        bus_readdata            ,
-    input  wire [1:0]                           bus_response            ,
+    output  wire                                bus_read                ,
+    input   wire [32-1:0]                       bus_readdata            ,
+    input   wire [1:0]                          bus_response            ,
 
-    output   wire                               bus_write               ,
-    output   wire [32-1:0]                      bus_writedata           ,
-    output   wire [3:0]                         bus_byteenable          ,
+    output  wire                                bus_write               ,
+    output  wire [32-1:0]                       bus_writedata           ,
+    output  wire [3:0]                          bus_byteenable          ,
 
-    input  wire                                 bus_waitrequest         ,
+    input   wire                                bus_waitrequest         ,
 
     input  wire                                 irq
 );
