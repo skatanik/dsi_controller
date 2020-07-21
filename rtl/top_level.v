@@ -192,6 +192,75 @@ logic                               mst_core_axi_rlast;
 logic                               mst_core_axi_rvalid;
 logic                               mst_core_axi_rready;
 
+logic [4 - 1:0]                     pix_axi_arid;
+logic [ADDR_WIDTH - 1:0]            pix_axi_araddr;
+logic [7:0]                         pix_axi_arlen;
+logic [2:0]                         pix_axi_arsize;
+logic [1:0]                         pix_axi_arburst;
+logic [0:0]                         pix_axi_arlock;
+logic [3:0]                         pix_axi_arcache;
+logic [2:0]                         pix_axi_arprot;
+logic [3:0]                         pix_axi_arqos;
+logic                               pix_axi_arvalid;
+logic                               pix_axi_arready;
+logic [4 - 1:0]                     pix_axi_rid;
+logic [32 - 1:0]                    pix_axi_rdata;
+logic [1:0]                         pix_axi_rresp;
+logic                               pix_axi_rlast;
+logic                               pix_axi_rvalid;
+logic                               pix_axi_rready;
+
+logic [31:0]                        st_data;
+logic                               st_valid;
+logic                               st_endofpacket;
+logic                               st_startofpacket;
+logic                               st_ready;
+
+logic [4:0]                         ram_mem_address;
+logic                               ram_mem_read;
+logic [31:0]                        ram_mem_readdata;
+logic [1:0]                         ram_mem_response;
+logic                               ram_mem_write;
+logic [31:0]                        ram_mem_writedata;
+logic [3:0]                         ram_mem_byteenable;
+logic                               ram_mem_waitrequest;
+
+logic [4:0]                         ctrl_pix_reader_address;
+logic                               ctrl_pix_reader_read;
+logic [31:0]                        ctrl_pix_reader_readdata;
+logic [1:0]                         ctrl_pix_reader_response;
+logic                               ctrl_pix_reader_write;
+logic [31:0]                        ctrl_pix_reader_writedata;
+logic [3:0]                         ctrl_pix_reader_byteenable;
+logic                               ctrl_pix_reader_waitrequest;
+
+logic [4:0]                         ctrl_dsi_address;
+logic                               ctrl_dsi_read;
+logic [31:0]                        ctrl_dsi_readdata;
+logic [1:0]                         ctrl_dsi_response;
+logic                               ctrl_dsi_write;
+logic [31:0]                        ctrl_dsi_writedata;
+logic [3:0]                         ctrl_dsi_byteenable;
+logic                               ctrl_dsi_waitrequest;
+
+logic [4:0]                         ctrl_uart_address;
+logic                               ctrl_uart_read;
+logic [31:0]                        ctrl_uart_readdata;
+logic [1:0]                         ctrl_uart_response;
+logic                               ctrl_uart_write;
+logic [31:0]                        ctrl_uart_writedata;
+logic [3:0]                         ctrl_uart_byteenable;
+logic                               ctrl_uart_waitrequest;
+
+logic [4:0]                         ctrl_prog_mem_address;
+logic                               ctrl_prog_mem_read;
+logic [31:0]                        ctrl_prog_mem_readdata;
+logic [1:0]                         ctrl_prog_mem_response;
+logic                               ctrl_prog_mem_write;
+logic [31:0]                        ctrl_prog_mem_writedata;
+logic [3:0]                         ctrl_prog_mem_byteenable;
+logic                               ctrl_prog_mem_waitrequest;
+
 //* RISC V core +
  picorv32_wrapper #(
     .ENABLE_COUNTERS(),
@@ -252,14 +321,14 @@ interconnect_mod #(
     .s0_bus_waitrequest         (s0_bus_waitrequest     ),
 
     //* Master port 0
-    .m0_bus_addr                (m0_bus_addr            ),
-    .m0_bus_read                (m0_bus_read            ),
-    .m0_bus_readdata            (m0_bus_readdata        ),
-    .m0_bus_response            (m0_bus_response        ),
-    .m0_bus_write               (m0_bus_write           ),
-    .m0_bus_writedata           (m0_bus_writedata       ),
-    .m0_bus_byteenable          (m0_bus_byteenable      ),
-    .m0_bus_waitrequest         (m0_bus_waitrequest     ),
+    .m0_bus_addr                (ram_mem_address        ),
+    .m0_bus_read                (ram_mem_read           ),
+    .m0_bus_readdata            (ram_mem_readdata       ),
+    .m0_bus_response            (ram_mem_response       ),
+    .m0_bus_write               (ram_mem_write          ),
+    .m0_bus_writedata           (ram_mem_writedata      ),
+    .m0_bus_byteenable          (ram_mem_byteenable     ),
+    .m0_bus_waitrequest         (ram_mem_waitrequest    ),
 
     //* Master port 1
     .m1_bus_addr                (m1_bus_addr            ),
@@ -272,44 +341,44 @@ interconnect_mod #(
     .m1_bus_waitrequest         (m1_bus_waitrequest     ),
 
     //* Master port 2
-    .m2_bus_addr                (m2_bus_addr            ),
-    .m2_bus_read                (m2_bus_read            ),
-    .m2_bus_readdata            (m2_bus_readdata        ),
-    .m2_bus_response            (m2_bus_response        ),
-    .m2_bus_write               (m2_bus_write           ),
-    .m2_bus_writedata           (m2_bus_writedata       ),
-    .m2_bus_byteenable          (m2_bus_byteenable      ),
-    .m2_bus_waitrequest         (m2_bus_waitrequest     ),
+    .m2_bus_addr                (ctrl_pix_reader_address       ),
+    .m2_bus_read                (ctrl_pix_reader_read          ),
+    .m2_bus_readdata            (ctrl_pix_reader_readdata      ),
+    .m2_bus_response            (ctrl_pix_reader_response      ),
+    .m2_bus_write               (ctrl_pix_reader_write         ),
+    .m2_bus_writedata           (ctrl_pix_reader_writedata     ),
+    .m2_bus_byteenable          (ctrl_pix_reader_byteenable    ),
+    .m2_bus_waitrequest         (ctrl_pix_reader_waitrequest   ),
 
     //* Master port 3
-    .m3_bus_addr                (m3_bus_addr            ),
-    .m3_bus_read                (m3_bus_read            ),
-    .m3_bus_readdata            (m3_bus_readdata        ),
-    .m3_bus_response            (m3_bus_response        ),
-    .m3_bus_write               (m3_bus_write           ),
-    .m3_bus_writedata           (m3_bus_writedata       ),
-    .m3_bus_byteenable          (m3_bus_byteenable      ),
-    .m3_bus_waitrequest         (m3_bus_waitrequest     ),
+    .m3_bus_addr                (ctrl_dsi_address        ),
+    .m3_bus_read                (ctrl_dsi_read           ),
+    .m3_bus_readdata            (ctrl_dsi_readdata       ),
+    .m3_bus_response            (ctrl_dsi_response       ),
+    .m3_bus_write               (ctrl_dsi_write          ),
+    .m3_bus_writedata           (ctrl_dsi_writedata      ),
+    .m3_bus_byteenable          (ctrl_dsi_byteenable     ),
+    .m3_bus_waitrequest         (ctrl_dsi_waitrequest    ),
 
     //* Master port 4
-    .m4_bus_addr                (m4_bus_addr            ),
-    .m4_bus_read                (m4_bus_read            ),
-    .m4_bus_readdata            (m4_bus_readdata        ),
-    .m4_bus_response            (m4_bus_response        ),
-    .m4_bus_write               (m4_bus_write           ),
-    .m4_bus_writedata           (m4_bus_writedata       ),
-    .m4_bus_byteenable          (m4_bus_byteenable      ),
-    .m4_bus_waitrequest         (m4_bus_waitrequest     ),
+    .m4_bus_addr                (ctrl_prog_mem_address          ),
+    .m4_bus_read                (ctrl_prog_mem_read             ),
+    .m4_bus_readdata            (ctrl_prog_mem_readdata         ),
+    .m4_bus_response            (ctrl_prog_mem_response         ),
+    .m4_bus_write               (ctrl_prog_mem_write            ),
+    .m4_bus_writedata           (ctrl_prog_mem_writedata        ),
+    .m4_bus_byteenable          (ctrl_prog_mem_byteenable       ),
+    .m4_bus_waitrequest         (ctrl_prog_mem_waitrequest      ),
 
     //* Master port 5
-    .m5_bus_addr                (m5_bus_addr            ),
-    .m5_bus_read                (m5_bus_read            ),
-    .m5_bus_readdata            (m5_bus_readdata        ),
-    .m5_bus_response            (m5_bus_response        ),
-    .m5_bus_write               (m5_bus_write           ),
-    .m5_bus_writedata           (m5_bus_writedata       ),
-    .m5_bus_byteenable          (m5_bus_byteenable      ),
-    .m5_bus_waitrequest         (m5_bus_waitrequest     ),
+    .m5_bus_addr                (ctrl_uart_address          ),
+    .m5_bus_read                (ctrl_uart_read             ),
+    .m5_bus_readdata            (ctrl_uart_readdata         ),
+    .m5_bus_response            (ctrl_uart_response         ),
+    .m5_bus_write               (ctrl_uart_write            ),
+    .m5_bus_writedata           (ctrl_uart_writedata        ),
+    .m5_bus_byteenable          (ctrl_uart_byteenable       ),
+    .m5_bus_waitrequest         (ctrl_uart_waitrequest      ),
 
     //* Master port 6
     .m6_bus_addr                (m6_bus_addr            ),
@@ -345,17 +414,17 @@ interconnect_mod #(
 //* Prosessor to AXI bridge
 core_axi_bridge core_axi_bridge_0(
 
-    .clk                     (sys_clk              ),
-    .rst_n                   (sys_rst_n            ),
+    .clk                     (sys_clk               ),
+    .rst_n                   (sys_rst_n             ),
 
-    .slv_bus_addr            (m0_bus_addr          ),
-    .slv_bus_read            (m0_bus_read          ),
-    .slv_bus_readdata        (m0_bus_readdata      ),
-    .slv_bus_response        (m0_bus_response      ),
-    .slv_bus_write           (m0_bus_write         ),
-    .slv_bus_writedata       (m0_bus_writedata     ),
-    .slv_bus_byteenable      (m0_bus_byteenable    ),
-    .slv_bus_waitrequest     (m0_bus_waitrequest   ),
+    .slv_bus_addr            (ram_mem_address       ),
+    .slv_bus_read            (ram_mem_read          ),
+    .slv_bus_readdata        (ram_mem_readdata      ),
+    .slv_bus_response        (ram_mem_response      ),
+    .slv_bus_write           (ram_mem_write         ),
+    .slv_bus_writedata       (ram_mem_writedata     ),
+    .slv_bus_byteenable      (ram_mem_byteenable    ),
+    .slv_bus_waitrequest     (ram_mem_waitrequest   ),
 
     .mst_axi_awid            (mst_core_axi_awid      ),
     .mst_axi_awaddr          (mst_core_axi_awaddr    ),
@@ -510,8 +579,8 @@ u_mig_ddr3 (
     .c3_s0_axi_rready                       (mst_core_axi_rready    ),
 
     //* Write only Port
-    .c3_s2_axi_aclk                         (c3_s2_axi_aclk   ),
-    .c3_s2_axi_aresetn                      (c3_s2_axi_aresetn),
+    .c3_s2_axi_aclk                         (sys_clk              ),
+    .c3_s2_axi_aresetn                      (sys_rst_n            ),
     .c3_s2_axi_awid                         (c3_s2_axi_awid   ),
     .c3_s2_axi_awaddr                       (c3_s2_axi_awaddr ),
     .c3_s2_axi_awlen                        (c3_s2_axi_awlen  ),
@@ -552,53 +621,97 @@ u_mig_ddr3 (
     .c3_s2_axi_rready                       (c3_s2_axi_rready ),
 
     //* Read only Port
-    .c3_s3_axi_aclk                         (c3_s3_axi_aclk   ),
-    .c3_s3_axi_aresetn                      (c3_s3_axi_aresetn),
-    .c3_s3_axi_awid                         (c3_s3_axi_awid   ),
-    .c3_s3_axi_awaddr                       (c3_s3_axi_awaddr ),
-    .c3_s3_axi_awlen                        (c3_s3_axi_awlen  ),
-    .c3_s3_axi_awsize                       (c3_s3_axi_awsize ),
-    .c3_s3_axi_awburst                      (c3_s3_axi_awburst),
-    .c3_s3_axi_awlock                       (c3_s3_axi_awlock ),
-    .c3_s3_axi_awcache                      (c3_s3_axi_awcache),
-    .c3_s3_axi_awprot                       (c3_s3_axi_awprot ),
-    .c3_s3_axi_awqos                        (c3_s3_axi_awqos  ),
-    .c3_s3_axi_awvalid                      (c3_s3_axi_awvalid),
-    .c3_s3_axi_awready                      (c3_s3_axi_awready),
-    .c3_s3_axi_wdata                        (c3_s3_axi_wdata  ),
-    .c3_s3_axi_wstrb                        (c3_s3_axi_wstrb  ),
-    .c3_s3_axi_wlast                        (c3_s3_axi_wlast  ),
-    .c3_s3_axi_wvalid                       (c3_s3_axi_wvalid ),
-    .c3_s3_axi_wready                       (c3_s3_axi_wready ),
-    .c3_s3_axi_bid                          (c3_s3_axi_bid    ),
-    .c3_s3_axi_wid                          (c3_s3_axi_wid    ),
-    .c3_s3_axi_bresp                        (c3_s3_axi_bresp  ),
-    .c3_s3_axi_bvalid                       (c3_s3_axi_bvalid ),
-    .c3_s3_axi_bready                       (c3_s3_axi_bready ),
-    .c3_s3_axi_arid                         (c3_s3_axi_arid   ),
-    .c3_s3_axi_araddr                       (c3_s3_axi_araddr ),
-    .c3_s3_axi_arlen                        (c3_s3_axi_arlen  ),
-    .c3_s3_axi_arsize                       (c3_s3_axi_arsize ),
-    .c3_s3_axi_arburst                      (c3_s3_axi_arburst),
-    .c3_s3_axi_arlock                       (c3_s3_axi_arlock ),
-    .c3_s3_axi_arcache                      (c3_s3_axi_arcache),
-    .c3_s3_axi_arprot                       (c3_s3_axi_arprot ),
-    .c3_s3_axi_arqos                        (c3_s3_axi_arqos  ),
-    .c3_s3_axi_arvalid                      (c3_s3_axi_arvalid),
-    .c3_s3_axi_arready                      (c3_s3_axi_arready),
-    .c3_s3_axi_rid                          (c3_s3_axi_rid    ),
-    .c3_s3_axi_rdata                        (c3_s3_axi_rdata  ),
-    .c3_s3_axi_rresp                        (c3_s3_axi_rresp  ),
-    .c3_s3_axi_rlast                        (c3_s3_axi_rlast  ),
-    .c3_s3_axi_rvalid                       (c3_s3_axi_rvalid ),
-    .c3_s3_axi_rready                       (c3_s3_axi_rready )
+    .c3_s3_axi_aclk                         (sys_clk              ),
+    .c3_s3_axi_aresetn                      (sys_rst_n            ),
+    .c3_s3_axi_awid                         (),
+    .c3_s3_axi_awaddr                       (),
+    .c3_s3_axi_awlen                        (),
+    .c3_s3_axi_awsize                       (),
+    .c3_s3_axi_awburst                      (),
+    .c3_s3_axi_awlock                       (),
+    .c3_s3_axi_awcache                      (),
+    .c3_s3_axi_awprot                       (),
+    .c3_s3_axi_awqos                        (),
+    .c3_s3_axi_awvalid                      (),
+    .c3_s3_axi_awready                      (),
+    .c3_s3_axi_wdata                        (),
+    .c3_s3_axi_wstrb                        (),
+    .c3_s3_axi_wlast                        (),
+    .c3_s3_axi_wvalid                       (),
+    .c3_s3_axi_wready                       (),
+    .c3_s3_axi_bid                          (),
+    .c3_s3_axi_wid                          (),
+    .c3_s3_axi_bresp                        (),
+    .c3_s3_axi_bvalid                       (),
+    .c3_s3_axi_bready                       (),
+    .c3_s3_axi_arid                         (pix_axi_arid       ),
+    .c3_s3_axi_araddr                       (pix_axi_araddr     ),
+    .c3_s3_axi_arlen                        (pix_axi_arlen      ),
+    .c3_s3_axi_arsize                       (pix_axi_arsize     ),
+    .c3_s3_axi_arburst                      (pix_axi_arburst    ),
+    .c3_s3_axi_arlock                       (pix_axi_arlock     ),
+    .c3_s3_axi_arcache                      (pix_axi_arcache    ),
+    .c3_s3_axi_arprot                       (pix_axi_arprot     ),
+    .c3_s3_axi_arqos                        (pix_axi_arqos      ),
+    .c3_s3_axi_arvalid                      (pix_axi_arvalid    ),
+    .c3_s3_axi_arready                      (pix_axi_arready    ),
+    .c3_s3_axi_rid                          (pix_axi_rid        ),
+    .c3_s3_axi_rdata                        (pix_axi_rdata      ),
+    .c3_s3_axi_rresp                        (pix_axi_rresp      ),
+    .c3_s3_axi_rlast                        (pix_axi_rlast      ),
+    .c3_s3_axi_rvalid                       (pix_axi_rvalid     ),
+    .c3_s3_axi_rready                       (pix_axi_rready     )
 );
 //* HDMI ADV Recv
 
 //* HDMI native
 
 //* Pixel reader
+axi_to_stream_dma #(
+    parameter ADDR_WIDTH = 24,
+    parameter BURST_SIZE = 128,
+    parameter MAX_PENDING_RQST_LOG = 2;
+)(
+    .clk                            (sys_clk                ),
+    .rst_n                          (sys_rst_n              ),
 
+    /********* AXI read channels *********/
+    .mst_axi_arid                   (pix_axi_arid           ),
+    .mst_axi_araddr                 (pix_axi_araddr         ),
+    .mst_axi_arlen                  (pix_axi_arlen          ),
+    .mst_axi_arsize                 (pix_axi_arsize         ),
+    .mst_axi_arburst                (pix_axi_arburst        ),
+    .mst_axi_arlock                 (pix_axi_arlock         ),
+    .mst_axi_arcache                (pix_axi_arcache        ),
+    .mst_axi_arprot                 (pix_axi_arprot         ),
+    .mst_axi_arqos                  (pix_axi_arqos          ),
+    .mst_axi_arvalid                (pix_axi_arvalid        ),
+    .mst_axi_arready                (pix_axi_arready        ),
+
+    .mst_axi_rid                    (pix_axi_rid            ),
+    .mst_axi_rdata                  (pix_axi_rdata          ),
+    .mst_axi_rresp                  (pix_axi_rresp          ),
+    .mst_axi_rlast                  (pix_axi_rlast          ),
+    .mst_axi_rvalid                 (pix_axi_rvalid         ),
+    .mst_axi_rready                 (pix_axi_rready         ),
+
+    /*********  Stream out *********/
+    .st_data                        (st_data                ),
+    .st_valid                       (st_valid               ),
+    .st_endofpacket                 (st_endofpacket         ),
+    .st_startofpacket               (st_startofpacket       ),
+    .st_ready                       (st_ready               ),
+
+    /********* MM iface *********/
+    .ctrl_address                   (ctrl_pix_reader_address        ),
+    .ctrl_read                      (ctrl_pix_reader_read           ),
+    .ctrl_readdata                  (ctrl_pix_reader_readdata       ),
+    .ctrl_response                  (ctrl_pix_reader_response       ),
+    .ctrl_write                     (ctrl_pix_reader_write          ),
+    .ctrl_writedata                 (ctrl_pix_reader_writedata      ),
+    .ctrl_byteenable                (ctrl_pix_reader_byteenable     ),
+    .ctrl_waitrequest               (ctrl_pix_reader_waitrequest    )
+);
 //* DSI +
 dsi_tx_top #(
     .LINE_WIDTH            (),
@@ -611,8 +724,8 @@ dsi_tx_top #(
     .VFP_LINES_NUMBER      ()
     ) (
     /********* System signals *********/
-    .clk_sys                                (),
-    .rst_sys_n                              (),
+    .clk_sys                                (sys_clk              ),
+    .rst_sys_n                              (sys_rst_n            ),
 
     .clk_phy                                (),
     .rst_phy_n                              (),
@@ -624,11 +737,11 @@ dsi_tx_top #(
     .irq                                    (),
 
     /********* Avalon-ST input *********/
-    .in_avl_st_data                         (),
-    .in_avl_st_valid                        (),
-    .in_avl_st_endofpacket                  (),
-    .in_avl_st_startofpacket                (),
-    .in_avl_st_ready                        (),
+    .in_avl_st_data                         (st_data                ),
+    .in_avl_st_valid                        (st_valid               ),
+    .in_avl_st_endofpacket                  (st_endofpacket         ),
+    .in_avl_st_startofpacket                (st_startofpacket       ),
+    .in_avl_st_ready                        (st_ready               ),
 
     /********* Output interface *********/
     .dphy_data_hs_out_p                     (),  // active
@@ -642,16 +755,14 @@ dsi_tx_top #(
     .dphy_clk_lp_out_n                      (),
 
     /********* Avalon-MM iface *********/
-    .avl_mm_address                         (),
-
-    .avl_mm_read                            (),
-    .avl_mm_readdata                        (),
-    .avl_mm_response                        (),
-
-    .avl_mm_write                           (),
-    .avl_mm_writedata                       (),
-    .avl_mm_byteenable                      (),
-    .avl_mm_waitrequest                     ()
+    .avl_mm_address                         (ctrl_dsi_address       ),
+    .avl_mm_read                            (ctrl_dsi_read          ),
+    .avl_mm_readdata                        (ctrl_dsi_readdata      ),
+    .avl_mm_response                        (ctrl_dsi_response      ),
+    .avl_mm_write                           (ctrl_dsi_write         ),
+    .avl_mm_writedata                       (ctrl_dsi_writedata     ),
+    .avl_mm_byteenable                      (ctrl_dsi_byteenable    ),
+    .avl_mm_waitrequest                     (ctrl_dsi_waitrequest   )
 
 );
 
@@ -661,24 +772,22 @@ dsi_tx_top #(
 
 uart_wrapper uart_wrapper_0(
     //* system signals
-    .clk                  (),
-    .rst                  (),
+    .clk                  (sys_clk              ),
+    .rst                  (sys_rst_n            ),
 
     //* external interface
     .rxd                  (),
     .txd                  (),
 
     //* system interface
-    .ctrl_address        (),
-
-    .ctrl_read           (),
-    .ctrl_readdata       (),
-    .ctrl_response       (),
-
-    .ctrl_write          (),
-    .ctrl_writedata      (),
-    .ctrl_byteenable     (),
-    .ctrl_waitrequest    (),
+    .ctrl_address        (ctrl_uart_address     ),
+    .ctrl_read           (ctrl_uart_read        ),
+    .ctrl_readdata       (ctrl_uart_readdata    ),
+    .ctrl_response       (ctrl_uart_response    ),
+    .ctrl_write          (ctrl_uart_write       ),
+    .ctrl_writedata      (ctrl_uart_writedata   ),
+    .ctrl_byteenable     (ctrl_uart_byteenable  ),
+    .ctrl_waitrequest    (ctrl_uart_waitrequest ),
 
     .irq                 ()
 );
@@ -686,18 +795,17 @@ uart_wrapper uart_wrapper_0(
 //* Programm Mem
 progmem_wrapper progmem_wrapper_0(
     //* system signals
-    .clk                     (),
-    .rst_n                   (),
+    .clk                     (sys_clk              ),
+    .rst_n                   (sys_rst_n            ),
 
     //* system interface
-    .ctrl_address            (),
-
-    .ctrl_read               (),
-    .ctrl_readdata           (),
-    .ctrl_response           (),
-
-    .ctrl_waitrequest        ()
+    .ctrl_address            (ctrl_prog_mem_address       ),
+    .ctrl_read               (ctrl_prog_mem_read          ),
+    .ctrl_readdata           (ctrl_prog_mem_readdata      ),
+    .ctrl_response           (ctrl_prog_mem_response      ),
+    .ctrl_waitrequest        (ctrl_prog_mem_waitrequest   )
 );
+
 
 //* GPIO
 
