@@ -6,7 +6,7 @@ module lvds_soft_x (
 		input  wire       tx_clock_strobe,  // tx_syncclock.tx_syncclock
 		input  wire       tx_en,  // tx_syncclock.tx_syncclock
 		input  wire [7:0] tx_in,            // tx_in.tx_in
-		output wire       tx_out            // tx_out.tx_out
+		output wire       tx_out,            // tx_out.tx_out
 		output wire       tx_out_en         // tx_out.tx_out_en
 	);
 

@@ -101,28 +101,29 @@ assign cmd_fifo_full = cmd_fifo_usedw == 2'b1;
 /********************************************************************
                         FSM declaration
 ********************************************************************/
-enum logic [4:0]{
-    STATE_IDLE              ,
-    STATE_WRITE_VSS         ,
-    STATE_WRITE_VSS_EOT     ,
-    STATE_WRITE_VSS_BL      ,
-    STATE_WRITE_HSS_0       ,
-    STATE_WRITE_HSS_0_EOT   ,
-    STATE_WRITE_HSS_BL_0    ,
-    STATE_WRITE_HSS_1       ,
-    STATE_WRITE_HSS_1_EOT   ,
-    STATE_WRITE_HBP         ,
-    STATE_WRITE_RGB         ,
-    STATE_WRITE_RGB_EOT     ,
-    STATE_WRITE_HSS_BL_1    ,
-    STATE_WRITE_HFP         ,
-    STATE_WRITE_HSS_2       ,
-    STATE_WRITE_HSS_2_EOT   ,
-    STATE_WRITE_HSS_BL_2    ,
-    STATE_WRITE_LPM
-} state_current, state_next, state_current_delayed, state_next_delayed;
 
-always_ff @(`CLK_RST(clk, rst_n))
+localparam [4:0] STATE_IDLE              = 0;
+localparam [4:0] STATE_WRITE_VSS         = 1;
+localparam [4:0] STATE_WRITE_VSS_EOT     = 2;
+localparam [4:0] STATE_WRITE_VSS_BL      = 3;
+localparam [4:0] STATE_WRITE_HSS_0       = 4;
+localparam [4:0] STATE_WRITE_HSS_0_EOT   = 5;
+localparam [4:0] STATE_WRITE_HSS_BL_0    = 6;
+localparam [4:0] STATE_WRITE_HSS_1       = 7;
+localparam [4:0] STATE_WRITE_HSS_1_EOT   = 8;
+localparam [4:0] STATE_WRITE_HBP         = 9;
+localparam [4:0] STATE_WRITE_RGB         = 10;
+localparam [4:0] STATE_WRITE_RGB_EOT     = 11;
+localparam [4:0] STATE_WRITE_HSS_BL_1    = 12;
+localparam [4:0] STATE_WRITE_HFP         = 13;
+localparam [4:0] STATE_WRITE_HSS_2       = 14;
+localparam [4:0] STATE_WRITE_HSS_2_EOT   = 15;
+localparam [4:0] STATE_WRITE_HSS_BL_2    = 16;
+localparam [4:0] STATE_WRITE_LPM         = 17;
+
+reg [4:0] state_current, state_next, state_current_delayed, state_next_delayed;
+
+always @(`CLK_RST(clk, rst_n))
     if(`RST(rst_n))   state_current <= STATE_IDLE;
     else                state_current <= state_next;
 
@@ -130,7 +131,7 @@ always_ff @(`CLK_RST(clk, rst_n))
 blank_timeout counter when lpm_enable = 1 should start counting only after cmd_fifo_empty = 1
 */
 
-always_comb
+always @(*)
     begin
         case (state_current)
             STATE_IDLE:
@@ -196,12 +197,12 @@ always_comb
 /********************************************************************
                 Timing counters
 ********************************************************************/
-logic [15:0]    blank_timer;
-logic           blank_counter_start; // write me!
-logic           blank_counter_active;
-logic [15:0]    blank_counter_init_val;
-logic [15:0]    blank_packet_size;
-logic           usr_fifo_wait_next_read;
+reg [15:0]    blank_timer;
+wire           blank_counter_start; // write me!
+reg           blank_counter_active;
+reg [15:0]    blank_counter_init_val;
+reg [15:0]    blank_packet_size;
+reg           usr_fifo_wait_next_read;
 reg             blank_counter_start_reg;
 
 assign blank_counter_start = !(|blank_timer) & lpm_enable & cmd_fifo_empty & (usr_fifo_empty || !usr_fifo_wait_next_read) &
@@ -213,26 +214,26 @@ assign blank_counter_start = !(|blank_timer) & lpm_enable & cmd_fifo_empty & (us
                                 (state_current == STATE_WRITE_HSS_BL_2)     |
                                 (state_current == STATE_WRITE_LPM))         ;
 
-always_ff @(posedge clk or negedge rst_n)
+always @(posedge clk or negedge rst_n)
     if(!rst_n)      blank_counter_start_reg <= 1'b0;
     else            blank_counter_start_reg <= blank_counter_start;
 
-logic [15:0]    usr_packet_length;
-logic [15:0]    usr_packet_length_in_clk;
+wire [15:0]    usr_packet_length;
+wire [15:0]    usr_packet_length_in_clk;
 
 assign usr_packet_length            = usr_fifo_packet_long & !usr_fifo_packet_error ? (16'd6 + usr_fifo_data[15:0]) : 16'd4;
 assign usr_packet_length_in_clk     = user_cmd_transmission_mode ? {2'b0, usr_packet_length[15:2]} : 16'd0;
 
-always_ff @(posedge clk or negedge rst_n)
+always @(posedge clk or negedge rst_n)
     if(!rst_n)          state_current_delayed <= STATE_IDLE;
     else                state_current_delayed <= state_current;
 
-always_ff @(posedge clk or negedge rst_n)
+always @(posedge clk or negedge rst_n)
     if(!rst_n)          state_next_delayed <= STATE_IDLE;
     else                state_next_delayed <= state_next;
 
 
-always_ff @(`CLK_RST(clk, rst_n))
+always @(`CLK_RST(clk, rst_n))
     if(`RST(rst_n))       blank_counter_init_val <= 16'd0;
     else if(state_current_delayed != state_next_delayed)
         case(state_current)
@@ -262,22 +263,22 @@ always_ff @(`CLK_RST(clk, rst_n))
 
     endcase
 
-always_ff @(`CLK_RST(clk, rst_n))
+always @(`CLK_RST(clk, rst_n))
     if(`RST(rst_n))                     blank_timer <= 16'b0;
     else if(blank_counter_start_reg)    blank_timer <= blank_counter_init_val;
     else if(|blank_timer)               blank_timer <= blank_timer - 16'd1;
 
-always_ff @(`CLK_RST(clk, rst_n))
+always @(`CLK_RST(clk, rst_n))
     if(`RST(rst_n))                     blank_counter_active <= 1'b0;
     else if(blank_counter_start_reg)    blank_counter_active <= 1'b1;
     else if(!(|blank_timer))            blank_counter_active <= 1'b0;
 
 assign blank_timeout = blank_counter_active & (!(|blank_timer));
 
-logic state_write_hs_packet;
-logic state_write_lp_hs_packet;
-logic state_usr_cmd_allowed;
-logic usr_fifo_packet_pending; // flag shows that a packet in usr_fifo should be written after current cmd.
+wire state_write_hs_packet;
+wire state_write_lp_hs_packet;
+wire state_usr_cmd_allowed;
+wire usr_fifo_packet_pending; // flag shows that a packet in usr_fifo should be written after current cmd.
 
 assign state_write_hs_packet =  (state_current == STATE_WRITE_VSS)          |
                                 (state_current == STATE_WRITE_HSS_0)        |
@@ -309,11 +310,11 @@ assign state_usr_cmd_allowed =  (state_current == STATE_WRITE_VSS)        & (!en
 
 /********* CMD fifo data mux *********/
 
-logic [23:0]    cmd_packet_header_prefifo;
+reg [23:0]    cmd_packet_header_prefifo;
 
 assign cmd_fifo_in_ctrl     = state_usr_cmd_allowed & usr_fifo_packet_pending;
 
-always_comb
+always @(*)
     begin
         case (state_current)
             STATE_IDLE:
@@ -376,11 +377,11 @@ always_comb
         endcase
     end
 
-logic [15:0] usr_data_size; // in bytes
+wire [15:0] usr_data_size; // in bytes
 
 assign usr_data_size = cmd_fifo_in_ctrl ? (!user_cmd_transmission_mode ? usr_packet_length : (usr_packet_length * 8 + `LP_PACKET_SIZE) * `LP_BAUD_TIME) : 16'd0;
 
-always_ff @(`CLK_RST(clk, rst_n))
+always @(`CLK_RST(clk, rst_n))
     if(`RST(rst_n))       blank_packet_size <= 16'd0;
     else if(cmd_fifo_write && !lpm_enable)
          case (state_current)
@@ -411,41 +412,41 @@ always_ff @(`CLK_RST(clk, rst_n))
 assign cmd_fifo_data_in = {cmd_fifo_in_ctrl, 8'b0, cmd_packet_header_prefifo};
 assign cmd_fifo_write   = !cmd_fifo_full & (state_write_hs_packet | state_write_lp_hs_packet & !lpm_enable);
 
-logic cmd_fifo_reg_full;
+reg cmd_fifo_reg_full;
 
-always_ff @(posedge clk or negedge rst_n)
+always @(posedge clk or negedge rst_n)
     if(!rst_n)                                                              cmd_fifo_data_in_reg <= 33'b0;
     else if((!cmd_fifo_reg_full || !cmd_fifo_full_w) && cmd_fifo_write)     cmd_fifo_data_in_reg <= cmd_fifo_data_in;
 
-always_ff @(posedge clk or negedge rst_n)
+always @(posedge clk or negedge rst_n)
     if(!rst_n)                                                              cmd_fifo_reg_full <= 1'b0;
     else if((!cmd_fifo_reg_full || !cmd_fifo_full_w) && cmd_fifo_write)     cmd_fifo_reg_full <= 1'b1;
     else if(cmd_fifo_reg_full && !cmd_fifo_full)                            cmd_fifo_reg_full <= 1'b0;
 
 assign cmd_fifo_write_reg = !cmd_fifo_full & cmd_fifo_reg_full;
 
-always_ff @(`CLK_RST(clk, rst_n))
+always @(`CLK_RST(clk, rst_n))
     if(`RST(rst_n))                                     usr_fifo_wait_next_read <= 1'b0;
     else if(cmd_fifo_write & usr_fifo_packet_pending)   usr_fifo_wait_next_read <= 1'b1;
     else if(usr_fifo_read & usr_fifo_wait_next_read)    usr_fifo_wait_next_read <= 1'b0;
 
 assign usr_fifo_packet_pending = !usr_fifo_empty & !usr_fifo_wait_next_read;
 
-logic [15:0] pix_lines_counter;
-logic [15:0] vbp_lines_counter;
-logic [15:0] vfp_lines_counter;
+reg [15:0] pix_lines_counter;
+reg [15:0] vbp_lines_counter;
+reg [15:0] vfp_lines_counter;
 
-always_ff @(`CLK_RST(clk, rst_n))
+always @(`CLK_RST(clk, rst_n))
     if(`RST(rst_n))                                                                         vbp_lines_counter <= 16'd0;
     else if(state_next == STATE_WRITE_VSS)                                                  vbp_lines_counter <= vertical_back_porch_lines_number - 16'd1;
     else if(state_next == STATE_WRITE_HSS_0  && state_current == STATE_WRITE_HSS_BL_0)      vbp_lines_counter <= vbp_lines_counter - 16'd1;
 
-always_ff @(`CLK_RST(clk, rst_n))
+always @(`CLK_RST(clk, rst_n))
     if(`RST(rst_n))                                                                         pix_lines_counter <= 16'd0;
     else if(state_next == STATE_WRITE_HSS_1  && state_current == STATE_WRITE_HSS_BL_0)      pix_lines_counter <= vertical_active_lines_number - 16'd1;
     else if(state_next == STATE_WRITE_HSS_1  && state_current == STATE_WRITE_HFP)           pix_lines_counter <= pix_lines_counter - 16'd1;
 
-always_ff @(`CLK_RST(clk, rst_n))
+always @(`CLK_RST(clk, rst_n))
     if(`RST(rst_n))                                                                         vfp_lines_counter <= 16'd0;
     else if(state_next == STATE_WRITE_HSS_2  && state_current == STATE_WRITE_HFP)           vfp_lines_counter <= vertical_active_lines_number - 16'd1;
     else if(state_next == STATE_WRITE_HSS_2  && state_current == STATE_WRITE_HSS_BL_2)      vfp_lines_counter <= vfp_lines_counter - 16'd1;
@@ -471,32 +472,32 @@ TO DO:
 
 localparam [31:0]   BLANK_PATTERN           = 32'h5555_5555;
 
-logic pix_packet_long;
-logic writing_completed;
-logic lanes_fifo_empty_w;
-logic next_usr_data;
+wire pix_packet_long;
+wire writing_completed;
+wire lanes_fifo_empty_w;
+wire next_usr_data;
 
 assign next_usr_data = cmd_fifo_out_ctrl;
 
-enum logic [3:0] {
-    MUX_STATE_IDLE,
-    MUX_STATE_PIX_CMD,
-    MUX_STATE_USR_CMD,
-    MUX_STATE_PIX_DATA,
-    MUX_STATE_USR_DATA,
-    MUX_STATE_BLANK_DATA,
-    MUX_STATE_PIX_CRC,
-    MUX_STATE_BLANK_CRC,
-    MUX_STATE_USR_CRC,
-    MUX_STATE_WAIT_ENTER_LPM,
-    MUX_STATE_WAIT_EXIT_LPM
-} mux_state_current, mux_state_next;
+localparam [3:0] MUX_STATE_IDLE = 0;
+localparam [3:0] MUX_STATE_PIX_CMD = 1;
+localparam [3:0] MUX_STATE_USR_CMD = 2;
+localparam [3:0] MUX_STATE_PIX_DATA = 3;
+localparam [3:0] MUX_STATE_USR_DATA = 4;
+localparam [3:0] MUX_STATE_BLANK_DATA = 5;
+localparam [3:0] MUX_STATE_PIX_CRC = 6;
+localparam [3:0] MUX_STATE_BLANK_CRC = 7;
+localparam [3:0] MUX_STATE_USR_CRC = 8;
+localparam [3:0] MUX_STATE_WAIT_ENTER_LPM = 9;
+localparam [3:0] MUX_STATE_WAIT_EXIT_LPM = 10;
 
-always_ff @(posedge clk or negedge rst_n)
+reg [3:0] mux_state_current, mux_state_next;
+
+always @(posedge clk or negedge rst_n)
     if(!rst_n)  mux_state_current <= MUX_STATE_IDLE;
     else        mux_state_current <= mux_state_next;
 
-always_comb
+always @(*)
     begin
         if(!streaming_enable)
             case(mux_state_current)
@@ -559,10 +560,10 @@ always_comb
 
 assign lanes_fifo_empty_w = (&lanes_fifo_empty);
 
-logic [31:0] usr_cmd_header;
-logic [31:0] pix_cmd_header;
-logic [7:0]  ecc_result_0;
-logic [7:0]  ecc_result_1;
+wire [31:0] usr_cmd_header;
+wire [31:0] pix_cmd_header;
+wire [7:0]  ecc_result_0;
+wire [7:0]  ecc_result_1;
 
 assign usr_cmd_header = {ecc_result_0, usr_fifo_data[23:0]};
 
@@ -580,11 +581,11 @@ ecc_calc ecc_1
     .ecc_result (ecc_result_1    )
 );
 
-logic pix_packet_decoder_error;
-logic pix_packet_not_reserved;
-logic pix_packet_short;
-logic usr_packet_reserved;
-logic usr_packet_short;
+wire pix_packet_decoder_error;
+wire pix_packet_not_reserved;
+wire pix_packet_short;
+wire usr_packet_reserved;
+wire usr_packet_short;
 
 assign pix_packet_decoder_error    = !pix_packet_not_reserved;
 assign pix_packet_not_reserved     = !(!(|cmd_fifo_data[3:0]) & (&cmd_fifo_data[3:0]));
@@ -596,31 +597,31 @@ assign usr_packet_reserved         = !(|usr_fifo_data[3:0]) & (&usr_fifo_data[3:
 assign usr_fifo_packet_long        = !(!cmd_fifo_data[3] | (cmd_fifo_data[5:0] == 6'b001000)) & !usr_packet_reserved;
 assign usr_packet_short            = (!cmd_fifo_data[3] | (cmd_fifo_data[5:0] == 6'b001000)) & !usr_packet_reserved;
 
-logic [32:0]    mux_data_reg_with_lpm;
-logic [2:0]     mux_bytes_number;
-logic           mux_reg_full;
-logic           mux_reg_write;
-logic           mux_reg_read;
-logic           mux_data_lpm;
-logic [15:0]    data_size_left;
-logic [15:0]    crc_result_async;
-logic [15:0]    crc_result_sync;
-logic           mux_state_writing;
-logic           mux_state_writing_delayed;
+reg [32:0]    mux_data_reg_with_lpm;
+reg [2:0]     mux_bytes_number;
+reg           mux_reg_full;
+wire           mux_reg_write;
+wire           mux_reg_read;
+wire           mux_data_lpm;
+reg [15:0]    data_size_left;
+wire [15:0]    crc_result_async;
+wire [15:0]    crc_result_sync;
+wire           mux_state_writing;
+reg           mux_state_writing_delayed;
 
 assign mux_reg_write        = (mux_reg_read | !mux_reg_full) & mux_state_writing;
 assign mux_state_writing    = (mux_state_current != MUX_STATE_IDLE) & (mux_state_current != MUX_STATE_WAIT_ENTER_LPM) & (mux_state_current != MUX_STATE_WAIT_EXIT_LPM);
 
-always_ff @(posedge clk or negedge rst_n)
+always @(posedge clk or negedge rst_n)
     if(!rst_n)                  mux_reg_full <= 1'b0;
     else if(mux_reg_write)      mux_reg_full <= 1'b1;
     else if(mux_reg_read)       mux_reg_full <= 1'b0;
 
-always_ff @(posedge clk or negedge rst_n)
+always @(posedge clk or negedge rst_n)
     if(!rst_n)      mux_state_writing_delayed <= 1'b0;
     else            mux_state_writing_delayed <= mux_state_writing;
 
-always_ff @(posedge clk or negedge rst_n)
+always @(posedge clk or negedge rst_n)
     if(!rst_n)              mux_data_reg_with_lpm <= 32'b0;
     else if(mux_reg_write)
         case(mux_state_current)
@@ -657,11 +658,11 @@ assign pix_fifo_read = (mux_state_current == MUX_STATE_PIX_DATA) &  mux_reg_writ
 assign usr_fifo_read = ((mux_state_current == MUX_STATE_USR_CMD) | (mux_state_current == MUX_STATE_USR_DATA)) & mux_reg_write;
 assign cmd_fifo_read = (mux_state_current == MUX_STATE_PIX_CMD) &  mux_reg_write;
 
-logic       decrease_data_counter;
-logic       set_data_counter_pix;
-logic       set_data_counter_cmd;
-logic       set_data_header_size;
-logic       set_data_crc_size;
+wire       decrease_data_counter;
+wire       set_data_counter_pix;
+wire       set_data_counter_cmd;
+wire       set_data_header_size;
+wire       set_data_crc_size;
 
 assign set_data_crc_size        = (mux_state_next == MUX_STATE_PIX_CRC) | (mux_state_next == MUX_STATE_BLANK_CRC) | (mux_state_next == MUX_STATE_USR_CRC);
 assign set_data_header_size     = (mux_state_next == MUX_STATE_USR_CMD) | (mux_state_next == MUX_STATE_PIX_CMD);
@@ -669,7 +670,7 @@ assign decrease_data_counter    = mux_state_writing & mux_reg_write;
 assign set_data_counter_pix     = ((mux_state_next == MUX_STATE_PIX_DATA) | (mux_state_next == MUX_STATE_BLANK_DATA)) & (mux_state_current == MUX_STATE_PIX_CMD);
 assign set_data_counter_cmd     = (mux_state_next == MUX_STATE_USR_DATA) && (mux_state_current == MUX_STATE_USR_CMD);
 
-always_ff @(posedge clk or negedge rst_n)
+always @(posedge clk or negedge rst_n)
     if(!rst_n)                          data_size_left <= 16'b0;
     else if(set_data_header_size)       data_size_left <= 16'd4;
     else if(set_data_crc_size)          data_size_left <= 16'd2;
@@ -679,13 +680,13 @@ always_ff @(posedge clk or negedge rst_n)
 
 assign writing_completed    = decrease_data_counter & (data_size_left <= 16'd4);
 
-always_ff @(posedge clk or negedge rst_n)
+always @(posedge clk or negedge rst_n)
     if(!rst_n)  mux_bytes_number <= 'b0;
     else        mux_bytes_number <= |data_size_left[15:2] ? 4'd4 : data_size_left[2:0];
 
 /********* Packet type decoder *********/
-logic           clear_crc_calc;
-logic [1:0]     bytes_in_line;
+wire           clear_crc_calc;
+wire [1:0]     bytes_in_line;
 
 assign clear_crc_calc   = (mux_state_current == MUX_STATE_USR_CMD) | (mux_state_current == MUX_STATE_PIX_CMD);
 assign bytes_in_line    = data_size_left[1:0] > 2'd1 ? data_size_left[1:0] - 2'd1 : 2'd0;
@@ -702,20 +703,20 @@ crc_calculator crc_calculator_0
     .crc_output_sync    (crc_result_sync                )
 );
 
-logic [3:0] lines_enable;
-logic [3:0] rpck_out_bn;
+reg [3:0] lines_enable;
+wire [3:0] rpck_out_bn;
 
-logic        inp_read;
-logic [31:0] inp_data;
-logic [31:0] out_data;
-logic        out_read_ack;
-logic        out_ready;
+wire        inp_read;
+wire [31:0] inp_data;
+wire [31:0] out_data;
+wire        out_read_ack;
+wire        out_ready;
 
-logic [3:0]     shift_total_num;
-logic [63:0]    shift_reg;
-logic [3:0]     shift_free_bytes;
-logic [3:0]     lines_number_real;
-logic [31:0]    mux_data_reg;
+reg [3:0]     shift_total_num;
+reg [63:0]    shift_reg;
+wire [3:0]     shift_free_bytes;
+wire [3:0]     lines_number_real;
+wire [31:0]    mux_data_reg;
 
 assign mux_data_reg                     = mux_data_reg_with_lpm[31:0];
 assign shift_free_bytes                 = 4'd8 - shift_total_num + (out_read_ack ? lines_number_real : 4'd0);
@@ -738,7 +739,7 @@ else            shift_total_num <= shift_total_num - ({4{out_read_ack}} & lines_
 
 assign rpck_out_bn = |shift_total_num[3:2] ? 4'd4 : shift_total_num;
 
-always_ff @(posedge clk or negedge rst_n)
+always @(posedge clk or negedge rst_n)
     if(!rst_n)      lines_enable <= 4'b0;
     else
         case(lines_number_real)
@@ -754,9 +755,9 @@ always_ff @(posedge clk or negedge rst_n)
             lines_enable <= 4'b0001;
         endcase
 
-logic [3:0] lines_byte_ok;
+reg [3:0] lines_byte_ok;
 
-always_comb
+always @(*)
     begin
         case(rpck_out_bn)
         4'd1:

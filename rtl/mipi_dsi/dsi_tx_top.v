@@ -21,6 +21,7 @@ module dsi_tx_top #(
     input wire                      clk_hs_latch                        ,
     input wire                      clk_hs                              ,
     input wire                      clk_hs_clk                          ,
+    input wire                      clk_hs_clk_latch                    ,
 
     output  wire                    irq                                 ,
 
@@ -386,7 +387,7 @@ wire [3:0]  LP_n_output;
 wire        clock_LP_p_output;
 wire        clock_LP_n_output;
 
-dsi_lanes_controller dsi_lanes_controller_0
+dphy_tx_lanes_controller dsi_lanes_controller_0
     (
     /********* Clock signals *********/
     .clk_phy                    (clk_phy                    ), // serial data clock
@@ -440,7 +441,7 @@ wire clk_lvds_out;
 
 lvds_soft lvds_clk(
         .tx_inclock     (clk_hs_clk                     ),   //   tx_inclock.tx_inclock
-        .tx_syncclock   (clk_hs_latch                   ), // tx_syncclock.tx_syncclock
+        .tx_syncclock   (clk_hs_clk_latch                   ), // tx_syncclock.tx_syncclock
         .tx_in          (clock_hs_output_bus            ),        //        tx_in.tx_in
         .tx_out         (clk_lvds_out                   )        //       tx_out.tx_out
     );
@@ -566,8 +567,8 @@ OBUFT #(
 lvds_soft_x clk_lane(
 		.rst                (!rst_phy_n             ),   // tx_inclock.rst
 		.tx_clock_logic     (clk_phy                ),   // tx_inclock.tx_inclock
-		.tx_clock_io        (clk_hs                 ),      // tx_syncclock.tx_syncclock
-		.tx_clock_strobe    (clk_hs_latch           ),  // tx_syncclock.tx_syncclock
+		.tx_clock_io        (clk_hs_clk             ),      // tx_syncclock.tx_syncclock
+		.tx_clock_strobe    (clk_hs_clk_latch       ),  // tx_syncclock.tx_syncclock
 		.tx_en              (!clk_lp_enable         ),  // tx_syncclock.tx_syncclock
 		.tx_in              (clock_hs_output_bus    ),            // tx_in.tx_in
 		.tx_out             (hs_clock_out           )            // tx_out.tx_out

@@ -46,36 +46,34 @@ module pixel_uploader (
 
 /********* Vars *********/
 
-logic read_error;
-logic read_error_reg;
+wire read_error;
+reg read_error_reg;
 
 /********* FSM *********/
 
-enum logic [1:0]
-{
-    STATE_IDLE,
-    STATE_READ_DATA,
-    STATE_REPACK_DATA
-} state_current, state_next;
+localparam [1:0] STATE_IDLE = 0;
+localparam [1:0] STATE_READ_DATA = 1;
+localparam [1:0] STATE_REPACK_DATA = 2;
+reg [1:0] state_current, state_next;
 
-logic next_state_idle;
-logic next_state_read;
-logic next_state_repack;
-logic fifo_write_available;
-logic repack_done;
-logic read_done;
+wire next_state_idle;
+wire next_state_read;
+wire next_state_repack;
+wire fifo_write_available;
+wire repack_done;
+wire read_done;
 
 assign next_state_idle     = (state_current == STATE_REPACK_DATA) && (state_next == STATE_IDLE);
 assign next_state_read     = (state_current == STATE_IDLE) && (state_next == STATE_READ_DATA);
 assign next_state_repack   = (state_current == STATE_READ_DATA) && (state_next == STATE_REPACK_DATA);
 
-always_ff @(`CLK_RST(clk, rst_n))
+always @(`CLK_RST(clk, rst_n))
     if(`RST(rst_n))     state_current <= STATE_IDLE;
     else                state_current <= state_next;
 
 /********* Read memory, repack data, write it to fifo, repeat *********/
 
-always_comb
+always @(*)
     begin
         case (state_current)
             STATE_IDLE:
@@ -93,14 +91,14 @@ always_comb
     end
 
 /********* Data reader *********/
-logic enable_reg;
+reg enable_reg;
 
 always @(`CLK_RST(clk, rst_n))
     if(`RST(rst_n))     enable_reg <= 1'b0;
     else                enable_reg <= enable;
 
-logic           initial_write_address;
-logic [31:0]    base_address_reg;
+wire           initial_write_address;
+reg [31:0]    base_address_reg;
 
 assign initial_write_address = (enable_reg ^ enable) & enable;
 
@@ -108,8 +106,8 @@ always @(`CLK_RST(clk, rst_n))
     if(`RST(rst_n))                     base_address_reg <= 'b0;
     else if(initial_write_address)      base_address_reg <= base_address;
 
-logic [31:0]    current_addess;
-logic           reset_current_address;
+reg [31:0]    current_addess;
+wire           reset_current_address;
 
 assign reset_current_address = next_state_idle & (current_addess == (base_address_reg + total_size));
 
@@ -119,9 +117,9 @@ always @(`CLK_RST(clk, rst_n))
     else if(initial_write_address)      current_addess <= base_address;
     else if(next_state_repack)          current_addess <= current_addess + (word_mode ? 32'd8 : 32'd32);
 
-logic avl_mm_read_reg;
-logic data_ready;
-logic data_ready_delayed;
+reg avl_mm_read_reg;
+wire data_ready;
+reg data_ready_delayed;
 
 assign data_ready = avl_mm_read_reg & !avl_mm_waitrequest;
 
@@ -134,7 +132,7 @@ always @(`CLK_RST(clk, rst_n))
     if(`RST(rst_n))     data_ready_delayed <= 1'b0;
     else                data_ready_delayed <= data_ready;
 
-logic read_data;
+wire read_data;
 
 assign read_error_w = read_error;
 assign read_error   = avl_mm_readdatavalid & (|avl_mm_response) || data_ready_delayed & !avl_mm_readdatavalid;
@@ -146,7 +144,7 @@ always @(`CLK_RST(clk, rst_n))
     else if(read_error)     read_error_reg <= 1'b1;
     else if(!enable)        read_error_reg <= 1'b0;
 
-logic [255:0] data_reg;
+reg [255:0] data_reg;
 
 always @(`CLK_RST(clk, rst_n))
     if(`RST(rst_n))         data_reg <= 'b0;
@@ -155,7 +153,7 @@ always @(`CLK_RST(clk, rst_n))
 /********* Repacker 32 to 4 *********/
 /********* remap 256 bit to 192 bit vector *********/
 
-logic [191:0] data_vector_remapped;
+wire [191:0] data_vector_remapped;
 
 genvar i, j;
 generate
@@ -166,15 +164,15 @@ generate
     end
 endgenerate
 
-logic [2:0] words_counter;
-logic       write_fifo_reg;
+reg [2:0] words_counter;
+wire       write_fifo_reg;
 
 always @(`CLK_RST(clk, rst_n))
     if(`RST(rst_n))             words_counter <= 2'b0;
     else if(next_state_idle)    words_counter <= 2'b0;
     else if(write_fifo_reg)     words_counter <= words_counter + 2'd1;
 
-logic [31:0] fifo_register;
+reg [31:0] fifo_register;
 
 always @(`CLK_RST(clk, rst_n))
     if(`RST(rst_n))             fifo_register <= 32'b0;
@@ -182,7 +180,7 @@ always @(`CLK_RST(clk, rst_n))
 
 assign write_fifo_reg = (state_current == STATE_REPACK_DATA) && (words_counter <= (transform_data ? 5'd5 : 5'd7)) && (!pix_fifo_full);
 
-logic fifo_buff_write;
+reg fifo_buff_write;
 
 always @(`CLK_RST(clk, rst_n))
     if(`RST(rst_n))             fifo_buff_write <= 1'b0;

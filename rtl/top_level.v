@@ -21,15 +21,15 @@
 
 //                                         +-----------------+
 //                                         |                 |
-//                                         |                 |
-//                                         |     Picorv5     |
-//                                         |                 |
-//                                         |                 |
-//                                         +--------+--------+
-//              +-------------+                     |
-//        <-----+    GPIO     +<-----+              |                            +--------------+
-//              |             |      |        +-----v-----+      +-------------->+    I2C       +<---------->
-//              +-------------+      +--------+           |      |               |  EEPROM      |
+//                                         |                 |                   +--------------+
+//                                         |     Picorv5     |    +------------->+    PROG      +<---------->
+//                                         |                 |    |              |    MEM       |
+//                                         |                 |    |              +--------------+
+//                                         +--------+--------+    |
+//              +-------------+                     |         +---+
+//        <-----+    GPIO     +<-----+              |         |                  +--------------+
+//              |             |      |        +-----v-----+   |  +-------------->+    I2C       +<---------->
+//              +-------------+      +--------+           <---+  |               |  EEPROM      |
 //                                +---------->+   MUX     <------+               +--------------+
 //              +-------------+   |           |           |---------------+
 //              |             +<--+   +------->           +------------+  |      +--------------+
@@ -47,231 +47,192 @@
 //              |              |         |               |       |        |       |             |
 //              +--------------+         +---------------+       +--------+       +-------------+
 
-
 //////////////////////////////////////////////////////////////////////////////////
 module top_level(
     /* CLK */
+    input  wire             clk_in                  ,
+    input  wire             rst_n                   ,
     /* DDR */
+    inout  [16-1:0]         mcb3_dram_dq            ,
+    output [14-1:0]         mcb3_dram_a             ,
+    output [3-1:0]          mcb3_dram_ba            ,
+    output                  mcb3_dram_ras_n         ,
+    output                  mcb3_dram_cas_n         ,
+    output                  mcb3_dram_we_n          ,
+    output                  mcb3_dram_odt           ,
+    output                  mcb3_dram_reset_n       ,
+    output                  mcb3_dram_cke           ,
+    output                  mcb3_dram_dm            ,
+    inout                   mcb3_dram_udqs          ,
+    inout                   mcb3_dram_udqs_n        ,
+    inout                   mcb3_rzq                ,
+    inout                   mcb3_zio                ,
+    output                  mcb3_dram_udm           ,
+    input                   c3_sys_clk              ,
+    input                   c3_sys_rst_i            ,
+    output                  c3_calib_done           ,
+    output                  c3_clk0                 ,
+    output                  c3_rst0                 ,
+    inout                   mcb3_dram_dqs           ,
+    inout                   mcb3_dram_dqs_n         ,
+    output                  mcb3_dram_ck            ,
+    output                  mcb3_dram_ck_n          ,
     /* DPHY */
+    output  wire [3:0]      dphy_data_hs_out_p      ,
+    output  wire [3:0]      dphy_data_hs_out_n      ,
+    output  wire [3:0]      dphy_data_lp_out_p      ,
+    output  wire [3:0]      dphy_data_lp_out_n      ,
+    output  wire            dphy_clk_hs_out_p       ,
+    output  wire            dphy_clk_hs_out_n       ,
+    output  wire            dphy_clk_lp_out_p       ,
+    output  wire            dphy_clk_lp_out_n       ,
     /* HDMI parallel */
-    /* HDMI native */
+    /* I2C ADV */
     /* I2C EEPROM */
     /* LED */
     /* UART */
+    input  wire             rxd                     ,
+    output wire             txd                     
     /* BUTTON */
     );
 
-logic sys_clk;
-logic sys_rst_n;
+localparam [ 0:0] ENABLE_COUNTERS = 1;
+localparam [ 0:0] BARREL_SHIFTER = 0;
+localparam [ 0:0] COMPRESSED_ISA = 0;
+localparam [ 0:0] ENABLE_MUL = 0;
+localparam [ 0:0] ENABLE_DIV = 0;
+localparam [ 0:0] ENABLE_IRQ_QREGS = 1;
+localparam [31:0] PROGADDR_RESET = 32'h 0000_0000;
+localparam [31:0] PROGADDR_IRQ = 32'h 0000_0010;
+localparam [31:0] STACKADDR = 32'h ffff_ffff;
 
-logic dsi_phy_clk;
-logic dsi_phy_rst_n;
 
-logic dsi_io_clk;
-logic dsi_io_rst_n;
+wire sys_clk;
+wire sys_rst_n;
 
-logic dsi_io_serdes_latch;
+wire dsi_phy_clk;
+wire dsi_phy_rst_n;
 
-logic    [32 - 1:0]                 s0_bus_addr;
-logic                               s0_bus_read;
-logic    [32-1:0]                   s0_bus_readdata;
-logic    [1:0]                      s0_bus_response;
-logic                               s0_bus_write;
-logic    [32-1:0]                   s0_bus_writedata;
-logic    [3:0]                      s0_bus_byteenable;
-logic                               s0_bus_waitrequest;
-logic   [M0_ADDR_WIDTH - 1:0]       m0_bus_addr;
-logic                               m0_bus_read;
-logic     [32-1:0]                  m0_bus_readdata;
-logic     [1:0]                     m0_bus_response;
-logic                               m0_bus_write;
-logic   [32-1:0]                    m0_bus_writedata;
-logic   [3:0]                       m0_bus_byteenable;
-logic                               m0_bus_waitrequest;
-logic   [M1_ADDR_WIDTH - 1:0]       m1_bus_addr;
-logic                               m1_bus_read;
-logic     [32-1:0]                  m1_bus_readdata;
-logic     [1:0]                     m1_bus_response;
-logic                               m1_bus_write;
-logic   [32-1:0]                    m1_bus_writedata;
-logic   [3:0]                       m1_bus_byteenable;
-logic                               m1_bus_waitrequest;
-logic   [M2_ADDR_WIDTH - 1:0]       m2_bus_addr;
-logic                               m2_bus_read;
-logic     [32-1:0]                  m2_bus_readdata;
-logic     [1:0]                     m2_bus_response;
-logic                               m2_bus_write;
-logic   [32-1:0]                    m2_bus_writedata;
-logic   [3:0]                       m2_bus_byteenable;
-logic                               m2_bus_waitrequest;
-logic   [M3_ADDR_WIDTH - 1:0]       m3_bus_addr;
-logic                               m3_bus_read;
-logic     [32-1:0]                  m3_bus_readdata;
-logic     [1:0]                     m3_bus_response;
-logic                               m3_bus_write;
-logic   [32-1:0]                    m3_bus_writedata;
-logic   [3:0]                       m3_bus_byteenable;
-logic                               m3_bus_waitrequest;
-logic   [M4_ADDR_WIDTH - 1:0]       m4_bus_addr;
-logic                               m4_bus_read;
-logic     [32-1:0]                  m4_bus_readdata;
-logic     [1:0]                     m4_bus_response;
-logic                               m4_bus_write;
-logic   [32-1:0]                    m4_bus_writedata;
-logic   [3:0]                       m4_bus_byteenable;
-logic                               m4_bus_waitrequest;
-logic   [M5_ADDR_WIDTH - 1:0]       m5_bus_addr;
-logic                               m5_bus_read;
-logic     [32-1:0]                  m5_bus_readdata;
-logic     [1:0]                     m5_bus_response;
-logic                               m5_bus_write;
-logic   [32-1:0]                    m5_bus_writedata;
-logic   [3:0]                       m5_bus_byteenable;
-logic                               m5_bus_waitrequest;
-logic   [M6_ADDR_WIDTH - 1:0]       m6_bus_addr;
-logic                               m6_bus_read;
-logic     [32-1:0]                  m6_bus_readdata;
-logic     [1:0]                     m6_bus_response;
-logic                               m6_bus_write;
-logic   [32-1:0]                    m6_bus_writedata;
-logic   [3:0]                       m6_bus_byteenable;
-logic                               m6_bus_waitrequest;
-logic   [M7_ADDR_WIDTH - 1:0]       m7_bus_addr;
-logic                               m7_bus_read;
-logic     [32-1:0]                  m7_bus_readdata;
-logic     [1:0]                     m7_bus_response;
-logic                               m7_bus_write;
-logic   [32-1:0]                    m7_bus_writedata;
-logic   [3:0]                       m7_bus_byteenable;
-logic                               m7_bus_waitrequest;
-logic   [M8_ADDR_WIDTH - 1:0]       m8_bus_addr;
-logic                               m8_bus_read;
-logic     [32-1:0]                  m8_bus_readdata;
-logic     [1:0]                     m8_bus_response;
-logic                               m8_bus_write;
-logic   [32-1:0]                    m8_bus_writedata;
-logic   [3:0]                       m8_bus_byteenable;
-logic                               m8_bus_waitrequest;
+wire dsi_io_clk;
+wire dsi_io_clk_clk;
+wire dsi_io_rst_n;
 
-logic [4 - 1:0]	                    mst_core_axi_awid;
-logic [32 - 1:0]	                mst_core_axi_awaddr;
-logic [7:0]	                        mst_core_axi_awlen;
-logic [2:0]	                        mst_core_axi_awsize;
-logic [1:0]	                        mst_core_axi_awburst;
-logic [0:0]	                        mst_core_axi_awlock;
-logic [3:0]	                        mst_core_axi_awcache;
-logic [2:0]	                        mst_core_axi_awprot;
-logic [3:0]	                        mst_core_axi_awqos;
-logic   	                        mst_core_axi_awvalid;
-logic   	                        mst_core_axi_awready;
-logic [32 - 1:0]                    mst_core_axi_wdata;
-logic [32/8 - 1:0]                  mst_core_axi_wstrb;
-logic                               mst_core_axi_wlast;
-logic                               mst_core_axi_wvalid;
-logic  	                            mst_core_axi_wready;
-logic [4 - 1:0]                     mst_core_axi_bid;
-logic [4 - 1:0]                     mst_core_axi_wid;
-logic [1:0]                         mst_core_axi_bresp;
-logic                               mst_core_axi_bvalid;
-logic                               mst_core_axi_bready;
-logic [4 - 1:0]                     mst_core_axi_arid;
-logic [32 - 1:0]                    mst_core_axi_araddr;
-logic [7:0]                         mst_core_axi_arlen;
-logic [2:0]                         mst_core_axi_arsize;
-logic [1:0]                         mst_core_axi_arburst;
-logic [0:0]                         mst_core_axi_arlock;
-logic [3:0]                         mst_core_axi_arcache;
-logic [2:0]                         mst_core_axi_arprot;
-logic [3:0]                         mst_core_axi_arqos;
-logic                               mst_core_axi_arvalid;
-logic                               mst_core_axi_arready;
-logic [4 - 1:0]                     mst_core_axi_rid;
-logic [32 - 1:0]                    mst_core_axi_rdata;
-logic [1:0]                         mst_core_axi_rresp;
-logic                               mst_core_axi_rlast;
-logic                               mst_core_axi_rvalid;
-logic                               mst_core_axi_rready;
+wire dsi_io_serdes_latch;
 
-logic [4 - 1:0]                     pix_axi_arid;
-logic [ADDR_WIDTH - 1:0]            pix_axi_araddr;
-logic [7:0]                         pix_axi_arlen;
-logic [2:0]                         pix_axi_arsize;
-logic [1:0]                         pix_axi_arburst;
-logic [0:0]                         pix_axi_arlock;
-logic [3:0]                         pix_axi_arcache;
-logic [2:0]                         pix_axi_arprot;
-logic [3:0]                         pix_axi_arqos;
-logic                               pix_axi_arvalid;
-logic                               pix_axi_arready;
-logic [4 - 1:0]                     pix_axi_rid;
-logic [32 - 1:0]                    pix_axi_rdata;
-logic [1:0]                         pix_axi_rresp;
-logic                               pix_axi_rlast;
-logic                               pix_axi_rvalid;
-logic                               pix_axi_rready;
+wire [4 - 1:0]	                    mst_core_axi_awid;
+wire [32 - 1:0]	                mst_core_axi_awaddr;
+wire [7:0]	                        mst_core_axi_awlen;
+wire [2:0]	                        mst_core_axi_awsize;
+wire [1:0]	                        mst_core_axi_awburst;
+wire [0:0]	                        mst_core_axi_awlock;
+wire [3:0]	                        mst_core_axi_awcache;
+wire [2:0]	                        mst_core_axi_awprot;
+wire [3:0]	                        mst_core_axi_awqos;
+wire   	                        mst_core_axi_awvalid;
+wire   	                        mst_core_axi_awready;
+wire [32 - 1:0]                    mst_core_axi_wdata;
+wire [32/8 - 1:0]                  mst_core_axi_wstrb;
+wire                               mst_core_axi_wlast;
+wire                               mst_core_axi_wvalid;
+wire  	                            mst_core_axi_wready;
+wire [4 - 1:0]                     mst_core_axi_bid;
+wire [4 - 1:0]                     mst_core_axi_wid;
+wire [1:0]                         mst_core_axi_bresp;
+wire                               mst_core_axi_bvalid;
+wire                               mst_core_axi_bready;
+wire [4 - 1:0]                     mst_core_axi_arid;
+wire [32 - 1:0]                    mst_core_axi_araddr;
+wire [7:0]                         mst_core_axi_arlen;
+wire [2:0]                         mst_core_axi_arsize;
+wire [1:0]                         mst_core_axi_arburst;
+wire [0:0]                         mst_core_axi_arlock;
+wire [3:0]                         mst_core_axi_arcache;
+wire [2:0]                         mst_core_axi_arprot;
+wire [3:0]                         mst_core_axi_arqos;
+wire                               mst_core_axi_arvalid;
+wire                               mst_core_axi_arready;
+wire [4 - 1:0]                     mst_core_axi_rid;
+wire [32 - 1:0]                    mst_core_axi_rdata;
+wire [1:0]                         mst_core_axi_rresp;
+wire                               mst_core_axi_rlast;
+wire                               mst_core_axi_rvalid;
+wire                               mst_core_axi_rready;
 
-logic [31:0]                        st_data;
-logic                               st_valid;
-logic                               st_endofpacket;
-logic                               st_startofpacket;
-logic                               st_ready;
+wire [4 - 1:0]                     pix_axi_arid;
+wire [24 - 1:0]                    pix_axi_araddr;
+wire [7:0]                         pix_axi_arlen;
+wire [2:0]                         pix_axi_arsize;
+wire [1:0]                         pix_axi_arburst;
+wire [0:0]                         pix_axi_arlock;
+wire [3:0]                         pix_axi_arcache;
+wire [2:0]                         pix_axi_arprot;
+wire [3:0]                         pix_axi_arqos;
+wire                               pix_axi_arvalid;
+wire                               pix_axi_arready;
+wire [4 - 1:0]                     pix_axi_rid;
+wire [32 - 1:0]                    pix_axi_rdata;
+wire [1:0]                         pix_axi_rresp;
+wire                               pix_axi_rlast;
+wire                               pix_axi_rvalid;
+wire                               pix_axi_rready;
 
-logic [4:0]                         ram_mem_address;
-logic                               ram_mem_read;
-logic [31:0]                        ram_mem_readdata;
-logic [1:0]                         ram_mem_response;
-logic                               ram_mem_write;
-logic [31:0]                        ram_mem_writedata;
-logic [3:0]                         ram_mem_byteenable;
-logic                               ram_mem_waitrequest;
+wire [31:0]                        st_data;
+wire                               st_valid;
+wire                               st_endofpacket;
+wire                               st_startofpacket;
+wire                               st_ready;
 
-logic [4:0]                         ctrl_pix_reader_address;
-logic                               ctrl_pix_reader_read;
-logic [31:0]                        ctrl_pix_reader_readdata;
-logic [1:0]                         ctrl_pix_reader_response;
-logic                               ctrl_pix_reader_write;
-logic [31:0]                        ctrl_pix_reader_writedata;
-logic [3:0]                         ctrl_pix_reader_byteenable;
-logic                               ctrl_pix_reader_waitrequest;
+wire                               ram_mem_read;
+wire [31:0]                        ram_mem_readdata;
+wire [1:0]                         ram_mem_response;
+wire                               ram_mem_write;
+wire [31:0]                        ram_mem_writedata;
+wire [3:0]                         ram_mem_byteenable;
+wire                               ram_mem_waitrequest;
 
-logic [4:0]                         ctrl_dsi_address;
-logic                               ctrl_dsi_read;
-logic [31:0]                        ctrl_dsi_readdata;
-logic [1:0]                         ctrl_dsi_response;
-logic                               ctrl_dsi_write;
-logic [31:0]                        ctrl_dsi_writedata;
-logic [3:0]                         ctrl_dsi_byteenable;
-logic                               ctrl_dsi_waitrequest;
+wire                               ctrl_pix_reader_read;
+wire [31:0]                        ctrl_pix_reader_readdata;
+wire [1:0]                         ctrl_pix_reader_response;
+wire                               ctrl_pix_reader_write;
+wire [31:0]                        ctrl_pix_reader_writedata;
+wire [3:0]                         ctrl_pix_reader_byteenable;
+wire                               ctrl_pix_reader_waitrequest;
 
-logic [4:0]                         ctrl_uart_address;
-logic                               ctrl_uart_read;
-logic [31:0]                        ctrl_uart_readdata;
-logic [1:0]                         ctrl_uart_response;
-logic                               ctrl_uart_write;
-logic [31:0]                        ctrl_uart_writedata;
-logic [3:0]                         ctrl_uart_byteenable;
-logic                               ctrl_uart_waitrequest;
+wire                               ctrl_dsi_read;
+wire [31:0]                        ctrl_dsi_readdata;
+wire [1:0]                         ctrl_dsi_response;
+wire                               ctrl_dsi_write;
+wire [31:0]                        ctrl_dsi_writedata;
+wire [3:0]                         ctrl_dsi_byteenable;
+wire                               ctrl_dsi_waitrequest;
 
-logic [4:0]                         ctrl_prog_mem_address;
-logic                               ctrl_prog_mem_read;
-logic [31:0]                        ctrl_prog_mem_readdata;
-logic [1:0]                         ctrl_prog_mem_response;
-logic                               ctrl_prog_mem_write;
-logic [31:0]                        ctrl_prog_mem_writedata;
-logic [3:0]                         ctrl_prog_mem_byteenable;
-logic                               ctrl_prog_mem_waitrequest;
+wire                               ctrl_uart_read;
+wire [31:0]                        ctrl_uart_readdata;
+wire [1:0]                         ctrl_uart_response;
+wire                               ctrl_uart_write;
+wire [31:0]                        ctrl_uart_writedata;
+wire [3:0]                         ctrl_uart_byteenable;
+wire                               ctrl_uart_waitrequest;
+
+wire                               ctrl_prog_mem_read;
+wire [31:0]                        ctrl_prog_mem_readdata;
+wire [1:0]                         ctrl_prog_mem_response;
+wire                               ctrl_prog_mem_write;
+wire [31:0]                        ctrl_prog_mem_writedata;
+wire [3:0]                         ctrl_prog_mem_byteenable;
+wire                               ctrl_prog_mem_waitrequest;
 
 //* RISC V core +
  picorv32_wrapper #(
-    .ENABLE_COUNTERS(),
-	.BARREL_SHIFTER(),
-	.COMPRESSED_ISA(),
-	.ENABLE_MUL(),
-	.ENABLE_DIV(),
-	.ENABLE_IRQ_QREGS(),
-	.PROGADDR_RESET(),
-	.PROGADDR_IRQ(),
-	.STACKADDR()
+    .ENABLE_COUNTERS    (ENABLE_COUNTERS    ),
+	.BARREL_SHIFTER     (BARREL_SHIFTER     ),
+	.COMPRESSED_ISA     (COMPRESSED_ISA     ),
+	.ENABLE_MUL         (ENABLE_MUL         ),
+	.ENABLE_DIV         (ENABLE_DIV         ),
+	.ENABLE_IRQ_QREGS   (ENABLE_IRQ_QREGS   ),
+	.PROGADDR_RESET     (PROGADDR_RESET     ),
+	.PROGADDR_IRQ       (PROGADDR_IRQ       ),
+	.STACKADDR          (STACKADDR          )
  ) picorv32_core (
     .clk                     (sys_clk               ),
     .rst_n                   (sys_rst_n             ),
@@ -289,27 +250,72 @@ logic                               ctrl_prog_mem_waitrequest;
 );
 
 //* Interconnect (MUX) +
+/*
+Memory Map
+
+BASE ADDR           MASK          SIZE         COMMENT
+------------------------------------------------------------
+0x0000_0000     0xFFFC_0000       2^18          DDR
+0x0004_0000     0xFFFF_FC00       2^10          PROG_MEM
+0x0004_0400     0xFFFF_FF00       2^8           HDMI
+0x0000_0500     0xFFFF_FF00       2^8           PIX WRITE
+0x0000_0600     0xFFFF_FF00       2^8           PIX READER
+0x0000_0700     0xFFFF_FF00       2^8           DSI
+0x0000_0800     0xFFFF_FF00       2^8           USART
+0x0000_0900     0xFFFF_FF00       2^8           I2C HDMI
+0x0000_0A00     0xFFFF_FF00       2^8           I2C EEPROM
+0x0000_0B00     0xFFFF_FF00       2^8           GPIO
+*/
+
+parameter M0_ADDR_WIDTH = 18;//$clog2(!(32'hFFFC_0000));
+parameter M1_ADDR_WIDTH = 8;//$clog2(!(32'hFFFF_FF00));
+parameter M2_ADDR_WIDTH = 8;//$clog2(!(32'hFFFF_FF00));
+parameter M3_ADDR_WIDTH = 8;//$clog2(!(32'hFFFF_FF00));
+parameter M4_ADDR_WIDTH = 10;//$clog2(!(32'hFFFF_FC00));
+parameter M5_ADDR_WIDTH = 8;//$clog2(!(32'hFFFF_FF00));
+parameter M6_ADDR_WIDTH = 8;//$clog2(!(32'hFFFF_FF00));
+parameter M7_ADDR_WIDTH = 8;//$clog2(!(32'hFFFF_FF00));
+parameter M8_ADDR_WIDTH = 8;//$clog2(!(32'hFFFF_FF00));
+parameter M9_ADDR_WIDTH = 8;//$clog2(!(32'hFFFF_FF00));
+
+wire [M0_ADDR_WIDTH-1:0]                         ram_mem_address;
+wire [M2_ADDR_WIDTH-1:0]                         ctrl_pix_reader_address;
+wire [M3_ADDR_WIDTH-1:0]                         ctrl_dsi_address;
+wire [M4_ADDR_WIDTH-1:0]                         ctrl_prog_mem_address;
+wire [M5_ADDR_WIDTH-1:0]                         ctrl_uart_address;
 
 interconnect_mod #(
-    .M0_BASE(),
-    .M0_MASK(),
-    .M1_BASE(),
-    .M1_MASK(),
-    .M2_BASE(),
-    .M2_MASK(),
-    .M3_BASE(),
-    .M3_MASK(),
-    .M4_BASE(),
-    .M4_MASK(),
-    .M5_BASE(),
-    .M5_MASK(),
-    .M6_BASE(),
-    .M6_MASK(),
-    .M7_BASE(),
-    .M7_MASK(),
-    .M8_BASE(),
-    .M8_MASK()
-)(
+    .M0_BASE(32'h0000_0000),    //* DDR
+    .M0_MASK(32'hFFFC_0000),    //* DDR
+    .M0_ADDR_W(18),
+    .M1_BASE(32'hFFFF_FFFF),    //! TODO
+    .M1_MASK(32'h0000_0000),    //! TODO
+    .M1_ADDR_W(8),
+    .M2_BASE(32'h0000_0600),    //* PIX READER
+    .M2_MASK(32'hFFFF_FF00),    //* PIX READER
+    .M2_ADDR_W(8),
+    .M3_BASE(32'h0000_0700),    //* DSI
+    .M3_MASK(32'hFFFF_FF00),    //* DSI
+    .M3_ADDR_W(8),
+    .M4_BASE(32'h0004_0000),    //* PROG MEM
+    .M4_MASK(32'hFFFF_FC00),    //* PROG MEM
+    .M4_ADDR_W(10),
+    .M5_BASE(32'h0000_0800),    //* UART
+    .M5_MASK(32'hFFFF_FF00),    //* UART
+    .M5_ADDR_W(8),
+    .M6_BASE(32'hFFFF_FFFF),    //! TODO
+    .M6_MASK(32'h0000_0000),    //! TODO
+    .M6_ADDR_W(8),
+    .M7_BASE(32'hFFFF_FFFF),    //! TODO
+    .M7_MASK(32'h0000_0000),    //! TODO
+    .M7_ADDR_W(8),
+    .M8_BASE(32'hFFFF_FFFF),    //! TODO
+    .M8_MASK(32'h0000_0000),    //! TODO
+    .M8_ADDR_W(8),
+    .M9_BASE(32'hFFFF_FFFF),    //! TODO
+    .M9_MASK(32'h0000_0000),    //! TODO
+    .M9_ADDR_W(8)
+)interconnect_mod_0(
     // Slave port 0
     .s0_bus_addr                (s0_bus_addr            ),
     .s0_bus_read                (s0_bus_read            ),
@@ -331,14 +337,14 @@ interconnect_mod #(
     .m0_bus_waitrequest         (ram_mem_waitrequest    ),
 
     //* Master port 1
-    .m1_bus_addr                (m1_bus_addr            ),
-    .m1_bus_read                (m1_bus_read            ),
-    .m1_bus_readdata            (m1_bus_readdata        ),
-    .m1_bus_response            (m1_bus_response        ),
-    .m1_bus_write               (m1_bus_write           ),
-    .m1_bus_writedata           (m1_bus_writedata       ),
-    .m1_bus_byteenable          (m1_bus_byteenable      ),
-    .m1_bus_waitrequest         (m1_bus_waitrequest     ),
+    .m1_bus_addr                (),
+    .m1_bus_read                (),
+    .m1_bus_readdata            (),
+    .m1_bus_response            (),
+    .m1_bus_write               (),
+    .m1_bus_writedata           (),
+    .m1_bus_byteenable          (),
+    .m1_bus_waitrequest         (),
 
     //* Master port 2
     .m2_bus_addr                (ctrl_pix_reader_address       ),
@@ -381,34 +387,44 @@ interconnect_mod #(
     .m5_bus_waitrequest         (ctrl_uart_waitrequest      ),
 
     //* Master port 6
-    .m6_bus_addr                (m6_bus_addr            ),
-    .m6_bus_read                (m6_bus_read            ),
-    .m6_bus_readdata            (m6_bus_readdata        ),
-    .m6_bus_response            (m6_bus_response        ),
-    .m6_bus_write               (m6_bus_write           ),
-    .m6_bus_writedata           (m6_bus_writedata       ),
-    .m6_bus_byteenable          (m6_bus_byteenable      ),
-    .m6_bus_waitrequest         (m6_bus_waitrequest     ),
+    .m6_bus_addr                (),
+    .m6_bus_read                (),
+    .m6_bus_readdata            (),
+    .m6_bus_response            (),
+    .m6_bus_write               (),
+    .m6_bus_writedata           (),
+    .m6_bus_byteenable          (),
+    .m6_bus_waitrequest         (),
 
     //* Master port 7
-    .m7_bus_addr                (m7_bus_addr            ),
-    .m7_bus_read                (m7_bus_read            ),
-    .m7_bus_readdata            (m7_bus_readdata        ),
-    .m7_bus_response            (m7_bus_response        ),
-    .m7_bus_write               (m7_bus_write           ),
-    .m7_bus_writedata           (m7_bus_writedata       ),
-    .m7_bus_byteenable          (m7_bus_byteenable      ),
-    .m7_bus_waitrequest         (m7_bus_waitrequest     ),
+    .m7_bus_addr                (),
+    .m7_bus_read                (),
+    .m7_bus_readdata            (),
+    .m7_bus_response            (),
+    .m7_bus_write               (),
+    .m7_bus_writedata           (),
+    .m7_bus_byteenable          (),
+    .m7_bus_waitrequest         (),
 
     //* Master port 8
-    .m8_bus_addr                (m8_bus_addr            ),
-    .m8_bus_read                (m8_bus_read            ),
-    .m8_bus_readdata            (m8_bus_readdata        ),
-    .m8_bus_response            (m8_bus_response        ),
-    .m8_bus_write               (m8_bus_write           ),
-    .m8_bus_writedata           (m8_bus_writedata       ),
-    .m8_bus_byteenable          (m8_bus_byteenable      ),
-    .m8_bus_waitrequest         (m8_bus_waitrequest     )
+    .m8_bus_addr                (),
+    .m8_bus_read                (),
+    .m8_bus_readdata            (),
+    .m8_bus_response            (),
+    .m8_bus_write               (),
+    .m8_bus_writedata           (),
+    .m8_bus_byteenable          (),
+    .m8_bus_waitrequest         (),
+
+    //* Master port 9
+    .m9_bus_addr                (),
+    .m9_bus_read                (),
+    .m9_bus_readdata            (),
+    .m9_bus_response            (),
+    .m9_bus_write               (),
+    .m9_bus_writedata           (),
+    .m9_bus_byteenable          (),
+    .m9_bus_waitrequest         ()
 );
 
 //* Prosessor to AXI bridge
@@ -581,44 +597,44 @@ u_mig_ddr3 (
     //* Write only Port
     .c3_s2_axi_aclk                         (sys_clk              ),
     .c3_s2_axi_aresetn                      (sys_rst_n            ),
-    .c3_s2_axi_awid                         (c3_s2_axi_awid   ),
-    .c3_s2_axi_awaddr                       (c3_s2_axi_awaddr ),
-    .c3_s2_axi_awlen                        (c3_s2_axi_awlen  ),
-    .c3_s2_axi_awsize                       (c3_s2_axi_awsize ),
-    .c3_s2_axi_awburst                      (c3_s2_axi_awburst),
-    .c3_s2_axi_awlock                       (c3_s2_axi_awlock ),
-    .c3_s2_axi_awcache                      (c3_s2_axi_awcache),
-    .c3_s2_axi_awprot                       (c3_s2_axi_awprot ),
-    .c3_s2_axi_awqos                        (c3_s2_axi_awqos  ),
-    .c3_s2_axi_awvalid                      (c3_s2_axi_awvalid),
-    .c3_s2_axi_awready                      (c3_s2_axi_awready),
-    .c3_s2_axi_wdata                        (c3_s2_axi_wdata  ),
-    .c3_s2_axi_wstrb                        (c3_s2_axi_wstrb  ),
-    .c3_s2_axi_wlast                        (c3_s2_axi_wlast  ),
-    .c3_s2_axi_wvalid                       (c3_s2_axi_wvalid ),
-    .c3_s2_axi_wready                       (c3_s2_axi_wready ),
-    .c3_s2_axi_bid                          (c3_s2_axi_bid    ),
-    .c3_s2_axi_wid                          (c3_s2_axi_wid    ),
-    .c3_s2_axi_bresp                        (c3_s2_axi_bresp  ),
-    .c3_s2_axi_bvalid                       (c3_s2_axi_bvalid ),
-    .c3_s2_axi_bready                       (c3_s2_axi_bready ),
-    .c3_s2_axi_arid                         (c3_s2_axi_arid   ),
-    .c3_s2_axi_araddr                       (c3_s2_axi_araddr ),
-    .c3_s2_axi_arlen                        (c3_s2_axi_arlen  ),
-    .c3_s2_axi_arsize                       (c3_s2_axi_arsize ),
-    .c3_s2_axi_arburst                      (c3_s2_axi_arburst),
-    .c3_s2_axi_arlock                       (c3_s2_axi_arlock ),
-    .c3_s2_axi_arcache                      (c3_s2_axi_arcache),
-    .c3_s2_axi_arprot                       (c3_s2_axi_arprot ),
-    .c3_s2_axi_arqos                        (c3_s2_axi_arqos  ),
-    .c3_s2_axi_arvalid                      (c3_s2_axi_arvalid),
-    .c3_s2_axi_arready                      (c3_s2_axi_arready),
-    .c3_s2_axi_rid                          (c3_s2_axi_rid    ),
-    .c3_s2_axi_rdata                        (c3_s2_axi_rdata  ),
-    .c3_s2_axi_rresp                        (c3_s2_axi_rresp  ),
-    .c3_s2_axi_rlast                        (c3_s2_axi_rlast  ),
-    .c3_s2_axi_rvalid                       (c3_s2_axi_rvalid ),
-    .c3_s2_axi_rready                       (c3_s2_axi_rready ),
+    .c3_s2_axi_awid                         (),
+    .c3_s2_axi_awaddr                       (),
+    .c3_s2_axi_awlen                        (),
+    .c3_s2_axi_awsize                       (),
+    .c3_s2_axi_awburst                      (),
+    .c3_s2_axi_awlock                       (),
+    .c3_s2_axi_awcache                      (),
+    .c3_s2_axi_awprot                       (),
+    .c3_s2_axi_awqos                        (),
+    .c3_s2_axi_awvalid                      (),
+    .c3_s2_axi_awready                      (),
+    .c3_s2_axi_wdata                        (),
+    .c3_s2_axi_wstrb                        (),
+    .c3_s2_axi_wlast                        (),
+    .c3_s2_axi_wvalid                       (),
+    .c3_s2_axi_wready                       (),
+    .c3_s2_axi_bid                          (),
+    .c3_s2_axi_wid                          (),
+    .c3_s2_axi_bresp                        (),
+    .c3_s2_axi_bvalid                       (),
+    .c3_s2_axi_bready                       (),
+    .c3_s2_axi_arid                         (),
+    .c3_s2_axi_araddr                       (),
+    .c3_s2_axi_arlen                        (),
+    .c3_s2_axi_arsize                       (),
+    .c3_s2_axi_arburst                      (),
+    .c3_s2_axi_arlock                       (),
+    .c3_s2_axi_arcache                      (),
+    .c3_s2_axi_arprot                       (),
+    .c3_s2_axi_arqos                        (),
+    .c3_s2_axi_arvalid                      (),
+    .c3_s2_axi_arready                      (),
+    .c3_s2_axi_rid                          (),
+    .c3_s2_axi_rdata                        (),
+    .c3_s2_axi_rresp                        (),
+    .c3_s2_axi_rlast                        (),
+    .c3_s2_axi_rvalid                       (),
+    .c3_s2_axi_rready                       (),
 
     //* Read only Port
     .c3_s3_axi_aclk                         (sys_clk              ),
@@ -668,10 +684,10 @@ u_mig_ddr3 (
 
 //* Pixel reader
 axi_to_stream_dma #(
-    parameter ADDR_WIDTH = 24,
-    parameter BURST_SIZE = 128,
-    parameter MAX_PENDING_RQST_LOG = 2;
-)(
+    .ADDR_WIDTH(24),
+    .BURST_SIZE(128),
+    .MAX_PENDING_RQST_LOG(2)
+)axi_to_stream_dma_0(
     .clk                            (sys_clk                ),
     .rst_n                          (sys_rst_n              ),
 
@@ -714,25 +730,26 @@ axi_to_stream_dma #(
 );
 //* DSI +
 dsi_tx_top #(
-    .LINE_WIDTH            (),
-    .BITS_PER_PIXEL        (),
-    .BLANK_TIME            (),
-    .BLANK_TIME_HBP_ACT    (),
-    .VSA_LINES_NUMBER      (),
-    .VBP_LINES_NUMBER      (),
-    .IMAGE_HEIGHT          (),
-    .VFP_LINES_NUMBER      ()
-    ) (
+    .LINE_WIDTH            (640),
+    .BITS_PER_PIXEL        (8),
+    .BLANK_TIME            (8),
+    .BLANK_TIME_HBP_ACT    (8),
+    .VSA_LINES_NUMBER      (10),
+    .VBP_LINES_NUMBER      (10),
+    .IMAGE_HEIGHT          (480),
+    .VFP_LINES_NUMBER      (10)
+    ) dsi_tx_top_0 (
     /********* System signals *********/
-    .clk_sys                                (sys_clk              ),
-    .rst_sys_n                              (sys_rst_n            ),
+    .clk_sys                                (sys_clk                    ),
+    .rst_sys_n                              (sys_rst_n                  ),
 
-    .clk_phy                                (),
-    .rst_phy_n                              (),
+    .clk_phy                                (dsi_phy_clk                ),
+    .rst_phy_n                              (dsi_phy_rst_n              ),
 
-    .clk_hs_latch                           (),
-    .clk_hs                                 (),
-    .clk_hs_clk                             (),
+    .clk_hs_latch                           (dsi_io_serdes_latch        ),
+    .clk_hs                                 (dsi_io_clk                 ),
+    .clk_hs_clk                             (dsi_io_clk_clk             ),
+    .clk_hs_clk_latch                       (dsi_io_clk_serdes_latch    ),
 
     .irq                                    (),
 
@@ -744,15 +761,15 @@ dsi_tx_top #(
     .in_avl_st_ready                        (st_ready               ),
 
     /********* Output interface *********/
-    .dphy_data_hs_out_p                     (),  // active
-    .dphy_data_hs_out_n                     (),  // unactive. do not connect
-    .dphy_data_lp_out_p                     (),
-    .dphy_data_lp_out_n                     (),
+    .dphy_data_hs_out_p                     (dphy_data_hs_out_p     ),  // active
+    .dphy_data_hs_out_n                     (dphy_data_hs_out_n     ),  // unactive. do not connect
+    .dphy_data_lp_out_p                     (dphy_data_lp_out_p     ),
+    .dphy_data_lp_out_n                     (dphy_data_lp_out_n     ),
 
-    .dphy_clk_hs_out_p                      (),  // active
-    .dphy_clk_hs_out_n                      (),  // unactive. do not connect
-    .dphy_clk_lp_out_p                      (),
-    .dphy_clk_lp_out_n                      (),
+    .dphy_clk_hs_out_p                      (dphy_clk_hs_out_p      ),  // active
+    .dphy_clk_hs_out_n                      (dphy_clk_hs_out_n      ),  // unactive. do not connect
+    .dphy_clk_lp_out_p                      (dphy_clk_lp_out_p      ),
+    .dphy_clk_lp_out_n                      (dphy_clk_lp_out_n      ),
 
     /********* Avalon-MM iface *********/
     .avl_mm_address                         (ctrl_dsi_address       ),
@@ -766,28 +783,31 @@ dsi_tx_top #(
 
 );
 
-//* I2C master
+//* I2C master ADV
+//* HDMI Parallel receiver
+//* Stream to AXI DMA
+
+//* I2C master EEPROM
 
 //* Usart RX/TX
-
 uart_wrapper uart_wrapper_0(
     //* system signals
-    .clk                  (sys_clk              ),
-    .rst                  (sys_rst_n            ),
+    .clk                    (sys_clk                ),
+    .rst                    (sys_rst_n              ),
 
     //* external interface
-    .rxd                  (),
-    .txd                  (),
+    .rxd                    (rxd                    ),
+    .txd                    (txd                    ),
 
     //* system interface
-    .ctrl_address        (ctrl_uart_address     ),
-    .ctrl_read           (ctrl_uart_read        ),
-    .ctrl_readdata       (ctrl_uart_readdata    ),
-    .ctrl_response       (ctrl_uart_response    ),
-    .ctrl_write          (ctrl_uart_write       ),
-    .ctrl_writedata      (ctrl_uart_writedata   ),
-    .ctrl_byteenable     (ctrl_uart_byteenable  ),
-    .ctrl_waitrequest    (ctrl_uart_waitrequest ),
+    .ctrl_address           (ctrl_uart_address      ),
+    .ctrl_read              (ctrl_uart_read         ),
+    .ctrl_readdata          (ctrl_uart_readdata     ),
+    .ctrl_response          (ctrl_uart_response     ),
+    .ctrl_write             (ctrl_uart_write        ),
+    .ctrl_writedata         (ctrl_uart_writedata    ),
+    .ctrl_byteenable        (ctrl_uart_byteenable   ),
+    .ctrl_waitrequest       (ctrl_uart_waitrequest  ),
 
     .irq                 ()
 );
@@ -813,14 +833,15 @@ progmem_wrapper progmem_wrapper_0(
 
 //* Clocking
 //* Main PLL (sys clock + dphy)
-logic CLKFBOUT;
-logic CLKFBIN;
-logic CLKOUT0; //* 100 MHz
-logic CLKOUT1; //* CLKOUT2 / 8
-logic CLKOUT2; //* 600 MHZ
-logic CLKOUT3; //* 50 MHz input
-logic clk_pre_pll;
-logic sys_pll_locked;
+wire CLKFBOUT;
+wire CLKFBIN;
+wire CLKOUT0; //* 100 MHz
+wire CLKOUT1; //* CLKOUT2 / 8
+wire CLKOUT2; //* 600 MHZ
+wire CLKOUT3; //* 600 MHZ
+wire CLKOUT4; //* 50 MHz input
+wire clk_pre_pll;
+wire sys_pll_locked;
 
 IBUFG #(
       .IOSTANDARD("DEFAULT")
@@ -868,7 +889,7 @@ PLL_BASE #(
      .CLKOUT1(CLKOUT1),
      .CLKOUT2(CLKOUT2),
      .CLKOUT3(CLKOUT3),
-     //   .CLKOUT4(CLKOUT4),
+     .CLKOUT4(CLKOUT4),
      //   .CLKOUT5(CLKOUT5),
      .LOCKED(sys_pll_locked),     // 1-bit output: PLL_BASE lock status output
      .CLKFBIN(CLKFBIN),   // 1-bit input: Feedback clock input
@@ -899,6 +920,19 @@ BUFPLL #(
       .IOCLK(dsi_io_clk),               // 1-bit output: Output I/O clock
       .LOCK(),                 // 1-bit output: Synchronized LOCK output
       .SERDESSTROBE(dsi_io_serdes_latch), // 1-bit output: Output SERDES strobe (connect to ISERDES2/OSERDES2)
+      .GCLK(CLKOUT4),                 // 1-bit input: BUFG clock input
+      .LOCKED(sys_pll_locked),             // 1-bit input: LOCKED input from PLL
+      .PLLIN(CLKOUT2)                // 1-bit input: Clock input from PLL
+   );
+
+BUFPLL #(
+      .DIVIDE(1),           // DIVCLK divider (1-8)
+      .ENABLE_SYNC("TRUE")  // Enable synchrnonization between PLL and GCLK (TRUE/FALSE)
+   )
+   BUFPLL_dphy_clk_clk (
+      .IOCLK(dsi_io_clk_clk),               // 1-bit output: Output I/O clock
+      .LOCK(),                 // 1-bit output: Synchronized LOCK output
+      .SERDESSTROBE(dsi_io_clk_serdes_latch), // 1-bit output: Output SERDES strobe (connect to ISERDES2/OSERDES2)
       .GCLK(CLKOUT3),                 // 1-bit input: BUFG clock input
       .LOCKED(sys_pll_locked),             // 1-bit input: LOCKED input from PLL
       .PLLIN(CLKOUT2)                // 1-bit input: Clock input from PLL

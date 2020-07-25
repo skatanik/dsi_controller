@@ -36,7 +36,7 @@ module uart_regs (
     input   wire                                tx_busy                         ,
     input   wire                                rx_busy                         ,
     input   wire                                rx_overrun_error                ,
-    input   wire                                rx_frame_error                  ,
+    input   wire                                rx_frame_error
 );
 
 localparam REGISTERS_NUMBER     = 6;
@@ -196,10 +196,10 @@ reg         uart_reg_ier_data_rx_ready          ;
 reg         uart_reg_ier_data_tx_ready          ;
 
 //RXD
-reg [7:0]   uart_reg_rxd_r;
+reg [7:0]   r_uart_reg_rxd;
 
 //TXD
-reg [7:0]   uart_reg_txd_r;
+reg [7:0]   r_uart_reg_txd;
 
 // PRESCALER
 reg [15:0]  uart_reg_prscr_value;
@@ -347,12 +347,12 @@ uart_reg_rxd_r            8        8         RW
 
 assign uart_reg_rxd = {
                     24'd0,
-                    uart_reg_rxd_r
+                    r_uart_reg_rxd
                     };
 
 always @(posedge clk or negedge rst_n)
-    if(!rst_n)                  uart_reg_rxd_r <= 8'd0;
-    else if(data_rx_ready)      uart_reg_rxd_r <= data_rx;
+    if(!rst_n)                  r_uart_reg_rxd <= 8'd0;
+    else if(data_rx_ready)      r_uart_reg_rxd <= data_rx;
 
 assign data_rx_ack = data_rx_ready;
 
@@ -369,12 +369,12 @@ hs_trail_timeout          0         8         RW
 
 assign uart_reg_txd = {
                     24'd0,
-                    uart_reg_txd_r
+                    r_uart_reg_txd
                     };
 
 always @(posedge clk or negedge rst_n)
-    if(!rst_n)                  uart_reg_txd_r <= 8'd0;
-    else if(uart_reg_txd_w)     uart_reg_txd_r <= sys_write_data[7:0];
+    if(!rst_n)                  r_uart_reg_txd <= 8'd0;
+    else if(uart_reg_txd_w)     r_uart_reg_txd <= sys_write_data[7:0];
 
 assign data_tx = uart_reg_txd_r;
 

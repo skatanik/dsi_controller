@@ -8,7 +8,7 @@ module uart_wrapper(
     output wire                     txd                  ,
 
     //* system interface
-    input   wire [4:0]              ctrl_address        ,
+    input   wire [7:0]              ctrl_address        ,
 
     input   wire                    ctrl_read           ,
     output  wire [31:0]             ctrl_readdata       ,
@@ -43,7 +43,7 @@ uart_regs (
     .irq                            (irq                ),
 
     /********* Avalon-MM iface *********/
-    .avl_mm_addr                    (ctrl_addr        ),
+    .avl_mm_addr                    (ctrl_address     ),
 
     .avl_mm_read                    (ctrl_read        ),
     .avl_mm_readdata                (ctrl_readdata    ),
@@ -73,13 +73,12 @@ uart_regs (
 );
 
 
-module uart #
-(
-    parameter DATA_WIDTH = 8
-)
+uart #(
+    .DATA_WIDTH(8)
+)uart_0
 (
     .clk            (clk                    ),
-    .rst            (!rst_n                 ),
+    .rst            (rst_n                 ),
 
     /*
      * AXI input

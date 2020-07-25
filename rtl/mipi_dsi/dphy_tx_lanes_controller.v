@@ -1,4 +1,4 @@
-module dsi_lanes_controller
+module dphy_tx_lanes_controller
     (
         /********* Clock signals *********/
         input wire          clk_phy                 , // serial data clock
@@ -66,18 +66,18 @@ TO DO:
 /********************************************************************
                 DSI lanes instances
 ********************************************************************/
-logic [3:0]     dsi_start_rqst;
-logic [3:0]     dsi_lp_mode;
-logic [3:0]     dsi_fin_rqst;
-logic [3:0]     dsi_data_rqst;
-logic [3:0]     dsi_active;
-logic [31:0]    dsi_hs_output;
-logic [3:0]     dsi_LP_p_output;
-logic [3:0]     dsi_LP_n_output;
-logic [3:0]     dsi_LP_enable;
-logic [31:0]    dsi_inp_data;
-logic [3:0]     dsi_lines_enable;
-logic [4:0]     dsi_lines_ready;
+wire [3:0]     dsi_start_rqst;
+wire [3:0]     dsi_lp_mode;
+wire [3:0]     dsi_fin_rqst;
+wire [3:0]     dsi_data_rqst;
+wire [3:0]     dsi_active;
+wire [31:0]    dsi_hs_output;
+wire [3:0]     dsi_LP_p_output;
+wire [3:0]     dsi_LP_n_output;
+wire [3:0]     dsi_LP_enable;
+wire [31:0]    dsi_inp_data;
+reg [3:0]     dsi_lines_enable;
+wire [4:0]     dsi_lines_ready;
 
 genvar i;
 generate
@@ -138,13 +138,13 @@ assign lines_active = |dsi_active;
 /********************************************************************
         CLK lane
 ********************************************************************/
-logic       dsi_start_rqst_clk;
-logic       dsi_fin_rqst_clk;
-logic       dsi_active_clk;
-logic[7:0]  dsi_serial_hs_output_clk;
-logic       dsi_LP_p_output_clk;
-logic       dsi_LP_n_output_clk;
-logic       dsi_LP_enable_clk;
+wire        dsi_start_rqst_clk;
+wire        dsi_fin_rqst_clk;
+wire        dsi_active_clk;
+wire [7:0]  dsi_serial_hs_output_clk;
+wire        dsi_LP_p_output_clk;
+wire        dsi_LP_n_output_clk;
+wire        dsi_LP_enable_clk;
 
 dsi_lane_full #(
     .MODE(1)
@@ -188,17 +188,15 @@ assign clock_hs_output      = dsi_serial_hs_output_clk;
                     turning ON block FSM declaration
 ********************************************************************/
 
-enum logic [2:0]
-{
-    STATE_IDLE,                     // all output buffers are disabled
-    STATE_ENABLE_LANES,           // send a signal to lanes to activate output LP buffers. Hold them in LP-11 mode
-    STATE_WAIT_CLK_ACTIVE,          // Wait while init sequence of clock line is finished
-    STATE_LANES_ACTIVE,             // Main state, clock active, lanes active
-    STATE_WAIT_CLK_UNACTIVE,        // Wait while deinit sequence of clock line is finished
-    STATE_DISABLE_BUFFERS           // send a signal to lanes to disactivate output LP buffers.
-} state_current, state_next;
+localparam [2:0] STATE_IDLE = 0;                     // all output buffers are disabled
+localparam [2:0] STATE_ENABLE_LANES = 1;           // send a signal to lanes to activate output LP buffers. Hold them in LP-11 mode
+localparam [2:0] STATE_WAIT_CLK_ACTIVE  = 2;          // Wait while init sequence of clock line is finished
+localparam [2:0] STATE_LANES_ACTIVE = 3;             // Main state, clock active, lanes active
+localparam [2:0] STATE_WAIT_CLK_UNACTIVE    = 4;        // Wait while deinit sequence of clock line is finished
+localparam [2:0] STATE_DISABLE_BUFFERS  = 5;           // send a signal to lanes to disactivate output LP buffers.
+reg [2:0] state_current, state_next;
 
-always_ff @(posedge clk_phy or negedge rst_n) begin
+always @(posedge clk_phy or negedge rst_n) begin
     if(~rst_n) begin
         state_current <= STATE_IDLE;
     end else begin
@@ -206,7 +204,7 @@ always_ff @(posedge clk_phy or negedge rst_n) begin
     end
 end
 
-always_comb begin
+always @(*) begin
     case (state_current)
         STATE_IDLE:
             state_next = lines_enable ? STATE_ENABLE_LANES : STATE_IDLE;
@@ -227,7 +225,7 @@ always_comb begin
             state_next = !lines_enable ? STATE_IDLE : STATE_DISABLE_BUFFERS;
 
         default :
-            state_next <= STATE_IDLE;
+            state_next = STATE_IDLE;
     endcase
 end
 
@@ -237,22 +235,22 @@ assign lines_ready      = |dsi_lines_ready;
 assign dsi_start_rqst_clk   = clock_enable;
 assign dsi_fin_rqst_clk     = state_next == STATE_WAIT_CLK_UNACTIVE;
 
-always_ff @(posedge clk_phy or negedge rst_n)
+always @(posedge clk_phy or negedge rst_n)
     if(~rst_n)                                          dsi_lines_enable[0] <= 1'b0;
     else if(lines_enable)                               dsi_lines_enable[0] <= 1'b1;
     else if(state_current == STATE_DISABLE_BUFFERS)     dsi_lines_enable[0] <= 1'b0;
 
-always_ff @(posedge clk_phy or negedge rst_n)
+always @(posedge clk_phy or negedge rst_n)
     if(~rst_n)                                          dsi_lines_enable[1] <= 1'b0;
     else if(lines_enable)                               dsi_lines_enable[1] <= (reg_lanes_number >= 3'd2);
     else if(state_current == STATE_DISABLE_BUFFERS)     dsi_lines_enable[1] <= 1'b0;
 
-always_ff @(posedge clk_phy or negedge rst_n)
+always @(posedge clk_phy or negedge rst_n)
     if(~rst_n)                                          dsi_lines_enable[2] <= 1'b0;
     else if(lines_enable)                               dsi_lines_enable[2] <= (reg_lanes_number >= 3'd3);
     else if(state_current == STATE_DISABLE_BUFFERS)     dsi_lines_enable[2] <= 1'b0;
 
-always_ff @(posedge clk_phy or negedge rst_n)
+always @(posedge clk_phy or negedge rst_n)
     if(~rst_n)                                          dsi_lines_enable[3] <= 1'b0;
     else if(lines_enable)                               dsi_lines_enable[3] <= (reg_lanes_number == 3'd4);
     else if(state_current == STATE_DISABLE_BUFFERS)     dsi_lines_enable[3] <= 1'b0;
