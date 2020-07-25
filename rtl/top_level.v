@@ -51,7 +51,7 @@
 module top_level(
     /* CLK */
     input  wire             clk_in                  ,
-    input  wire             rst_n                   ,
+    input  wire             rst_n_in                ,
     /* DDR */
     inout  [16-1:0]         mcb3_dram_dq            ,
     output [14-1:0]         mcb3_dram_a             ,
@@ -68,11 +68,11 @@ module top_level(
     inout                   mcb3_rzq                ,
     inout                   mcb3_zio                ,
     output                  mcb3_dram_udm           ,
-    input                   c3_sys_clk              ,
-    input                   c3_sys_rst_i            ,
-    output                  c3_calib_done           ,
-    output                  c3_clk0                 ,
-    output                  c3_rst0                 ,
+    // input                   c3_sys_clk              ,
+    // input                   c3_sys_rst_i            ,
+    // output                  c3_calib_done           ,
+    // output                  c3_clk0                 ,
+    // output                  c3_rst0                 ,
     inout                   mcb3_dram_dqs           ,
     inout                   mcb3_dram_dqs_n         ,
     output                  mcb3_dram_ck            ,
@@ -87,12 +87,18 @@ module top_level(
     output  wire            dphy_clk_lp_out_p       ,
     output  wire            dphy_clk_lp_out_n       ,
     /* HDMI parallel */
+    input   wire [24-1:0]   hdmi_data               ,
+    input   wire            hdmi_hs                 ,
+    input   wire            hdmi_vs                 ,
+    input   wire            hdmi_de                 ,
+    input   wire            hdmi_clk                ,
+
     /* I2C ADV */
     /* I2C EEPROM */
     /* LED */
     /* UART */
     input  wire             rxd                     ,
-    output wire             txd                     
+    output wire             txd
     /* BUTTON */
     );
 
@@ -109,6 +115,7 @@ localparam [31:0] STACKADDR = 32'h ffff_ffff;
 
 wire sys_clk;
 wire sys_rst_n;
+wire sys_pll_locked;
 
 wire dsi_phy_clk;
 wire dsi_phy_rst_n;
@@ -116,8 +123,9 @@ wire dsi_phy_rst_n;
 wire dsi_io_clk;
 wire dsi_io_clk_clk;
 wire dsi_io_rst_n;
-
 wire dsi_io_serdes_latch;
+
+wire hdmi_rst;
 
 wire [4 - 1:0]	                    mst_core_axi_awid;
 wire [32 - 1:0]	                mst_core_axi_awaddr;
@@ -221,6 +229,36 @@ wire                               ctrl_prog_mem_write;
 wire [31:0]                        ctrl_prog_mem_writedata;
 wire [3:0]                         ctrl_prog_mem_byteenable;
 wire                               ctrl_prog_mem_waitrequest;
+
+//* Reset Controller
+
+ por_controller#(
+    .INP_RESYNC_SIZE(128)
+)por_controller_0(
+    .clk_input                   (clk_in            ),
+    .rst_n_input                 (rst_n_in          ),
+
+    .rst_n_output                (),
+
+    .pll_1_locked                (sys_pll_locked    ),
+    .pll_2_locked                (1'b1              ),
+
+    .clk_1_in                    (sys_clk           ),
+    .rst_1_out                   (sys_rst_n         ),
+
+    .clk_2_in                    (dsi_io_clk        ),
+    .rst_2_out                   (dsi_io_rst_n      ),
+
+    .clk_3_in                    (dsi_phy_clk       ),
+    .rst_3_out                   (dsi_phy_rst_n     ),
+
+    .clk_4_in                    (hdmi_clk          ),
+    .rst_4_out                   (hdmi_rst          ),
+
+    .clk_5_in                    (),
+    .rst_5_out                   (),
+);
+
 
 //* RISC V core +
  picorv32_wrapper #(
@@ -523,7 +561,7 @@ mig_ddr3 # (
 )
 u_mig_ddr3 (
 
-    .c3_sys_clk           (c3_sys_clk),
+    .c3_sys_clk           (clk_in),
   .c3_sys_rst_i           (c3_sys_rst_i),
 
   .mcb3_dram_dq           (mcb3_dram_dq),
@@ -841,7 +879,6 @@ wire CLKOUT2; //* 600 MHZ
 wire CLKOUT3; //* 600 MHZ
 wire CLKOUT4; //* 50 MHz input
 wire clk_pre_pll;
-wire sys_pll_locked;
 
 IBUFG #(
       .IOSTANDARD("DEFAULT")
