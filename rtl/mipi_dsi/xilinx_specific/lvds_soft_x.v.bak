@@ -19,6 +19,7 @@ wire            cascade_to;     // master -> slave
    OSERDES2 #(
         .DATA_RATE_OQ   ("SDR"),
         .DATA_RATE_OT   ("SDR"),
+        .TRAIN_PATTERN  (0),
         .DATA_WIDTH     (8),
         .SERDES_MODE    ("MASTER"),
         .OUTPUT_MODE    ("SINGLE_ENDED"),
@@ -61,6 +62,7 @@ wire            cascade_to;     // master -> slave
       .DATA_RATE_OT     ("SDR"),
       .DATA_WIDTH       (8),
       .SERDES_MODE      ("SLAVE"),
+      .TRAIN_PATTERN    (0),
       .OUTPUT_MODE      ("SINGLE_ENDED"),
       .TRAIN_PATTERN    (0)
    )

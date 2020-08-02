@@ -48,7 +48,7 @@
 //              +--------------+         +---------------+       +--------+       +-------------+
 
 //////////////////////////////////////////////////////////////////////////////////
-module top_level(
+module dsi_host_top(
     /* CLK */
     input  wire             clk_in                  ,
     input  wire             rst_n_in                ,
@@ -108,13 +108,14 @@ localparam [ 0:0] COMPRESSED_ISA = 0;
 localparam [ 0:0] ENABLE_MUL = 0;
 localparam [ 0:0] ENABLE_DIV = 0;
 localparam [ 0:0] ENABLE_IRQ_QREGS = 1;
-localparam [31:0] PROGADDR_RESET = 32'h 0000_0000;
-localparam [31:0] PROGADDR_IRQ = 32'h 0000_0010;
-localparam [31:0] STACKADDR = 32'h ffff_ffff;
+localparam [31:0] PROGADDR_RESET = 32'h0004_0000;
+localparam [31:0] PROGADDR_IRQ = 32'h0000_0010;
+localparam [31:0] STACKADDR = 32'h0000_0000;
 
-
+wire c3_sys_rst_i;
 wire sys_clk;
 wire sys_rst_n;
+wire clk_pre_pll;
 wire sys_pll_locked;
 
 wire dsi_phy_clk;
@@ -230,15 +231,23 @@ wire [31:0]                        ctrl_prog_mem_writedata;
 wire [3:0]                         ctrl_prog_mem_byteenable;
 wire                               ctrl_prog_mem_waitrequest;
 
+wire [32-1:0] irq_vec;
+wire          dsi_irq;
+wire          usart_irq;
+wire          i2c_1_irq;
+wire          i2c_2_irq;
+
+assign  irq_ver = {28'b0, dsi_irq, usart_irq, i2c_1_irq, i2c_2_irq};
+
 //* Reset Controller
 
  por_controller#(
     .INP_RESYNC_SIZE(128)
 )por_controller_0(
-    .clk_input                   (clk_in            ),
+    .clk_input                   (clk_pre_pll       ),
     .rst_n_input                 (rst_n_in          ),
 
-    .rst_n_output                (),
+    .rst_n_output                (c3_sys_rst_i      ),
 
     .pll_1_locked                (sys_pll_locked    ),
     .pll_2_locked                (1'b1              ),
@@ -256,7 +265,7 @@ wire                               ctrl_prog_mem_waitrequest;
     .rst_4_out                   (hdmi_rst          ),
 
     .clk_5_in                    (),
-    .rst_5_out                   (),
+    .rst_5_out                   ()
 );
 
 
@@ -561,7 +570,7 @@ mig_ddr3 # (
 )
 u_mig_ddr3 (
 
-    .c3_sys_clk           (clk_in),
+    .c3_sys_clk           (clk_pre_pll ),
   .c3_sys_rst_i           (c3_sys_rst_i),
 
   .mcb3_dram_dq           (mcb3_dram_dq),
@@ -789,7 +798,7 @@ dsi_tx_top #(
     .clk_hs_clk                             (dsi_io_clk_clk             ),
     .clk_hs_clk_latch                       (dsi_io_clk_serdes_latch    ),
 
-    .irq                                    (),
+    .irq                                    (dsi_irq                    ),
 
     /********* Avalon-ST input *********/
     .in_avl_st_data                         (st_data                ),
@@ -847,7 +856,7 @@ uart_wrapper uart_wrapper_0(
     .ctrl_byteenable        (ctrl_uart_byteenable   ),
     .ctrl_waitrequest       (ctrl_uart_waitrequest  ),
 
-    .irq                 ()
+    .irq                    (usart_irq              )
 );
 
 //* Programm Mem
@@ -878,7 +887,6 @@ wire CLKOUT1; //* CLKOUT2 / 8
 wire CLKOUT2; //* 600 MHZ
 wire CLKOUT3; //* 600 MHZ
 wire CLKOUT4; //* 50 MHz input
-wire clk_pre_pll;
 
 IBUFG #(
       .IOSTANDARD("DEFAULT")
@@ -931,7 +939,7 @@ PLL_BASE #(
      .LOCKED(sys_pll_locked),     // 1-bit output: PLL_BASE lock status output
      .CLKFBIN(CLKFBIN),   // 1-bit input: Feedback clock input
      .CLKIN(clk_pre_pll),       // 1-bit input: Clock input
-     .RST(RST)            // 1-bit input: Reset input
+     .RST(c3_sys_rst_i)            // 1-bit input: Reset input
 );
 
 BUFG BUFG_feedback (

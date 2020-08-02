@@ -4,25 +4,25 @@ module por_controller#(
     input  wire             clk_input                   ,
     input  wire             rst_n_input                 ,
 
-    input  wire             rst_n_output                ,
+    output wire             rst_n_output                ,
 
     input  wire             pll_1_locked                ,
     input  wire             pll_2_locked                ,
 
     input  wire             clk_1_in                    ,
-    input  wire             rst_1_out                   ,
+    output wire             rst_1_out                   ,
 
     input  wire             clk_2_in                    ,
-    input  wire             rst_2_out                   ,
+    output wire             rst_2_out                   ,
 
     input  wire             clk_3_in                    ,
-    input  wire             rst_3_out                   ,
+    output wire             rst_3_out                   ,
 
     input  wire             clk_4_in                    ,
-    input  wire             rst_4_out                   ,
+    output wire             rst_4_out                   ,
 
     input  wire             clk_5_in                    ,
-    input  wire             rst_5_out                   ,
+    output wire             rst_5_out
 );
 
 
@@ -36,8 +36,8 @@ reg [32-1:0] pll_2_lock_sync;
 
 assign rst_n_output = r_rst_out_fin;
 
-always @(posedge clk_in) begin
-    rst_resync[0] <= rst_n_in;
+always @(posedge clk_input) begin
+    rst_resync[0] <= rst_n_input;
     rst_resync[INP_RESYNC_SIZE-1:1] <= rst_resync[INP_RESYNC_SIZE-2:0];
 
     if(!rst_resync[INP_RESYNC_SIZE-1])

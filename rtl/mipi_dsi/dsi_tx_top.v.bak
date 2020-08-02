@@ -618,7 +618,7 @@ lvds_soft_x data_lane(
 		.tx_clock_strobe    (clk_hs_latch               ),  // tx_syncclock.tx_syncclock
 		.tx_en              (!data_lp_enable[i]         ),  // tx_syncclock.tx_syncclock
 		.tx_in              (hs_lane_output_bus[i*8+:8] ),            // tx_in.tx_in
-		.tx_out             (hs_data_out[i]             ),            // tx_out.tx_out
+		.tx_out             (hs_data_out[i]             )            // tx_out.tx_out
 		.tx_out_en          (hs_data_en[i]              )         // tx_out.tx_out_en
 	);
 
