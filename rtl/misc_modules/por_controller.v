@@ -34,7 +34,7 @@ reg [14-1:0] rst_counter;
 reg [32-1:0] pll_1_lock_sync;
 reg [32-1:0] pll_2_lock_sync;
 
-assign rst_n_output = r_rst_out_fin;
+assign rst_n_output = r_rst_outer_n;
 
 always @(posedge clk_input) begin
     rst_resync[0] <= rst_n_input;
@@ -49,6 +49,8 @@ always @(posedge clk_input) begin
         r_rst_outer_n <= 1'b0;
     else if(rst_resync[INP_RESYNC_SIZE-1])
         r_rst_outer_n <= 1'b1;
+    else
+        r_rst_outer_n <= 1'b0;
 
     pll_1_lock_sync[0] <= pll_1_locked;
     pll_2_lock_sync[0] <= pll_2_locked;

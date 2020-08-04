@@ -26,7 +26,7 @@ module picorv32_wrapper #(
 
     input   wire                                bus_waitrequest         ,
 
-    input  wire                                 irq
+    input  wire  [32-1:0]                       irq
 );
 
 wire mem_valid;

@@ -1,6 +1,8 @@
 `ifndef DSI_PACKETS_ASSEMBLER
 `define DSI_PACKETS_ASSEMBLER
 
+/* This file is not used!!! */
+
 module packets_assembler (
     /********* Clock signals *********/
         input   wire                            clk                                 ,

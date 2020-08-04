@@ -34,7 +34,7 @@ wire            rx_busy;
 wire            rx_overrun_error;
 wire            rx_frame_error;
 
-uart_regs (
+uart_regs uart_regs_0(
 
     /********* Sys iface *********/
     .clk                            (clk                ),   // Clock

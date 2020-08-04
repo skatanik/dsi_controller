@@ -127,6 +127,7 @@ wire dsi_io_rst_n;
 wire dsi_io_serdes_latch;
 
 wire hdmi_rst;
+wire hdmi_clk_buf;
 
 wire [4 - 1:0]	                    mst_core_axi_awid;
 wire [32 - 1:0]	                mst_core_axi_awaddr;
@@ -185,6 +186,15 @@ wire                               pix_axi_rlast;
 wire                               pix_axi_rvalid;
 wire                               pix_axi_rready;
 
+wire    [32 - 1:0]                  s0_bus_addr;
+wire                                s0_bus_read;
+wire    [32-1:0]                    s0_bus_readdata;
+wire    [1:0]                       s0_bus_response;
+wire                                s0_bus_write;
+wire    [32-1:0]                    s0_bus_writedata;
+wire    [3:0]                       s0_bus_byteenable;
+wire                                s0_bus_waitrequest;
+
 wire [31:0]                        st_data;
 wire                               st_valid;
 wire                               st_endofpacket;
@@ -231,6 +241,8 @@ wire [31:0]                        ctrl_prog_mem_writedata;
 wire [3:0]                         ctrl_prog_mem_byteenable;
 wire                               ctrl_prog_mem_waitrequest;
 
+wire            c3_calib_done;
+
 wire [32-1:0] irq_vec;
 wire          dsi_irq;
 wire          usart_irq;
@@ -240,6 +252,13 @@ wire          i2c_2_irq;
 assign  irq_ver = {28'b0, dsi_irq, usart_irq, i2c_1_irq, i2c_2_irq};
 
 //* Reset Controller
+
+IBUFG #(
+      .IOSTANDARD("DEFAULT")
+) IBUFG_hdmi_clk (
+      .O(hdmi_clk_buf), // Clock buffer output
+      .I(hdmi_clk)  // Clock buffer input (connect directly to top-level port)
+   );
 
  por_controller#(
     .INP_RESYNC_SIZE(128)
@@ -261,10 +280,10 @@ assign  irq_ver = {28'b0, dsi_irq, usart_irq, i2c_1_irq, i2c_2_irq};
     .clk_3_in                    (dsi_phy_clk       ),
     .rst_3_out                   (dsi_phy_rst_n     ),
 
-    .clk_4_in                    (hdmi_clk          ),
+    .clk_4_in                    (hdmi_clk_buf      ),
     .rst_4_out                   (hdmi_rst          ),
 
-    .clk_5_in                    (),
+    .clk_5_in                    (1'b0              ),
     .rst_5_out                   ()
 );
 
@@ -391,7 +410,7 @@ interconnect_mod #(
     .m1_bus_write               (),
     .m1_bus_writedata           (),
     .m1_bus_byteenable          (),
-    .m1_bus_waitrequest         (),
+    .m1_bus_waitrequest         (1'b0),
 
     //* Master port 2
     .m2_bus_addr                (ctrl_pix_reader_address       ),
@@ -441,7 +460,7 @@ interconnect_mod #(
     .m6_bus_write               (),
     .m6_bus_writedata           (),
     .m6_bus_byteenable          (),
-    .m6_bus_waitrequest         (),
+    .m6_bus_waitrequest         (1'b0),
 
     //* Master port 7
     .m7_bus_addr                (),
@@ -451,7 +470,7 @@ interconnect_mod #(
     .m7_bus_write               (),
     .m7_bus_writedata           (),
     .m7_bus_byteenable          (),
-    .m7_bus_waitrequest         (),
+    .m7_bus_waitrequest         (1'b0),
 
     //* Master port 8
     .m8_bus_addr                (),
@@ -461,7 +480,7 @@ interconnect_mod #(
     .m8_bus_write               (),
     .m8_bus_writedata           (),
     .m8_bus_byteenable          (),
-    .m8_bus_waitrequest         (),
+    .m8_bus_waitrequest         (1'b0),
 
     //* Master port 9
     .m9_bus_addr                (),
@@ -471,7 +490,7 @@ interconnect_mod #(
     .m9_bus_write               (),
     .m9_bus_writedata           (),
     .m9_bus_byteenable          (),
-    .m9_bus_waitrequest         ()
+    .m9_bus_waitrequest         (1'b0)
 );
 
 //* Prosessor to AXI bridge
@@ -571,7 +590,7 @@ mig_ddr3 # (
 u_mig_ddr3 (
 
     .c3_sys_clk           (clk_pre_pll ),
-  .c3_sys_rst_i           (c3_sys_rst_i),
+  .c3_sys_rst_i           (!c3_sys_rst_i),
 
   .mcb3_dram_dq           (mcb3_dram_dq),
   .mcb3_dram_a            (mcb3_dram_a),
@@ -897,16 +916,16 @@ IBUFG #(
 
 PLL_BASE #(
     .BANDWIDTH("OPTIMIZED"),             // "HIGH", "LOW" or "OPTIMIZED"
-    .CLKFBOUT_MULT(1),                   // Multiply value for all CLKOUT clock outputs (1-64)
+    .CLKFBOUT_MULT(48),                   // Multiply value for all CLKOUT clock outputs (1-64)
     .CLKFBOUT_PHASE(0.0),                // Phase offset in degrees of the clock feedback output (0.0-360.0).
-    .CLKIN_PERIOD(0.0),                  // Input clock period in ns to ps resolution (i.e. 33.333 is 30
+    .CLKIN_PERIOD(40),                  // Input clock period in ns to ps resolution (i.e. 33.333 is 30
                                          // MHz).
     // CLKOUT0_DIVIDE - CLKOUT5_DIVIDE: Divide amount for CLKOUT# clock output (1-128)
-    .CLKOUT0_DIVIDE(1),
-    .CLKOUT1_DIVIDE(1),
-    .CLKOUT2_DIVIDE(1),
-    .CLKOUT3_DIVIDE(1),
-    .CLKOUT4_DIVIDE(1),
+    .CLKOUT0_DIVIDE(12),
+    .CLKOUT1_DIVIDE(75),
+    .CLKOUT2_DIVIDE(2),
+    .CLKOUT3_DIVIDE(2),
+    .CLKOUT4_DIVIDE(12),
     .CLKOUT5_DIVIDE(1),
     // CLKOUT0_DUTY_CYCLE - CLKOUT5_DUTY_CYCLE: Duty cycle for CLKOUT# clock output (0.01-0.99).
     .CLKOUT0_DUTY_CYCLE(0.5),
@@ -939,7 +958,7 @@ PLL_BASE #(
      .LOCKED(sys_pll_locked),     // 1-bit output: PLL_BASE lock status output
      .CLKFBIN(CLKFBIN),   // 1-bit input: Feedback clock input
      .CLKIN(clk_pre_pll),       // 1-bit input: Clock input
-     .RST(c3_sys_rst_i)            // 1-bit input: Reset input
+     .RST(!c3_sys_rst_i)            // 1-bit input: Reset input
 );
 
 BUFG BUFG_feedback (
