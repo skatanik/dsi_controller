@@ -1,4 +1,6 @@
 `timescale 1ns / 1ps
+
+`default_nettype none
 //////////////////////////////////////////////////////////////////////////////////
 // Company:
 // Engineer:
@@ -53,30 +55,32 @@ module dsi_host_top(
     input  wire             clk_in                  ,
     input  wire             rst_n_in                ,
     /* DDR */
-    inout  [16-1:0]         mcb3_dram_dq            ,
-    output [14-1:0]         mcb3_dram_a             ,
-    output [3-1:0]          mcb3_dram_ba            ,
-    output                  mcb3_dram_ras_n         ,
-    output                  mcb3_dram_cas_n         ,
-    output                  mcb3_dram_we_n          ,
-    output                  mcb3_dram_odt           ,
-    output                  mcb3_dram_reset_n       ,
-    output                  mcb3_dram_cke           ,
-    output                  mcb3_dram_dm            ,
-    inout                   mcb3_dram_udqs          ,
-    inout                   mcb3_dram_udqs_n        ,
-    inout                   mcb3_rzq                ,
-    inout                   mcb3_zio                ,
-    output                  mcb3_dram_udm           ,
+    inout  wire [16-1:0]         mcb3_dram_dq            ,
+    output wire [14-1:0]         mcb3_dram_a             ,
+    output wire [3-1:0]          mcb3_dram_ba            ,
+    output wire                  mcb3_dram_ras_n         ,
+    output wire                  mcb3_dram_cas_n         ,
+    output wire                  mcb3_dram_we_n          ,
+    output wire                  mcb3_dram_odt           ,
+    output wire                  mcb3_dram_reset_n       ,
+    output wire                  mcb3_dram_cke           ,
+    output wire                  mcb3_dram_dm            ,
+    inout  wire                  mcb3_dram_udqs          ,
+    inout  wire                  mcb3_dram_udqs_n        ,
+    inout  wire                  mcb3_rzq                ,
+    inout  wire                  mcb3_zio                ,
+    output wire                  mcb3_dram_udm           ,
     // input                   c3_sys_clk              ,
     // input                   c3_sys_rst_i            ,
     // output                  c3_calib_done           ,
     // output                  c3_clk0                 ,
     // output                  c3_rst0                 ,
-    inout                   mcb3_dram_dqs           ,
-    inout                   mcb3_dram_dqs_n         ,
-    output                  mcb3_dram_ck            ,
-    output                  mcb3_dram_ck_n          ,
+    inout  wire             mcb3_dram_dqs           ,
+    inout  wire             mcb3_dram_dqs_n         ,
+    output wire             mcb3_dram_ck            ,
+    output wire             mcb3_dram_ck_n          ,
+    input  wire             rzq3                    ,
+    input  wire             zio3                    ,
     /* DPHY */
     output  wire [3:0]      dphy_data_hs_out_p      ,
     output  wire [3:0]      dphy_data_hs_out_n      ,
@@ -125,9 +129,15 @@ wire dsi_io_clk;
 wire dsi_io_clk_clk;
 wire dsi_io_rst_n;
 wire dsi_io_serdes_latch;
+wire dsi_io_clk_serdes_latch;
 
 wire hdmi_rst;
 wire hdmi_clk_buf;
+
+wire c3_clk0;
+wire c3_rst0;
+wire c3_sys_clk;
+wire c3_calib_done;
 
 wire [4 - 1:0]	                    mst_core_axi_awid;
 wire [32 - 1:0]	                mst_core_axi_awaddr;
@@ -241,15 +251,13 @@ wire [31:0]                        ctrl_prog_mem_writedata;
 wire [3:0]                         ctrl_prog_mem_byteenable;
 wire                               ctrl_prog_mem_waitrequest;
 
-wire            c3_calib_done;
-
 wire [32-1:0] irq_vec;
 wire          dsi_irq;
 wire          usart_irq;
 wire          i2c_1_irq;
 wire          i2c_2_irq;
 
-assign  irq_ver = {28'b0, dsi_irq, usart_irq, i2c_1_irq, i2c_2_irq};
+assign  irq_vec = {28'b0, dsi_irq, usart_irq, i2c_1_irq, i2c_2_irq};
 
 //* Reset Controller
 
@@ -312,7 +320,7 @@ IBUFG #(
     .bus_byteenable          (s0_bus_byteenable     ),
     .bus_waitrequest         (s0_bus_waitrequest    ),
 
-    .irq                     ()
+    .irq                     (irq_vec               )
 );
 
 //* Interconnect (MUX) +
@@ -1003,3 +1011,5 @@ BUFPLL #(
    );
 
 endmodule
+
+`default_nettype wire
