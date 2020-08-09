@@ -127,11 +127,11 @@ dsi_host_top dsi_host_top_0(
     /* BUTTON */
     );
 
-logic [31:0] debug_symbol;
+reg [31:0] debug_symbol;
 
 always @(posedge dsi_host_top_0.sys_clk) begin
     if(dsi_host_top_0.picorv32_core.bus_write) begin
-        if(bus_addr == 32'h1000_0000) begin
+        if(dsi_host_top_0.picorv32_core.bus_addr == 32'h1000_0000) begin
             debug_symbol <= dsi_host_top_0.picorv32_core.bus_writedata;
             $write("%c", debug_symbol);
         end
