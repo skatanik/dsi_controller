@@ -27,7 +27,7 @@ end
 
 prgr_rom prgr_rom_0 (
   .clka(clk), // input clka
-  .ena(1'b1), // input ena
+//   .ena(1'b1), // input ena
   .addra({22'b0, ctrl_address}), // input [31 : 0] addra
   .douta(ctrl_readdata) // output [31 : 0] douta
 );
