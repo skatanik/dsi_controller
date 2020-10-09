@@ -1,6 +1,8 @@
 `timescale 1ns / 1ps
 
 `default_nettype none
+
+`include "prj_defines.vh"
 //////////////////////////////////////////////////////////////////////////////////
 // Company:
 // Engineer:
@@ -112,9 +114,10 @@ localparam [ 0:0] COMPRESSED_ISA = 0;
 localparam [ 0:0] ENABLE_MUL = 0;
 localparam [ 0:0] ENABLE_DIV = 0;
 localparam [ 0:0] ENABLE_IRQ_QREGS = 1;
-localparam [31:0] PROGADDR_RESET = 32'h0004_0000;
-localparam [31:0] PROGADDR_IRQ = 32'h0000_0010;
-localparam [31:0] STACKADDR = 32'h0000_0000;
+localparam [31:0] PROGADDR_RESET =32'h0100_0000;
+localparam [31:0] PROGADDR_IRQ = 32'h0100_0010;
+parameter integer MEM_WORDS = 8192;
+parameter [31:0] STACKADDR = 32'h0000_0000 + (4*MEM_WORDS);       // end of memory
 
 wire c3_sys_rst_i;
 wire sys_clk;
@@ -257,7 +260,8 @@ wire          usart_irq;
 wire          i2c_1_irq;
 wire          i2c_2_irq;
 
-assign  irq_vec = {28'b0, dsi_irq, usart_irq, i2c_1_irq, i2c_2_irq};
+// assign  irq_vec = {28'b0, dsi_irq, usart_irq, i2c_1_irq, i2c_2_irq};
+assign  irq_vec = 32'b0;
 
 //* Reset Controller
 
@@ -298,15 +302,14 @@ IBUFG #(
 
 //* RISC V core +
  picorv32_wrapper #(
-    .ENABLE_COUNTERS    (ENABLE_COUNTERS    ),
-	.BARREL_SHIFTER     (BARREL_SHIFTER     ),
-	.COMPRESSED_ISA     (COMPRESSED_ISA     ),
-	.ENABLE_MUL         (ENABLE_MUL         ),
-	.ENABLE_DIV         (ENABLE_DIV         ),
-	.ENABLE_IRQ_QREGS   (ENABLE_IRQ_QREGS   ),
-	.PROGADDR_RESET     (PROGADDR_RESET     ),
-	.PROGADDR_IRQ       (PROGADDR_IRQ       ),
-	.STACKADDR          (STACKADDR          )
+    .STACKADDR(STACKADDR),
+    .PROGADDR_RESET(PROGADDR_RESET),
+    .PROGADDR_IRQ(32'h0000_0000),
+    .BARREL_SHIFTER(0),
+    .COMPRESSED_ISA(0),
+    .ENABLE_MUL(0),
+    .ENABLE_DIV(0),
+    .ENABLE_IRQ_QREGS(0)
  ) picorv32_core (
     .clk                     (sys_clk               ),
     .rst_n                   (sys_rst_n             ),
@@ -330,15 +333,15 @@ Memory Map
 BASE ADDR           MASK          SIZE         COMMENT
 ------------------------------------------------------------
 0x0000_0000     0xFFFC_0000       2^18          DDR
-0x0004_0000     0xFFFF_FC00       2^10          PROG_MEM
-0x0004_0400     0xFFFF_FF00       2^8           HDMI
-0x0000_0500     0xFFFF_FF00       2^8           PIX WRITE
-0x0000_0600     0xFFFF_FF00       2^8           PIX READER
-0x0000_0700     0xFFFF_FF00       2^8           DSI
-0x0000_0800     0xFFFF_FF00       2^8           USART
-0x0000_0900     0xFFFF_FF00       2^8           I2C HDMI
-0x0000_0A00     0xFFFF_FF00       2^8           I2C EEPROM
-0x0000_0B00     0xFFFF_FF00       2^8           GPIO
+0x0100_0000     0xFFFF_FC00       2^10          PROG_MEM
+0x0100_0400     0xFFFF_FF00       2^8           HDMI
+0x0100_0500     0xFFFF_FF00       2^8           PIX WRITE
+0x0100_0600     0xFFFF_FF00       2^8           PIX READER
+0x0100_0700     0xFFFF_FF00       2^8           DSI
+0x0100_0800     0xFFFF_FF00       2^8           USART
+0x0100_0900     0xFFFF_FF00       2^8           I2C HDMI
+0x0100_0A00     0xFFFF_FF00       2^8           I2C EEPROM
+0x0100_0B00     0xFFFF_FF00       2^8           GPIO
 */
 
 parameter M0_ADDR_WIDTH = 18;//$clog2(!(32'hFFFC_0000));
@@ -365,16 +368,16 @@ interconnect_mod #(
     .M1_BASE(32'hFFFF_FFFF),    //! TODO
     .M1_MASK(32'h0000_0000),    //! TODO
     .M1_ADDR_W(8),
-    .M2_BASE(32'h0000_0600),    //* PIX READER
+    .M2_BASE(32'h0100_0600),    //* PIX READER
     .M2_MASK(32'hFFFF_FF00),    //* PIX READER
     .M2_ADDR_W(8),
-    .M3_BASE(32'h0000_0700),    //* DSI
+    .M3_BASE(32'h0100_0700),    //* DSI
     .M3_MASK(32'hFFFF_FF00),    //* DSI
     .M3_ADDR_W(8),
-    .M4_BASE(32'h0004_0000),    //* PROG MEM
+    .M4_BASE(32'h0100_0000),    //* PROG MEM
     .M4_MASK(32'hFFFF_FC00),    //* PROG MEM
     .M4_ADDR_W(10),
-    .M5_BASE(32'h0000_0800),    //* UART
+    .M5_BASE(32'h0100_0800),    //* UART
     .M5_MASK(32'hFFFF_FF00),    //* UART
     .M5_ADDR_W(8),
     .M6_BASE(32'hFFFF_FFFF),    //! TODO
@@ -507,7 +510,7 @@ core_axi_bridge core_axi_bridge_0(
     .clk                     (sys_clk               ),
     .rst_n                   (sys_rst_n             ),
 
-    .slv_bus_addr            (ram_mem_address       ),
+    .slv_bus_addr            ({{(32-M0_ADDR_WIDTH){1'b0}}, ram_mem_address}       ),
     .slv_bus_read            (ram_mem_read          ),
     .slv_bus_readdata        (ram_mem_readdata      ),
     .slv_bus_response        (ram_mem_response      ),
@@ -559,6 +562,45 @@ core_axi_bridge core_axi_bridge_0(
     .mst_axi_rvalid          (mst_core_axi_rvalid    ),
     .mst_axi_rready          (mst_core_axi_rready    )
 );
+
+`ifdef SIMULATION
+ ram_mem ram_mem_0(
+  .s_aclk               (sys_clk                ),
+  .s_aresetn            (sys_rst_n              ),
+  .s_axi_awid           (mst_core_axi_awid      ),
+  .s_axi_awaddr         (mst_core_axi_awaddr    ),
+  .s_axi_awlen          (mst_core_axi_awlen     ),
+  .s_axi_awsize         (mst_core_axi_awsize    ),
+  .s_axi_awburst        (mst_core_axi_awburst   ),
+  .s_axi_awvalid        (mst_core_axi_awvalid   ),
+  .s_axi_awready        (mst_core_axi_awready   ),
+  .s_axi_wdata          (mst_core_axi_wdata     ),
+  .s_axi_wstrb          (mst_core_axi_wstrb     ),
+  .s_axi_wlast          (mst_core_axi_wlast     ),
+  .s_axi_wvalid         (mst_core_axi_wvalid    ),
+  .s_axi_wready         (mst_core_axi_wready    ),
+  .s_axi_bid            (mst_core_axi_bid       ),
+  .s_axi_bresp          (mst_core_axi_bresp     ),
+  .s_axi_bvalid         (mst_core_axi_bvalid    ),
+  .s_axi_bready         (mst_core_axi_bready    ),
+  .s_axi_arid           (mst_core_axi_arid      ),
+  .s_axi_araddr         (mst_core_axi_araddr    ),
+  .s_axi_arlen          (mst_core_axi_arlen     ),
+  .s_axi_arsize         (mst_core_axi_arsize    ),
+  .s_axi_arburst        (mst_core_axi_arburst   ),
+  .s_axi_arvalid        (mst_core_axi_arvalid   ),
+  .s_axi_arready        (mst_core_axi_arready   ),
+  .s_axi_rid            (mst_core_axi_rid       ),
+  .s_axi_rdata          (mst_core_axi_rdata     ),
+  .s_axi_rresp          (mst_core_axi_rresp     ),
+  .s_axi_rlast          (mst_core_axi_rlast     ),
+  .s_axi_rvalid         (mst_core_axi_rvalid    ),
+  .s_axi_rready         (mst_core_axi_rready    )
+);
+
+assign mst_core_axi_wid = 'b0;
+
+`else
 
 //* DDR3 controller
 mig_ddr3 # (
@@ -752,6 +794,9 @@ u_mig_ddr3 (
     .c3_s3_axi_rvalid                       (pix_axi_rvalid     ),
     .c3_s3_axi_rready                       (pix_axi_rready     )
 );
+
+`endif
+
 //* HDMI ADV Recv
 
 //* HDMI native

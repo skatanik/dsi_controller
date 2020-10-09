@@ -62,14 +62,12 @@ reg           r_mst_axi_awvalid;
 
 reg [32-1:0]  r_mst_axi_wdata;
 reg [4-1:0]   r_mst_axi_wstrb;
-reg           r_mst_axi_wlast;
 reg           r_mst_axi_wvalid;
 
 reg [32-1:0]  r_mst_axi_araddr;
 reg           r_mst_axi_arvalid;
 
 reg [32-1:0]  r_mst_axi_rdata;
-reg           r_mst_axi_rready;
 
 reg           r_slv_bus_waitrequest;
 
@@ -85,12 +83,13 @@ assign mst_axi_awqos        = 4'b000;
 assign mst_axi_awaddr       = r_mst_axi_awaddr;
 assign mst_axi_awvalid      = r_mst_axi_awvalid;
 assign mst_axi_wlast        = 1'b1;
-assign mst_axi_bvalid       = 1'b1;
+assign mst_axi_bready       = 1'b1;
 
 assign mst_axi_araddr       = r_mst_axi_araddr;
 assign mst_axi_arvalid      = r_mst_axi_arvalid;
 assign slv_bus_readdata     = r_mst_axi_rdata;
-assign slv_bus_waitrequest  = r_slv_bus_waitrequest;
+
+assign slv_bus_waitrequest  = slv_bus_write && !mst_axi_bvalid || slv_bus_read && !mst_axi_rvalid;
 
 assign mst_axi_arid         = 4'h0;
 assign mst_axi_arlen        = 8'h00;
@@ -101,15 +100,29 @@ assign mst_axi_arcache      = 4'b0000;
 assign mst_axi_arprot       = 3'b000;
 assign mst_axi_arqos        = 4'b000;
 
+assign mst_axi_rready = 1'b1;
+
+assign mst_axi_wdata = r_mst_axi_wdata;
+assign mst_axi_wstrb = r_mst_axi_wstrb;
+assign mst_axi_wvalid = r_mst_axi_wvalid;
+
 always @(posedge clk or negedge rst_n) begin
     if(!rst_n)              r_mst_axi_awaddr <= 32'b0;
     else if(slv_bus_write)  r_mst_axi_awaddr <= slv_bus_addr;
 end
 
+reg r_awvalid_en;
+
 always @(posedge clk or negedge rst_n) begin
-    if(!rst_n)                  r_mst_axi_awvalid <= 1'b0;
-    else if(mst_axi_awready)    r_mst_axi_awvalid <= 1'b0;
-    else if(slv_bus_write)      r_mst_axi_awvalid <= 1'b1;
+    if(!rst_n)                                      r_awvalid_en <= 1'b0;
+    else if(slv_bus_write && !r_awvalid_en)         r_awvalid_en <= 1'b1;
+    else if(r_awvalid_en && mst_axi_bvalid)         r_awvalid_en <= 1'b0;
+end
+
+always @(posedge clk or negedge rst_n) begin
+    if(!rst_n)                                                      r_mst_axi_awvalid <= 1'b0;
+    else if(slv_bus_write && !r_awvalid_en)                         r_mst_axi_awvalid <= 1'b1;
+    else if(slv_bus_write &&  r_awvalid_en && mst_axi_awready)      r_mst_axi_awvalid <= 1'b0;
 end
 
 always @(posedge clk or negedge rst_n) begin
@@ -123,9 +136,9 @@ always @(posedge clk or negedge rst_n) begin
 end
 
 always @(posedge clk or negedge rst_n) begin
-    if(!rst_n)              r_mst_axi_wvalid <= 1'b0;
-    else if(mst_axi_wready) r_mst_axi_wvalid <= 1'b0;
-    else if(slv_bus_write)  r_mst_axi_wvalid <= 1'b1;
+    if(!rst_n)                                                      r_mst_axi_wvalid <= 1'b0;
+    else if(slv_bus_write && !r_awvalid_en)                         r_mst_axi_wvalid <= 1'b1;
+    else if(slv_bus_write &&  r_awvalid_en && mst_axi_wready)       r_mst_axi_wvalid <= 1'b0;
 end
 
 always @(posedge clk or negedge rst_n) begin
@@ -133,27 +146,23 @@ always @(posedge clk or negedge rst_n) begin
     else if(slv_bus_read)   r_mst_axi_araddr <= slv_bus_addr;
 end
 
+reg r_arvalid_en;
+
 always @(posedge clk or negedge rst_n) begin
-    if(!rst_n)                  r_mst_axi_arvalid <= 1'b0;
-    else if(mst_axi_arready)    r_mst_axi_arvalid <= 1'b0;
-    else if(slv_bus_read)       r_mst_axi_arvalid <= 1'b1;
+    if(!rst_n)                                      r_arvalid_en <= 1'b0;
+    else if(slv_bus_read && !r_arvalid_en)          r_arvalid_en <= 1'b1;
+    else if(r_arvalid_en && mst_axi_arready)        r_arvalid_en <= 1'b0;
 end
 
 always @(posedge clk or negedge rst_n) begin
-    if(!rst_n)                  r_mst_axi_rready <= 1'b0;
-    else if(mst_axi_rvalid)     r_mst_axi_rready <= 1'b0;
-    else if(slv_bus_read)       r_mst_axi_rready <= 1'b1;
+    if(!rst_n)                                      r_mst_axi_arvalid <= 1'b0;
+    else if(slv_bus_read && !r_arvalid_en)          r_mst_axi_arvalid <= 1'b1;
+    else if(r_arvalid_en && mst_axi_arready)        r_mst_axi_arvalid <= 1'b0;
 end
 
 always @(posedge clk or negedge rst_n) begin
     if(!rst_n)                  r_mst_axi_rdata <= 32'b0;
     else if(mst_axi_rvalid)     r_mst_axi_rdata <= mst_axi_rdata;
-end
-
-always @(posedge clk or negedge rst_n) begin
-    if(!rst_n)                                  r_slv_bus_waitrequest <= 1'b1;
-    else if(mst_axi_rvalid || mst_axi_wready)   r_slv_bus_waitrequest <= 1'b0;
-    else                                        r_slv_bus_waitrequest <= 1'b1;
 end
 
 endmodule
