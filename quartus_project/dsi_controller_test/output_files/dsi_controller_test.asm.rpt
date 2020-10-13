@@ -1,5 +1,5 @@
 Assembler report for dsi_controller_test
-Sun Mar 24 22:59:13 2019
+Sun Mar 31 21:20:26 2019
 Quartus Prime Version 18.0.0 Build 614 04/24/2018 SJ Lite Edition
 
 
@@ -38,7 +38,7 @@ refer to the applicable agreement for further details.
 +---------------------------------------------------------------+
 ; Assembler Summary                                             ;
 +-----------------------+---------------------------------------+
-; Assembler Status      ; Successful - Sun Mar 24 22:59:13 2019 ;
+; Assembler Status      ; Successful - Sun Mar 31 21:20:26 2019 ;
 ; Revision Name         ; dsi_controller_test                   ;
 ; Top-level Entity Name ; top_level_system                      ;
 ; Family                ; MAX 10                                ;
@@ -80,8 +80,8 @@ refer to the applicable agreement for further details.
 +----------------+----------------------------------------------------------------------------------------------------------------------+
 ; Option         ; Setting                                                                                                              ;
 +----------------+----------------------------------------------------------------------------------------------------------------------+
-; JTAG usercode  ; 0x006695D6                                                                                                           ;
-; Checksum       ; 0x006695D6                                                                                                           ;
+; JTAG usercode  ; 0x007295E5                                                                                                           ;
+; Checksum       ; 0x007295E5                                                                                                           ;
 +----------------+----------------------------------------------------------------------------------------------------------------------+
 
 
@@ -91,16 +91,16 @@ refer to the applicable agreement for further details.
 Info: *******************************************************************
 Info: Running Quartus Prime Assembler
     Info: Version 18.0.0 Build 614 04/24/2018 SJ Lite Edition
-    Info: Processing started: Sun Mar 24 22:59:10 2019
+    Info: Processing started: Sun Mar 31 21:20:22 2019
 Info: Command: quartus_asm --read_settings_files=off --write_settings_files=off dsi_controller_test -c dsi_controller_test
 Warning (18236): Number of processors has not been specified which may cause overloading on shared machines.  Set the global assignment NUM_PARALLEL_PROCESSORS in your QSF to an appropriate value for best performance.
 Info (115031): Writing out detailed assembly data for power analysis
 Info (115030): Assembler is generating device programming files
 Info (115017): Design contains a time-limited core -- only a single, time-limited programming file can be generated
 Info: Quartus Prime Assembler was successful. 0 errors, 1 warning
-    Info: Peak virtual memory: 4720 megabytes
-    Info: Processing ended: Sun Mar 24 22:59:13 2019
-    Info: Elapsed time: 00:00:03
+    Info: Peak virtual memory: 4722 megabytes
+    Info: Processing ended: Sun Mar 31 21:20:26 2019
+    Info: Elapsed time: 00:00:04
     Info: Total CPU time (on all processors): 00:00:04
 
 

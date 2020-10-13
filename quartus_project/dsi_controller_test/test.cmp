@@ -1,0 +1,8 @@
+	component test is
+		port (
+			din     : in  std_logic_vector(3 downto 0) := (others => 'X'); -- export
+			pad_out : out std_logic_vector(3 downto 0);                    -- export
+			oe      : in  std_logic_vector(3 downto 0) := (others => 'X')  -- export
+		);
+	end component test;
+

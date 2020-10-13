@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<simPackage>
+ <file
+   path="test_sim/altera_gpio_lite/altera_gpio_lite.sv"
+   type="SYSTEM_VERILOG"
+   library="test" />
+ <file path="test_sim/test.v" type="VERILOG" />
+ <topLevel name="test" />
+ <deviceFamily name="max10" />
+</simPackage>

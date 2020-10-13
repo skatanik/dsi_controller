@@ -45,30 +45,30 @@ Info: Reading index D:\git\dsi_controller\quartus_project\dsi_controller_test\to
 Progress: Loading dsi_controller_test/avl_st_vid_2_st_hw.tcl
 Progress: Loading dsi_controller_test/dsi_tx_controller_hw.tcl
 Progress: Loading dsi_controller_test/top_level_system.qsys
-Info: D:/git/dsi_controller/quartus_project/dsi_controller_test/* matched 17 files in 0,05 seconds
+Info: D:/git/dsi_controller/quartus_project/dsi_controller_test/* matched 17 files in 0,04 seconds
 Info: D:/git/dsi_controller/quartus_project/dsi_controller_test/ip/**/* matched 0 files in 0,00 seconds
-Info: D:/git/dsi_controller/quartus_project/dsi_controller_test/*/* matched 634 files in 0,01 seconds
-Info: D:\git\dsi_controller\quartus_project\dsi_controller_test\top_level_system\testbench\top_level_system.ipx described 0 plugins, 3 paths, in 0,07 seconds
+Info: D:/git/dsi_controller/quartus_project/dsi_controller_test/*/* matched 650 files in 0,01 seconds
+Info: D:\git\dsi_controller\quartus_project\dsi_controller_test\top_level_system\testbench\top_level_system.ipx described 0 plugins, 3 paths, in 0,05 seconds
 Progress: Loading testbench/top_level_system_tb.qsys
-Info: D:/git/dsi_controller/quartus_project/dsi_controller_test/top_level_system/testbench/* matched 12 files in 0,07 seconds
+Info: D:/git/dsi_controller/quartus_project/dsi_controller_test/top_level_system/testbench/* matched 12 files in 0,06 seconds
 Info: D:/git/dsi_controller/quartus_project/dsi_controller_test/top_level_system/testbench/*/* matched 9 files in 0,00 seconds
 Info: C:/Users/Hedgehog/.altera.quartus/ip/18.0/**/* matched 0 files in 0,00 seconds
 Info: C:/intelfpga_lite/18.0/quartus/sopc_builder/bin/$$QUARTUS_IP_PROJECTDIR/* matched 0 files in 0,00 seconds
 Info: C:/intelfpga_lite/18.0/quartus/sopc_builder/bin/$$QUARTUS_IP_USERDIR/* matched 0 files in 0,00 seconds
 Info: C:/intelfpga_lite/18.0/quartus/sopc_builder/bin/$$QUARTUS_IP_GLOBALDIR/* matched 0 files in 0,00 seconds
 Info: Reading index C:\intelfpga_lite\18.0\ip\altera\altera_components.ipx
-Info: C:\intelfpga_lite\18.0\ip\altera\altera_components.ipx described 2031 plugins, 0 paths, in 0,15 seconds
-Info: C:/intelfpga_lite/18.0/ip/**/* matched 138 files in 0,15 seconds
+Info: C:\intelfpga_lite\18.0\ip\altera\altera_components.ipx described 2031 plugins, 0 paths, in 0,07 seconds
+Info: C:/intelfpga_lite/18.0/ip/**/* matched 138 files in 0,07 seconds
 Info: C:/intelfpga_lite/ip/**/* matched 0 files in 0,00 seconds
 Info: Reading index C:\intelfpga_lite\18.0\quartus\sopc_builder\builtin.ipx
-Info: C:\intelfpga_lite\18.0\quartus\sopc_builder\builtin.ipx described 83 plugins, 0 paths, in 0,01 seconds
-Info: C:/intelfpga_lite/18.0/quartus/sopc_builder/**/* matched 8 files in 0,01 seconds
+Info: C:\intelfpga_lite\18.0\quartus\sopc_builder\builtin.ipx described 83 plugins, 0 paths, in 0,00 seconds
+Info: C:/intelfpga_lite/18.0/quartus/sopc_builder/**/* matched 8 files in 0,00 seconds
 Info: Reading index C:\intelfpga_lite\18.0\quartus\common\librarian\factories\index.ipx
 Info: C:\intelfpga_lite\18.0\quartus\common\librarian\factories\index.ipx described 151 plugins, 0 paths, in 0,01 seconds
 Info: C:/intelfpga_lite/18.0/quartus/common/librarian/factories/**/* matched 4 files in 0,01 seconds
 Info: C:/intelfpga_lite/18.0/quartus/sopc_builder/bin/$IP_IPX_PATH matched 1 files in 0,00 seconds
-Info: C:\intelfpga_lite\18.0\quartus\sopc_builder\bin\root_components.ipx described 0 plugins, 13 paths, in 0,24 seconds
-Info: C:/intelfpga_lite/18.0/quartus/sopc_builder/bin/root_components.ipx matched 1 files in 0,24 seconds
+Info: C:\intelfpga_lite\18.0\quartus\sopc_builder\bin\root_components.ipx described 0 plugins, 13 paths, in 0,14 seconds
+Info: C:/intelfpga_lite/18.0/quartus/sopc_builder/bin/root_components.ipx matched 1 files in 0,14 seconds
 Progress: 
 Progress: 
 Progress: 
@@ -192,12 +192,12 @@ Info: altpll_0: "top_level_system_inst" instantiated altpll "altpll_0"
 Info: avl_st_vid_2_st_0: "top_level_system_inst" instantiated avl_st_vid_2_st "avl_st_vid_2_st_0"
 Info: dsi_tx_controller_0: "top_level_system_inst" instantiated dsi_tx_controller "dsi_tx_controller_0"
 Info: jtag_uart_0: Starting RTL generation for module 'top_level_system_jtag_uart_0'
-Info: jtag_uart_0:   Generation command is [exec C:/intelfpga_lite/18.0/quartus/bin64/perl/bin/perl.exe -I C:/intelfpga_lite/18.0/quartus/bin64/perl/lib -I C:/intelfpga_lite/18.0/quartus/sopc_builder/bin/europa -I C:/intelfpga_lite/18.0/quartus/sopc_builder/bin/perl_lib -I C:/intelfpga_lite/18.0/quartus/sopc_builder/bin -I C:/intelfpga_lite/18.0/quartus/../ip/altera/sopc_builder_ip/common -I C:/intelfpga_lite/18.0/quartus/../ip/altera/sopc_builder_ip/altera_avalon_jtag_uart -- C:/intelfpga_lite/18.0/quartus/../ip/altera/sopc_builder_ip/altera_avalon_jtag_uart/generate_rtl.pl --name=top_level_system_jtag_uart_0 --dir=C:/Users/Hedgehog/AppData/Local/Temp/alt7979_8745798795175367853.dir/0504_jtag_uart_0_gen/ --quartus_dir=C:/intelfpga_lite/18.0/quartus --verilog --config=C:/Users/Hedgehog/AppData/Local/Temp/alt7979_8745798795175367853.dir/0504_jtag_uart_0_gen//top_level_system_jtag_uart_0_component_configuration.pl  --do_build_sim=1    --sim_dir=C:/Users/Hedgehog/AppData/Local/Temp/alt7979_8745798795175367853.dir/0504_jtag_uart_0_gen/  ]
+Info: jtag_uart_0:   Generation command is [exec C:/intelfpga_lite/18.0/quartus/bin64/perl/bin/perl.exe -I C:/intelfpga_lite/18.0/quartus/bin64/perl/lib -I C:/intelfpga_lite/18.0/quartus/sopc_builder/bin/europa -I C:/intelfpga_lite/18.0/quartus/sopc_builder/bin/perl_lib -I C:/intelfpga_lite/18.0/quartus/sopc_builder/bin -I C:/intelfpga_lite/18.0/quartus/../ip/altera/sopc_builder_ip/common -I C:/intelfpga_lite/18.0/quartus/../ip/altera/sopc_builder_ip/altera_avalon_jtag_uart -- C:/intelfpga_lite/18.0/quartus/../ip/altera/sopc_builder_ip/altera_avalon_jtag_uart/generate_rtl.pl --name=top_level_system_jtag_uart_0 --dir=C:/Users/Hedgehog/AppData/Local/Temp/alt7979_4677131998971947100.dir/0210_jtag_uart_0_gen/ --quartus_dir=C:/intelfpga_lite/18.0/quartus --verilog --config=C:/Users/Hedgehog/AppData/Local/Temp/alt7979_4677131998971947100.dir/0210_jtag_uart_0_gen//top_level_system_jtag_uart_0_component_configuration.pl  --do_build_sim=1    --sim_dir=C:/Users/Hedgehog/AppData/Local/Temp/alt7979_4677131998971947100.dir/0210_jtag_uart_0_gen/  ]
 Info: jtag_uart_0: Done RTL generation for module 'top_level_system_jtag_uart_0'
 Info: jtag_uart_0: "top_level_system_inst" instantiated altera_avalon_jtag_uart "jtag_uart_0"
 Info: nios2_gen2_0: "top_level_system_inst" instantiated altera_nios2_gen2 "nios2_gen2_0"
 Info: onchip_memory2_0: Starting RTL generation for module 'top_level_system_onchip_memory2_0'
-Info: onchip_memory2_0:   Generation command is [exec C:/intelfpga_lite/18.0/quartus/bin64/perl/bin/perl.exe -I C:/intelfpga_lite/18.0/quartus/bin64/perl/lib -I C:/intelfpga_lite/18.0/quartus/sopc_builder/bin/europa -I C:/intelfpga_lite/18.0/quartus/sopc_builder/bin/perl_lib -I C:/intelfpga_lite/18.0/quartus/sopc_builder/bin -I C:/intelfpga_lite/18.0/quartus/../ip/altera/sopc_builder_ip/common -I C:/intelfpga_lite/18.0/quartus/../ip/altera/sopc_builder_ip/altera_avalon_onchip_memory2 -- C:/intelfpga_lite/18.0/quartus/../ip/altera/sopc_builder_ip/altera_avalon_onchip_memory2/generate_rtl.pl --name=top_level_system_onchip_memory2_0 --dir=C:/Users/Hedgehog/AppData/Local/Temp/alt7979_8745798795175367853.dir/0505_onchip_memory2_0_gen/ --quartus_dir=C:/intelfpga_lite/18.0/quartus --verilog --config=C:/Users/Hedgehog/AppData/Local/Temp/alt7979_8745798795175367853.dir/0505_onchip_memory2_0_gen//top_level_system_onchip_memory2_0_component_configuration.pl  --do_build_sim=1    --sim_dir=C:/Users/Hedgehog/AppData/Local/Temp/alt7979_8745798795175367853.dir/0505_onchip_memory2_0_gen/  ]
+Info: onchip_memory2_0:   Generation command is [exec C:/intelfpga_lite/18.0/quartus/bin64/perl/bin/perl.exe -I C:/intelfpga_lite/18.0/quartus/bin64/perl/lib -I C:/intelfpga_lite/18.0/quartus/sopc_builder/bin/europa -I C:/intelfpga_lite/18.0/quartus/sopc_builder/bin/perl_lib -I C:/intelfpga_lite/18.0/quartus/sopc_builder/bin -I C:/intelfpga_lite/18.0/quartus/../ip/altera/sopc_builder_ip/common -I C:/intelfpga_lite/18.0/quartus/../ip/altera/sopc_builder_ip/altera_avalon_onchip_memory2 -- C:/intelfpga_lite/18.0/quartus/../ip/altera/sopc_builder_ip/altera_avalon_onchip_memory2/generate_rtl.pl --name=top_level_system_onchip_memory2_0 --dir=C:/Users/Hedgehog/AppData/Local/Temp/alt7979_4677131998971947100.dir/0211_onchip_memory2_0_gen/ --quartus_dir=C:/intelfpga_lite/18.0/quartus --verilog --config=C:/Users/Hedgehog/AppData/Local/Temp/alt7979_4677131998971947100.dir/0211_onchip_memory2_0_gen//top_level_system_onchip_memory2_0_component_configuration.pl  --do_build_sim=1    --sim_dir=C:/Users/Hedgehog/AppData/Local/Temp/alt7979_4677131998971947100.dir/0211_onchip_memory2_0_gen/  ]
 Info: onchip_memory2_0: Done RTL generation for module 'top_level_system_onchip_memory2_0'
 Info: onchip_memory2_0: "top_level_system_inst" instantiated altera_avalon_onchip_memory2 "onchip_memory2_0"
 Info: sysid_qsys_0: "top_level_system_inst" instantiated altera_avalon_sysid_qsys "sysid_qsys_0"
@@ -235,33 +235,33 @@ Info: Reusing file D:/git/dsi_controller/quartus_project/dsi_controller_test/top
 Info: Reusing file D:/git/dsi_controller/quartus_project/dsi_controller_test/top_level_system/testbench/top_level_system_tb/simulation/submodules/mentor/modules/alt_vip_common_event_packet_encode/src_hdl/alt_vip_common_event_packet_encode.sv
 Info: Reusing file D:/git/dsi_controller/quartus_project/dsi_controller_test/top_level_system/testbench/top_level_system_tb/simulation/submodules/aldec/modules/alt_vip_common_event_packet_encode/src_hdl/alt_vip_common_event_packet_encode.sv
 Info: cpu: Starting RTL generation for module 'top_level_system_nios2_gen2_0_cpu'
-Info: cpu:   Generation command is [exec C:/intelFPGA_lite/18.0/quartus/bin64//eperlcmd.exe -I C:/intelFPGA_lite/18.0/quartus/bin64//perl/lib -I C:/intelfpga_lite/18.0/quartus/sopc_builder/bin/europa -I C:/intelfpga_lite/18.0/quartus/sopc_builder/bin/perl_lib -I C:/intelfpga_lite/18.0/quartus/sopc_builder/bin -I C:/intelfpga_lite/18.0/quartus/../ip/altera/nios2_ip/altera_nios2_gen2/cpu_lib -I C:/intelfpga_lite/18.0/quartus/../ip/altera/nios2_ip/altera_nios2_gen2/nios_lib -I C:/intelfpga_lite/18.0/quartus/../ip/altera/nios2_ip/altera_nios2_gen2 -I C:/intelfpga_lite/18.0/quartus/../ip/altera/nios2_ip/altera_nios2_gen2 -- C:/intelfpga_lite/18.0/quartus/../ip/altera/nios2_ip/altera_nios2_gen2/generate_rtl.epl --name=top_level_system_nios2_gen2_0_cpu --dir=C:/Users/Hedgehog/AppData/Local/Temp/alt7979_8745798795175367853.dir/0513_cpu_gen/ --quartus_bindir=C:/intelFPGA_lite/18.0/quartus/bin64/ --verilog --config=C:/Users/Hedgehog/AppData/Local/Temp/alt7979_8745798795175367853.dir/0513_cpu_gen//top_level_system_nios2_gen2_0_cpu_processor_configuration.pl  --do_build_sim=1    --sim_dir=C:/Users/Hedgehog/AppData/Local/Temp/alt7979_8745798795175367853.dir/0513_cpu_gen/  ]
-Info: cpu: # 2019.03.24 21:23:12 (*) Starting Nios II generation
-Info: cpu: # 2019.03.24 21:23:12 (*)   Checking for plaintext license.
-Info: cpu: # 2019.03.24 21:23:13 (*)   Couldn't query license setup in Quartus directory C:/intelFPGA_lite/18.0/quartus/bin64/
-Info: cpu: # 2019.03.24 21:23:13 (*)   Defaulting to contents of LM_LICENSE_FILE environment variable
-Info: cpu: # 2019.03.24 21:23:13 (*)   LM_LICENSE_FILE environment variable is empty
-Info: cpu: # 2019.03.24 21:23:13 (*)   Plaintext license not found.
-Info: cpu: # 2019.03.24 21:23:13 (*)   Checking for encrypted license (non-evaluation).
-Info: cpu: # 2019.03.24 21:23:13 (*)   Couldn't query license setup in Quartus directory C:/intelFPGA_lite/18.0/quartus/bin64/
-Info: cpu: # 2019.03.24 21:23:13 (*)   Defaulting to contents of LM_LICENSE_FILE environment variable
-Info: cpu: # 2019.03.24 21:23:13 (*)   LM_LICENSE_FILE environment variable is empty
-Info: cpu: # 2019.03.24 21:23:13 (*)   Encrypted license not found.  Defaulting to OCP evaluation license (produces a time-limited SOF)
-Info: cpu: # 2019.03.24 21:23:13 (*)   Elaborating CPU configuration settings
-Info: cpu: # 2019.03.24 21:23:13 (*)   Creating all objects for CPU
-Info: cpu: # 2019.03.24 21:23:13 (*)     Testbench
-Info: cpu: # 2019.03.24 21:23:13 (*)     Instruction decoding
-Info: cpu: # 2019.03.24 21:23:13 (*)       Instruction fields
-Info: cpu: # 2019.03.24 21:23:13 (*)       Instruction decodes
-Info: cpu: # 2019.03.24 21:23:14 (*)       Signals for RTL simulation waveforms
-Info: cpu: # 2019.03.24 21:23:14 (*)       Instruction controls
-Info: cpu: # 2019.03.24 21:23:14 (*)     Pipeline frontend
-Info: cpu: # 2019.03.24 21:23:14 (*)     Pipeline backend
-Info: cpu: # 2019.03.24 21:23:16 (*)   Creating 'C:/Users/Hedgehog/AppData/Local/Temp/alt7979_8745798795175367853.dir/0513_cpu_gen//top_level_system_nios2_gen2_0_cpu_nios2_waves.do'
-Info: cpu: # 2019.03.24 21:23:16 (*)   Generating RTL from CPU objects
-Info: cpu: # 2019.03.24 21:23:18 (*)   Creating encrypted RTL
-Info: cpu: # 2019.03.24 21:23:18 (*)   Creating IP functional simulation model
-Info: cpu: # 2019.03.24 21:23:33 (*) Done Nios II generation
+Info: cpu:   Generation command is [exec C:/intelFPGA_lite/18.0/quartus/bin64//eperlcmd.exe -I C:/intelFPGA_lite/18.0/quartus/bin64//perl/lib -I C:/intelfpga_lite/18.0/quartus/sopc_builder/bin/europa -I C:/intelfpga_lite/18.0/quartus/sopc_builder/bin/perl_lib -I C:/intelfpga_lite/18.0/quartus/sopc_builder/bin -I C:/intelfpga_lite/18.0/quartus/../ip/altera/nios2_ip/altera_nios2_gen2/cpu_lib -I C:/intelfpga_lite/18.0/quartus/../ip/altera/nios2_ip/altera_nios2_gen2/nios_lib -I C:/intelfpga_lite/18.0/quartus/../ip/altera/nios2_ip/altera_nios2_gen2 -I C:/intelfpga_lite/18.0/quartus/../ip/altera/nios2_ip/altera_nios2_gen2 -- C:/intelfpga_lite/18.0/quartus/../ip/altera/nios2_ip/altera_nios2_gen2/generate_rtl.epl --name=top_level_system_nios2_gen2_0_cpu --dir=C:/Users/Hedgehog/AppData/Local/Temp/alt7979_4677131998971947100.dir/0219_cpu_gen/ --quartus_bindir=C:/intelFPGA_lite/18.0/quartus/bin64/ --verilog --config=C:/Users/Hedgehog/AppData/Local/Temp/alt7979_4677131998971947100.dir/0219_cpu_gen//top_level_system_nios2_gen2_0_cpu_processor_configuration.pl  --do_build_sim=1    --sim_dir=C:/Users/Hedgehog/AppData/Local/Temp/alt7979_4677131998971947100.dir/0219_cpu_gen/  ]
+Info: cpu: # 2019.03.26 00:22:27 (*) Starting Nios II generation
+Info: cpu: # 2019.03.26 00:22:27 (*)   Checking for plaintext license.
+Info: cpu: # 2019.03.26 00:22:28 (*)   Couldn't query license setup in Quartus directory C:/intelFPGA_lite/18.0/quartus/bin64/
+Info: cpu: # 2019.03.26 00:22:28 (*)   Defaulting to contents of LM_LICENSE_FILE environment variable
+Info: cpu: # 2019.03.26 00:22:28 (*)   LM_LICENSE_FILE environment variable is empty
+Info: cpu: # 2019.03.26 00:22:28 (*)   Plaintext license not found.
+Info: cpu: # 2019.03.26 00:22:28 (*)   Checking for encrypted license (non-evaluation).
+Info: cpu: # 2019.03.26 00:22:29 (*)   Couldn't query license setup in Quartus directory C:/intelFPGA_lite/18.0/quartus/bin64/
+Info: cpu: # 2019.03.26 00:22:29 (*)   Defaulting to contents of LM_LICENSE_FILE environment variable
+Info: cpu: # 2019.03.26 00:22:29 (*)   LM_LICENSE_FILE environment variable is empty
+Info: cpu: # 2019.03.26 00:22:29 (*)   Encrypted license not found.  Defaulting to OCP evaluation license (produces a time-limited SOF)
+Info: cpu: # 2019.03.26 00:22:29 (*)   Elaborating CPU configuration settings
+Info: cpu: # 2019.03.26 00:22:29 (*)   Creating all objects for CPU
+Info: cpu: # 2019.03.26 00:22:29 (*)     Testbench
+Info: cpu: # 2019.03.26 00:22:29 (*)     Instruction decoding
+Info: cpu: # 2019.03.26 00:22:29 (*)       Instruction fields
+Info: cpu: # 2019.03.26 00:22:29 (*)       Instruction decodes
+Info: cpu: # 2019.03.26 00:22:29 (*)       Signals for RTL simulation waveforms
+Info: cpu: # 2019.03.26 00:22:29 (*)       Instruction controls
+Info: cpu: # 2019.03.26 00:22:29 (*)     Pipeline frontend
+Info: cpu: # 2019.03.26 00:22:30 (*)     Pipeline backend
+Info: cpu: # 2019.03.26 00:22:32 (*)   Creating 'C:/Users/Hedgehog/AppData/Local/Temp/alt7979_4677131998971947100.dir/0219_cpu_gen//top_level_system_nios2_gen2_0_cpu_nios2_waves.do'
+Info: cpu: # 2019.03.26 00:22:32 (*)   Generating RTL from CPU objects
+Info: cpu: # 2019.03.26 00:22:34 (*)   Creating encrypted RTL
+Info: cpu: # 2019.03.26 00:22:34 (*)   Creating IP functional simulation model
+Info: cpu: # 2019.03.26 00:22:48 (*) Done Nios II generation
 Info: cpu: Done RTL generation for module 'top_level_system_nios2_gen2_0_cpu'
 Info: cpu: "nios2_gen2_0" instantiated altera_nios2_gen2_unit "cpu"
 Info: nios2_gen2_0_data_master_translator: "mm_interconnect_0" instantiated altera_merlin_master_translator "nios2_gen2_0_data_master_translator"
