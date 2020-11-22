@@ -1,6 +1,8 @@
 `ifndef DSI_TX_PIXEL_BUFFER
 `define DSI_TX_PIXEL_BUFFER
 
+
+
 module dsi_tx_pixel_buffer #(
     parameter NOT_EMPTY_TRESHOLD = 640, // bytes
     parameter FIFO_DEPTH         = 1024
@@ -78,7 +80,7 @@ altera_generic_fifo #(
     );
 
 `elsif XILINX
-fifo_generator_v9_3 pixel_fifo (
+fifo_32x1024 pixel_fifo (
   .rst                  (!rst_n         ), // input rst
   .wr_clk               (clk            ), // input wr_clk
   .rd_clk               (clk_phy        ), // input rd_clk

@@ -333,7 +333,11 @@ altera_generic_fifo #(
 
 scfifo_34 fifo_mux (
   .clk          (clk                ), // input clk
+  `ifdef SPARTAN7
+  .srst         (!rst_n             ), // input rst
+  `else
   .rst          (!rst_n             ), // input rst
+  `endif
   .din          (data_mux           ), // input [33 : 0] din
   .wr_en        (fifo_mux_write     ), // input wr_en
   .rd_en        (fifo_mux_read      ), // input rd_en

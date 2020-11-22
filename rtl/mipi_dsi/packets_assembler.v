@@ -56,33 +56,33 @@ module packets_assembler (
 `define PACKET_EOT          6'h08
 
 /********* CMD fifo signals *********/
-logic           cmd_fifo_full;
-logic           cmd_fifo_full_w;
-logic           cmd_fifo_empty;
-logic           cmd_fifo_read;
-logic           cmd_fifo_write;
-logic [1:0]     cmd_fifo_usedw;
-logic [32:0]    cmd_fifo_data;
-logic [32:0]    cmd_fifo_data_out;
-logic [32:0]    cmd_fifo_data_in;
-logic           cmd_fifo_out_ctrl; // next muxes ctrl signals state. cmd_fifo_out_ctrl = 1, next cmd from usr fifo, 0 - from cmd fifo
-logic           cmd_fifo_in_ctrl; // next muxes ctrl signals state. cmd_fifo_out_ctrl = 1, next cmd from usr fifo, 0 - from cmd fifo
-logic           lp_pix;
-logic           lp_blank;
-logic           blank_timeout;
-logic           last_hss_bl_0;
-logic           last_pix_line;
-logic           last_hss_bl_2;
-logic           usr_fifo_packet_long;
-logic           usr_fifo_packet_error;
+wire           cmd_fifo_full;
+wire           cmd_fifo_full_w;
+wire           cmd_fifo_empty;
+wire           cmd_fifo_read;
+wire           cmd_fifo_write;
+wire [1:0]     cmd_fifo_usedw;
+wire [32:0]    cmd_fifo_data;
+wire [32:0]    cmd_fifo_data_out;
+wire [32:0]    cmd_fifo_data_in;
+wire           cmd_fifo_out_ctrl; // next muxes ctrl signals state. cmd_fifo_out_ctrl = 1, next cmd from usr fifo, 0 - from cmd fifo
+wire           cmd_fifo_in_ctrl; // next muxes ctrl signals state. cmd_fifo_out_ctrl = 1, next cmd from usr fifo, 0 - from cmd fifo
+wire           lp_pix;
+wire           lp_blank;
+wire           blank_timeout;
+wire           last_hss_bl_0;
+wire           last_pix_line;
+wire           last_hss_bl_2;
+wire           usr_fifo_packet_long;
+wire           usr_fifo_packet_error;
 
 assign cmd_fifo_out_ctrl = cmd_fifo_data[32];
 
 assign lp_pix       = cmd_fifo_data[21:16] == `PACKET_PPS24;
 assign lp_blank     = cmd_fifo_data[21:16] == `PACKET_BLANKING;
 
-logic [32:0]  cmd_fifo_data_in_reg;
-logic         cmd_fifo_write_reg;
+reg [32:0]  cmd_fifo_data_in_reg;
+wire         cmd_fifo_write_reg;
 
 cmd_fifo_33x4   cmd_fifo_33x4_inst (
     .aclr   (rst_n                      ),

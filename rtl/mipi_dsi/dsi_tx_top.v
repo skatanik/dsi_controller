@@ -323,7 +323,11 @@ altera_generic_fifo #(
 
 fifo_9x32 fifo_9x32_inst (
   .clk      (clk_phy                            ), // input clk
-  .rst      (!rst_phy_n                         ), // input rst
+  `ifdef SPARTAN7
+  .srst     (!rst_phy_n                         ), // input rst
+  `else
+  .rst     (!rst_phy_n                         ), // input rst
+  `endif
   .din      ({phy_data[32], phy_data[7:0]}      ), // input [8 : 0] din
   .wr_en    (phy_write[0]                       ), // input wr_en
   .rd_en    (lanes_fifo_read[0]                 ), // input rd_en
@@ -362,7 +366,11 @@ generate
 
     fifo_9x32 fifo_9x32_inst (
     .clk    (clk_phy                        ), // input clk
-    .rst    (!rst_phy_n                     ), // input rst
+    `ifdef SPARTAN7
+    .srst   (!rst_phy_n                     ), // input rst
+    `else
+    .rst   (!rst_phy_n                     ), // input rst
+    `endif
     .din    (phy_data[i*8+:8]               ), // input [8 : 0] din
     .wr_en  (phy_write[i]                   ), // input wr_en
     .rd_en  (lanes_fifo_read[i]             ), // input rd_en
@@ -544,6 +552,8 @@ endgenerate
 wire hs_clock_en;
 wire hs_clock_out;
 
+`ifndef SPARTAN7
+
 OBUFT #(
       .DRIVE(12),   // Specify the output drive strength
       .IOSTANDARD("DEFAULT"), // Specify the output I/O standard
@@ -633,6 +643,8 @@ OBUFTDS #(
 
 end
 endgenerate
+
+`endif
 
 `endif
 
