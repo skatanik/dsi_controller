@@ -43,7 +43,7 @@ module dsi_tx_top #(
     output  wire                    dphy_clk_lp_out_p                   ,
     output  wire                    dphy_clk_lp_out_n                   ,
 
-    `ifdef MODELING
+    `ifdef SIMULATION
     output  wire                    dphy_clk_hs_out                     ,
     output  wire [3:0]              dphy_data_hs_out                    ,
 
@@ -371,7 +371,7 @@ generate
     `else
     .rst   (!rst_phy_n                     ), // input rst
     `endif
-    .din    (phy_data[i*8+:8]               ), // input [8 : 0] din
+    .din    ({1'b0, phy_data[i*8+:8]}       ), // input [8 : 0] din
     .wr_en  (phy_write[i]                   ), // input wr_en
     .rd_en  (lanes_fifo_read[i]             ), // input rd_en
     .dout   (lanes_fifo_data_1[(i-1)*8+:8]  ), // output [8 : 0] dout

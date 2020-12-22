@@ -277,7 +277,7 @@ always @(posedge clk or negedge rst_n)
 
 always @(posedge clk or negedge rst_n)
     if(!rst_n)                  dsi_reg_cr_lanes_number <= 2'd3;
-    else if(dsi_reg_cr_w)       dsi_reg_cr_lanes_number <= sys_write_data[9:8];
+    else if(dsi_reg_cr_w)       dsi_reg_cr_lanes_number <= sys_write_data[10:9];
 
 /********************************************************************
 reg:        ISR

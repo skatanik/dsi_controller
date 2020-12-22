@@ -90,6 +90,7 @@ wire [33:0] input_pixels_array; // array of 4 pixels from input_shift_reg
 
 assign input_pixels_array   = {sof, eof, input_shift_reg[31:0]};
 
+`ifndef XILINX
 altera_generic_fifo #(
     .WIDTH      (34),
     .DEPTH      (4),
@@ -105,6 +106,18 @@ altera_generic_fifo #(
     .empty          ( fifo_empty            ),
     .full           ( fifo_full             )
 );
+`else
+fifo_34x4 fifo_34x4_0 (
+    .clk    ( clk                   ),
+    .srst   ( !rst_n                ),
+    .din    ( input_pixels_array    ),
+    .wr_en  ( pipeline_enable       ),
+    .rd_en  ( fifo_read             ),
+    .dout   ( fifo_data_out         ),
+    .full   ( fifo_full             ),
+    .empty  ( fifo_empty            )
+    );
+`endif
 
 assign fifo_read                    = out_avl_st_ready & out_avl_st_valid;
 assign out_avl_st_data              = out_avl_st_valid ? fifo_data_out[31:0] : 32'b0;

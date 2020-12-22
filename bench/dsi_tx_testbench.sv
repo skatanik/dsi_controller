@@ -2,8 +2,8 @@
 
 module top_level_csi_tx_tb;
 
-`define MODELING
-`define MAX_10
+// `define MODELING
+// `define MAX_10
 
 /********************************************************************
 16 ms per frame
@@ -215,7 +215,7 @@ repeat(40) @(posedge clk);
 
 /********* Init TX controller *********/
 
-settings_word = (31'b1 << 1) | (LANES_NUMBER - 1) << 8;
+settings_word = (31'b1 << 1) | (LANES_NUMBER - 1) << 9;
 
 avalon_mm_write(32'b0, settings_word, `AVL_MM_TX);
 repeat(1) @(posedge clk);
@@ -228,7 +228,7 @@ end
 
 $display("Lanes ready");
 
-settings_word = (31'b1 << 2) | (31'b1 << 1) | (LANES_NUMBER - 1) << 8;
+settings_word = (31'b1 << 2) | (31'b1 << 1) | (LANES_NUMBER - 1) << 9;
 
 /********* Enable dphy clock *********/
 
@@ -250,7 +250,7 @@ $display("Write CMD");
 avalon_mm_write(32'h14, 32'h005F_7538, `AVL_MM_TX);
 repeat(10) @(posedge clk);
 
-settings_word = (32'b1 << 3) | (31'b1 << 2) | (31'b1 << 1) | (LANES_NUMBER - 1) << 8;
+settings_word = (32'b1 << 3) | (31'b1 << 2) | (31'b1 << 1) | (LANES_NUMBER - 1) << 9;
 
 $display("Send CMD");
 
@@ -269,7 +269,7 @@ repeat(1) @(posedge clk);
 
 $display("Enable Controller");
 
-settings_word = 32'b1| (31'b1 << 2) | (31'b1 << 1) | (LANES_NUMBER - 1) << 8;
+settings_word = 32'b1| (31'b1 << 2) | (31'b1 << 1) | (LANES_NUMBER - 1) << 9;
 
 avalon_mm_write(32'b0, settings_word, `AVL_MM_TX);
 
@@ -385,7 +385,7 @@ avalon_st_loader_sem.put();
 
 endtask
 
- avalon_st_video_2_avalon_st avl_st_video_2_avl_st_top (
+ avl_st_video_2_avl_st_top avl_st_video_2_avl_st_top_0 (
     .clk                                (clk                            ),
     .rst_n                              (rst_n                          ),
 
