@@ -201,10 +201,10 @@ wire line_finished =    wait_h_blank_vsa_done |
 
 always @(posedge clk or negedge rst_n)
     if(!rst_n)                                                                  lines_counter <= 16'b0;
-    else if((state_next == STATE_SEND_HSS_VSA) && (lines_counter == 16'b0))     lines_counter <= VSA_LINES_NUMBER;
-    else if((state_next == STATE_SEND_HSS_VBP) && (lines_counter == 16'b0))     lines_counter <= VBP_LINES_NUMBER;
-    else if((state_next == STATE_SEND_HSS_ACT) && (lines_counter == 16'b0))     lines_counter <= ACT_LINES_NUMBER;
-    else if((state_next == STATE_SEND_HSS_VFP) && (lines_counter == 16'b0))     lines_counter <= VFP_LINES_NUMBER;
+    else if((state_next == STATE_SEND_HSS_VSA) && (lines_counter == 16'b0))     lines_counter <= VSA_LINES_NUMBER-1;
+    else if((state_next == STATE_SEND_HSS_VBP) && (lines_counter == 16'b0))     lines_counter <= VBP_LINES_NUMBER-1;
+    else if((state_next == STATE_SEND_HSS_ACT) && (lines_counter == 16'b0))     lines_counter <= ACT_LINES_NUMBER-1;
+    else if((state_next == STATE_SEND_HSS_VFP) && (lines_counter == 16'b0))     lines_counter <= VFP_LINES_NUMBER-1;
     else if(line_finished)                                                      lines_counter <= lines_counter - 16'd1;
 
 assign last_wait_h_blank_vsa        = state_wait_h_blank_vsa        && (lines_counter == 16'd1);
