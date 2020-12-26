@@ -70,7 +70,7 @@ wire            cascade_to;     // master -> slave
       .SHIFTOUT2(), // 1-bit output: Cascade 3-state output
       .SHIFTOUT3(cascade_do), // 1-bit output: Cascade differential data output
       .SHIFTOUT4(cascade_to), // 1-bit output: Cascade differential 3-state output
-      .TQ(tx_out_en),               // 1-bit output: 3-state output to pad or IODELAY2
+      .TQ(),               // 1-bit output: 3-state output to pad or IODELAY2
       .CLK0(tx_clock_io),           // 1-bit input: I/O clock input
       .CLK1(1'b0),           // 1-bit input: Secondary I/O clock input
       .CLKDIV(tx_clock_logic),       // 1-bit input: Logic domain clock input
