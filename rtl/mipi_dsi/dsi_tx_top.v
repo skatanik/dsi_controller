@@ -319,7 +319,7 @@ altera_generic_fifo #(
     .full           (phy_full[0]                                                    )
 );
 
-`elsif XILINX
+`else
 
 fifo_9x32 fifo_9x32_inst (
   .clk      (clk_phy                            ), // input clk
@@ -362,7 +362,7 @@ generate
         .full           (phy_full[i]                                                    )
     );
 
-`elsif XILINX
+`else
 
     fifo_9x32 fifo_9x32_inst (
     .clk    (clk_phy                        ), // input clk
@@ -546,7 +546,7 @@ generate
     end
 endgenerate
 
-`elsif XILINX
+`else
 
 /* CLK */
 wire hs_clock_en;
@@ -561,7 +561,7 @@ OBUFT #(
    ) OBUFT_LP_P (
       .O(dphy_clk_lp_out_p  ),     // Buffer output (connect directly to top-level port)
       .I(clock_LP_p_output  ),     // Buffer input
-      .T(clk_lp_enable      )      // 3-state enable input
+      .T(~clk_lp_enable      )      // 3-state enable input
    );
 
 OBUFT #(
@@ -571,7 +571,7 @@ OBUFT #(
    ) OBUFT_LP_N (
       .O(dphy_clk_lp_out_n  ),     // Buffer output (connect directly to top-level port)
       .I(clock_LP_n_output  ),     // Buffer input
-      .T(clk_lp_enable      )      // 3-state enable input
+      .T(~clk_lp_enable      )      // 3-state enable input
    );
 
 lvds_soft_x clk_lane(
@@ -591,7 +591,7 @@ OBUFTDS #(
       .O(dphy_clk_hs_out_p      ),     // Diff_p output (connect directly to top-level port)
       .OB(dphy_clk_hs_out_n     ),   // Diff_n output (connect directly to top-level port)
       .I(hs_clock_out           ),     // Buffer input
-      .T(hs_clock_en            )      // 3-state enable input
+      .T(~hs_clock_en            )      // 3-state enable input
    );
 
 /* Data */
@@ -608,7 +608,7 @@ OBUFT #(
    ) OBUFT_DATA_LP_P (
       .O    (dphy_data_lp_out_p[i]  ),     // Buffer output (connect directly to top-level port)
       .I    (LP_p_output[i]         ),     // Buffer input
-      .T    (data_lp_enable[i]      )      // 3-state enable input
+      .T    (~data_lp_enable[i]      )      // 3-state enable input
    );
 
 OBUFT #(
@@ -618,7 +618,7 @@ OBUFT #(
    ) OBUFT_DATA_LP_N (
       .O    (dphy_data_lp_out_n[i]  ),     // Buffer output (connect directly to top-level port)
       .I    (LP_n_output[i]         ),     // Buffer input
-      .T    (data_lp_enable[i]      )      // 3-state enable input
+      .T    (~data_lp_enable[i]      )      // 3-state enable input
    );
 
 lvds_soft_x data_lane(
@@ -638,7 +638,7 @@ OBUFTDS #(
       .O    (dphy_data_hs_out_p[i]      ),     // Diff_p output (connect directly to top-level port)
       .OB   (dphy_data_hs_out_n[i]      ),   // Diff_n output (connect directly to top-level port)
       .I    (hs_data_out[i]             ),     // Buffer input
-      .T    (hs_data_en[i]              )      // 3-state enable input
+      .T    (~hs_data_en[i]              )      // 3-state enable input
    );
 
 end

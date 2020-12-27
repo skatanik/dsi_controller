@@ -97,7 +97,8 @@ always @(posedge clk or negedge rst_n) begin
     end
 end
 
-localparam [7:0] SYNC_SEQUENCE = 8'b00011101;
+// localparam [7:0] SYNC_SEQUENCE = 8'b00011101;
+localparam [7:0] SYNC_SEQUENCE = 8'b10111000;
 
 reg [7:0] serdes_data;
 reg [7:0] last_bit_byte;

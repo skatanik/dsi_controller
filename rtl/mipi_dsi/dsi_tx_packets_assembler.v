@@ -329,7 +329,7 @@ altera_generic_fifo #(
         .full           (fifo_mux_full      )   //            .full
     );
 
-`elsif XILINX
+`else
 
 scfifo_34 fifo_mux (
   .clk          (clk                ), // input clk

@@ -79,7 +79,7 @@ altera_generic_fifo #(
     .wrusedw    (fifo_wrusedw       )
     );
 
-`elsif XILINX
+`else
 fifo_32x1024 pixel_fifo (
   .rst                  (!rst_n         ), // input rst
   .wr_clk               (clk            ), // input wr_clk
