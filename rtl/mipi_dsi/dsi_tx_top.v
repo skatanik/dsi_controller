@@ -585,14 +585,14 @@ lvds_soft_x clk_lane(
 		.tx_out_en          (hs_clock_en            )         // tx_out.tx_out_en
 	);
 
-OBUFTDS #(
-      .IOSTANDARD("DIFF_SSTL18_II") // Specify the output I/O standard
+OBUFDS #(
+     .IOSTANDARD("DIFF_SSTL18_II") // Specify the output I/O standard
 ) OBUFTDS_clk (
-      .O(dphy_clk_hs_out_p      ),     // Diff_p output (connect directly to top-level port)
-      .OB(dphy_clk_hs_out_n     ),   // Diff_n output (connect directly to top-level port)
-      .I(hs_clock_out           ),     // Buffer input
-      .T(~hs_clock_en            )      // 3-state enable input
-   );
+     .O(dphy_clk_hs_out_p      ),     // Diff_p output (connect directly to top-level port)
+     .OB(dphy_clk_hs_out_n     ),   // Diff_n output (connect directly to top-level port)
+     .I(hs_clock_out           )     // Buffer input
+    //  .T(~hs_clock_en            )      // 3-state enable input
+  );
 
 /* Data */
 wire [3:0] hs_data_en;
@@ -632,13 +632,13 @@ lvds_soft_x data_lane(
 		.tx_out_en          (hs_data_en[i]              )         // tx_out.tx_out_en
 	);
 
-OBUFTDS #(
+OBUFDS #(
       .IOSTANDARD("DIFF_SSTL18_II") // Specify the output I/O standard
    ) OBUFTDS_data (
       .O    (dphy_data_hs_out_p[i]      ),     // Diff_p output (connect directly to top-level port)
       .OB   (dphy_data_hs_out_n[i]      ),   // Diff_n output (connect directly to top-level port)
-      .I    (hs_data_out[i]             ),     // Buffer input
-      .T    (~hs_data_en[i]              )      // 3-state enable input
+      .I    (hs_data_out[i]             )     // Buffer input
+   //   .T    (~hs_data_en[i]              )      // 3-state enable input
    );
 
 end
