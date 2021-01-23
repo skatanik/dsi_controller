@@ -5,7 +5,7 @@
 
 module dsi_tx_pixel_buffer #(
     parameter NOT_EMPTY_TRESHOLD = 640, // bytes
-    parameter FIFO_DEPTH         = 256
+    parameter FIFO_DEPTH         = 1024
 
     ) (
     /********* System interface *********/
@@ -35,8 +35,8 @@ wire        fifo_empty;
 wire        fifo_read;
 wire [31:0] fifo_data_in;
 wire [31:0] fifo_data_out;
-wire [7:0]  fifo_usedw;
-wire [7:0]  fifo_wrusedw;
+wire [9:0]  fifo_usedw;
+wire [9:0]  fifo_wrusedw;
 
 reg fifo_line_ready_reg;
 reg fifo_not_full;
