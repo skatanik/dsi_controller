@@ -7,7 +7,7 @@
 `define PACKET_HSS          6'h21
 `define PACKET_EOT          6'h08
 
-module dsi_tx_packets_assembler #(
+module dsi_tx_packets_assembler_stndrt #(
     parameter LINE_WIDTH            = 640,
     parameter BITS_PER_PIXEL        = 10,
     parameter BLANK_TIME            = 100,
@@ -31,16 +31,6 @@ module dsi_tx_packets_assembler #(
     output  wire [32:0]             phy_data                            ,
     output  wire [3:0]              phy_write                           ,
     input   wire [3:0]              phy_full                            ,
-
-    /********* Params *********/
-    input   wire [11:0]             i_lines_vtotal                      ,
-    input   wire [11:0]             i_lines_vact                        ,
-    input   wire [3:0]              i_lines_vsync                       ,
-    input   wire [3:0]              i_lines_vbp                         ,
-    input   wire [8:0]              i_lines_vfp                         ,
-    input   wire [10:0]             i_lines_htotal                      ,
-    input   wire [5:0]              i_lines_hbp                         ,
-    input   wire [9:0]              i_lines_hact                        ,
 
     /********* Control signals *********/
     input   wire                    enable                              ,
@@ -145,10 +135,10 @@ always @(*)
                 state_next = wait_h_blank_vbp_done ? (last_wait_h_blank_vbp ? STATE_SEND_HSS_ACT : STATE_SEND_HSS_VBP) : STATE_WAIT_H_BLANK_VBP;
 
             STATE_SEND_HSS_ACT:
-                state_next = send_hss_act_done ? STATE_SEND_DATA_HEADER : STATE_SEND_HSS_ACT;
+                state_next = send_hss_act_done ? STATE_WAIT_H_BLANK_ACT_HBP : STATE_SEND_HSS_ACT;
 
-            // STATE_WAIT_H_BLANK_ACT_HBP:
-            //     state_next = wait_h_blank_act_hbp_done ? STATE_SEND_DATA_HEADER : STATE_WAIT_H_BLANK_ACT_HBP;
+            STATE_WAIT_H_BLANK_ACT_HBP:
+                state_next = wait_h_blank_act_hbp_done ? STATE_SEND_DATA_HEADER : STATE_WAIT_H_BLANK_ACT_HBP;
 
             STATE_SEND_DATA_HEADER:
                 state_next = send_data_header_done ? STATE_SEND_DATA : STATE_SEND_DATA_HEADER;
@@ -192,18 +182,13 @@ reg [31:0] blank_counter;
 
 always @(posedge clk or negedge rst_n)
     if(!rst_n)                                  blank_counter <= 32'b0;
-    // else if((state_current != state_next))      blank_counter <= BLANK_TIME;
-    else if((state_next == STATE_SEND_VSS_VSA))      blank_counter <= BLANK_TIME + LINE_WIDTH;
-    else if((state_next == STATE_SEND_HSS_VSA))      blank_counter <= BLANK_TIME + LINE_WIDTH;
-    else if((state_next == STATE_SEND_HSS_VBP))      blank_counter <= BLANK_TIME + LINE_WIDTH;
-    else if((state_next == STATE_SEND_HSS_ACT))      blank_counter <= BLANK_TIME + LINE_WIDTH;
-    else if((state_next == STATE_SEND_HSS_VFP))      blank_counter <= BLANK_TIME + LINE_WIDTH;
+    else if((state_current != state_next))      blank_counter <= BLANK_TIME;
     else if(|blank_counter)                     blank_counter <= blank_counter - 32'b1;
 
 assign wait_h_blank_vss_vsa_done    = (blank_counter == 0) & state_wait_h_blank_vss_vsa;
 assign wait_h_blank_vsa_done        = (blank_counter == 0) & state_wait_h_blank_vsa;
 assign wait_h_blank_vbp_done        = (blank_counter == 0) & state_wait_h_blank_vbp;
-// assign wait_h_blank_act_hbp_done    = (blank_counter == (BLANK_TIME - BLANK_TIME_HBP_ACT)) & state_wait_h_blank_act_hbp;
+assign wait_h_blank_act_hbp_done    = (blank_counter == (BLANK_TIME - BLANK_TIME_HBP_ACT)) & state_wait_h_blank_act_hbp;
 assign wait_h_blank_act_hfp_done    = (blank_counter == 0) & state_wait_h_blank_act_hfp;
 assign wait_h_blank_vfp_done        = (blank_counter == 0) & state_wait_h_blank_vfp;
 

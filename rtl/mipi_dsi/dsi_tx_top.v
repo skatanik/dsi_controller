@@ -50,7 +50,7 @@ module dsi_tx_top #(
     `endif
 
     /********* Avalon-MM iface *********/
-    input   wire [4:0]              avl_mm_address                      ,
+    input   wire [5:0]              avl_mm_address                      ,
 
     input   wire                    avl_mm_read                         ,
     output  wire [31:0]             avl_mm_readdata                     ,
@@ -96,6 +96,15 @@ wire [7:0]  hs_exit_timeout_sync;
 wire [7:0]  hs_go_timeout_sync;
 wire [7:0]  hs_trail_timeout_sync;
 
+wire [11:0] o_lines_vtotal;
+wire [11:0] o_lines_vact;
+wire [3:0]  o_lines_vsync;
+wire [3:0]  o_lines_vbp;
+wire [8:0]  o_lines_vfp;
+wire [10:0] o_lines_htotal;
+wire [5:0]  o_lines_hbp;
+wire [9:0]  o_lines_hact;
+
 dsi_tx_regs dsi_tx_regs_0(
 
     /********* Sys iface *********/
@@ -132,6 +141,15 @@ dsi_tx_regs dsi_tx_regs_0(
     .hs_exit_timeout                    (hs_exit_timeout                ),
     .hs_go_timeout                      (hs_go_timeout                  ),
     .hs_trail_timeout                   (hs_trail_timeout               ),
+
+    .o_lines_vtotal                     (o_lines_vtotal                 ),
+    .o_lines_vact                       (o_lines_vact                   ),
+    .o_lines_vsync                      (o_lines_vsync                  ),
+    .o_lines_vbp                        (o_lines_vbp                    ),
+    .o_lines_vfp                        (o_lines_vfp                    ),
+    .o_lines_htotal                     (o_lines_htotal                 ),
+    .o_lines_hbp                        (o_lines_hbp                    ),
+    .o_lines_hact                       (o_lines_hact                   ),
 
     .pix_buffer_underflow_set           (pix_buffer_underflow_set_sync  ),
     .lanes_ready_set                    (lanes_ready_set_sync           ),
@@ -288,6 +306,16 @@ dsi_tx_packets_assembler #(
     .phy_write                  (phy_write                          ),
     .phy_full                   (phy_full                           ),
 
+    /********* Params *********/
+    .i_lines_vtotal             (o_lines_vtotal                     ),
+    .i_lines_vact               (o_lines_vact                       ),
+    .i_lines_vsync              (o_lines_vsync                      ),
+    .i_lines_vbp                (o_lines_vbp                        ),
+    .i_lines_vfp                (o_lines_vfp                        ),
+    .i_lines_htotal             (o_lines_htotal                     ),
+    .i_lines_hbp                (o_lines_hbp                        ),
+    .i_lines_hact               (o_lines_hact                       ),
+
     /********* Control signals *********/
     .enable                     (packet_assembler_enable_sync       ),
     .send_cmd                   (send_cmd_sync                      ),
@@ -418,11 +446,11 @@ dphy_tx_lanes_controller dsi_lanes_controller_0
     .clock_ready                (clk_ready_set              ),
     .lines_active               (lanes_active               ),
 
-    .tlpx_timeout               (tlpx_timeout_sync          ),
-    .hs_prepare_timeout         (hs_prepare_timeout_sync    ),
-    .hs_exit_timeout            (hs_exit_timeout_sync       ),
-    .hs_go_timeout              (hs_go_timeout_sync         ),
-    .hs_trail_timeout           (hs_trail_timeout_sync      ),
+    .tlpx_timeout               (tlpx_timeout          ),
+    .hs_prepare_timeout         (hs_prepare_timeout    ),
+    .hs_exit_timeout            (hs_exit_timeout       ),
+    .hs_go_timeout              (hs_go_timeout         ),
+    .hs_trail_timeout           (hs_trail_timeout      ),
 
     /********* Lanes *********/
     .hs_lane_output             (hs_lane_output_bus         ),

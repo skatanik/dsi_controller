@@ -10,7 +10,7 @@ module dsi_tx_regs (
     output  wire                                irq                             ,
 
     /********* Avalon-MM iface *********/
-    input   wire [4:0]                          avl_mm_addr                     ,
+    input   wire [5:0]                          avl_mm_addr                     ,
 
     input   wire                                avl_mm_read                     ,
     output  wire [31:0]                         avl_mm_readdata                 ,
@@ -37,6 +37,15 @@ module dsi_tx_regs (
     output  wire [7:0]                          hs_go_timeout                   ,
     output  wire [7:0]                          hs_trail_timeout                ,
 
+    output  wire [11:0]                         o_lines_vtotal                  ,
+    output  wire [11:0]                         o_lines_vact                    ,
+    output  wire [3:0]                          o_lines_vsync                   ,
+    output  wire [3:0]                          o_lines_vbp                     ,
+    output  wire [8:0]                          o_lines_vfp                     ,
+    output  wire [10:0]                         o_lines_htotal                  ,
+    output  wire [5:0]                          o_lines_hbp                     ,
+    output  wire [9:0]                          o_lines_hact                    ,
+
     input   wire                                pix_buffer_underflow_set        ,
     input   wire                                lanes_ready_set                 ,
     input   wire                                lanes_active                    ,
@@ -44,9 +53,13 @@ module dsi_tx_regs (
 
 );
 
-localparam REGISTERS_NUMBER     = 6;
-localparam ADDR_WIDTH           = 5;
+localparam REGISTERS_NUMBER     = 10;
+localparam ADDR_WIDTH           = 6;
 localparam MEMORY_MAP           = {
+                                    5'h24,
+                                    5'h20,
+                                    5'h1C,
+                                    5'h18,
                                     5'h14,
                                     5'h10,
                                     5'h0C,
@@ -105,6 +118,10 @@ wire [31:0]  dsi_reg_ier;
 wire [31:0]  dsi_reg_tr1;
 wire [31:0]  dsi_reg_tr2;
 wire [31:0]  dsi_reg_cmd;
+wire [31:0]  dsi_reg_tim1;
+wire [31:0]  dsi_reg_tim2;
+wire [31:0]  dsi_reg_tim3;
+wire [31:0]  dsi_reg_tim4;
 
 /********* write signals *********/
 wire dsi_reg_cr_w;
@@ -113,6 +130,10 @@ wire dsi_reg_ier_w;
 wire dsi_reg_tr1_w;
 wire dsi_reg_tr2_w;
 wire dsi_reg_cmd_w;
+wire dsi_reg_tim1_w;
+wire dsi_reg_tim2_w;
+wire dsi_reg_tim3_w;
+wire dsi_reg_tim4_w;
 
 assign dsi_reg_cr_w             = sys_write_req[0];
 assign dsi_reg_isr_w            = sys_write_req[1];
@@ -120,6 +141,10 @@ assign dsi_reg_ier_w            = sys_write_req[2];
 assign dsi_reg_tr1_w            = sys_write_req[3];
 assign dsi_reg_tr2_w            = sys_write_req[4];
 assign dsi_reg_cmd_w            = sys_write_req[5];
+assign dsi_reg_tim1_w            = sys_write_req[6];
+assign dsi_reg_tim2_w            = sys_write_req[7];
+assign dsi_reg_tim3_w            = sys_write_req[8];
+assign dsi_reg_tim4_w            = sys_write_req[9];
 
 /********* Read signals *********/
 wire dsi_reg_cr_r;
@@ -128,6 +153,10 @@ wire dsi_reg_ier_r;
 wire dsi_reg_tr1_r;
 wire dsi_reg_tr2_r;
 wire dsi_reg_cmd_r;
+wire dsi_reg_tim1_r;
+wire dsi_reg_tim2_r;
+wire dsi_reg_tim3_r;
+wire dsi_reg_tim4_r;
 
 assign dsi_reg_cr_r        = sys_read_req[0];
 assign dsi_reg_isr_r       = sys_read_req[1];
@@ -135,6 +164,10 @@ assign dsi_reg_ier_r       = sys_read_req[2];
 assign dsi_reg_tr1_r       = sys_read_req[3];
 assign dsi_reg_tr2_r       = sys_read_req[4];
 assign dsi_reg_cmd_r       = sys_read_req[5];
+assign dsi_reg_tim1_r       = sys_read_req[6];
+assign dsi_reg_tim2_r       = sys_read_req[7];
+assign dsi_reg_tim3_r       = sys_read_req[8];
+assign dsi_reg_tim4_r       = sys_read_req[9];
 
 /********* IRQ *********/
 reg irq_reg;
@@ -167,6 +200,10 @@ assign reg_read         =   ({32{dsi_reg_cr_r}}         & dsi_reg_cr)           
                             ({32{dsi_reg_ier_r}}        & dsi_reg_ier)          |
                             ({32{dsi_reg_tr1_r}}        & dsi_reg_tr1)          |
                             ({32{dsi_reg_cmd_r}}        & dsi_reg_cmd)          |
+                            ({32{dsi_reg_tim1_r}}        & dsi_reg_tim1)          |
+                            ({32{dsi_reg_tim2_r}}        & dsi_reg_tim2)          |
+                            ({32{dsi_reg_tim3_r}}        & dsi_reg_tim3)          |
+                            ({32{dsi_reg_tim4_r}}        & dsi_reg_tim4)          |
                             ({32{dsi_reg_tr2_r}}        & dsi_reg_tr2);
 
 /********* Write regs *********/
@@ -212,6 +249,20 @@ reg [7:0]   dsi_reg_tr1_hs_trail_timeout;
 
 reg [23:0]  dsi_reg_cmd_field;
 
+// timings regs
+reg [11:0]  dsi_reg_tim1_lines_vtotal;
+reg [11:0]  dsi_reg_tim1_lines_vact;
+
+reg [3:0]  dsi_reg_tim2_lines_vsync;
+reg [3:0]  dsi_reg_tim2_lines_vbp;
+reg [8:0]  dsi_reg_tim2_lines_vfp;
+
+reg [10:0]  dsi_reg_tim3_lines_htotal;
+reg [5:0]  dsi_reg_tim3_lines_hbp;
+reg [9:0]  dsi_reg_tim3_lines_hact;
+
+
+
 /********* Assigns *********/
 
 assign lanes_number                 = dsi_reg_cr_lanes_number + 3'd1;
@@ -226,6 +277,16 @@ assign hs_prepare_timeout   = dsi_reg_tr1_hs_prepare_timeout;
 assign hs_exit_timeout      = dsi_reg_tr1_hs_exit_timeout;
 assign hs_go_timeout        = dsi_reg_tr1_hs_go_timeout;
 assign hs_trail_timeout     = dsi_reg_tr1_hs_trail_timeout;
+
+
+assign o_lines_vtotal      = dsi_reg_tim1_lines_vtotal;
+assign o_lines_vact        = dsi_reg_tim1_lines_vact;
+assign o_lines_vsync       = dsi_reg_tim2_lines_vsync;
+assign o_lines_vbp         = dsi_reg_tim2_lines_vbp;
+assign o_lines_vfp         = dsi_reg_tim2_lines_vfp;
+assign o_lines_htotal      = dsi_reg_tim3_lines_htotal;
+assign o_lines_hbp         = dsi_reg_tim3_lines_hbp;
+assign o_lines_hact        = dsi_reg_tim3_lines_hact;
 
 
 wire lanes_became_active_set;
@@ -396,7 +457,7 @@ always @(posedge clk or negedge rst_n)
     else if(dsi_reg_tr1_w)  dsi_reg_tr1_tlpx_timeout <= sys_write_data[23:16];
 
 always @(posedge clk or negedge rst_n)
-    if(!rst_n)              dsi_reg_tr1_hs_prepare_timeout <= 8'd15;
+    if(!rst_n)              dsi_reg_tr1_hs_prepare_timeout <= 8'd1;
     else if(dsi_reg_tr1_w)  dsi_reg_tr1_hs_prepare_timeout <= sys_write_data[15:8];
 
 always @(posedge clk or negedge rst_n)
@@ -447,6 +508,94 @@ assign dsi_reg_cmd = {
 always @(posedge clk or negedge rst_n)
     if(!rst_n)              dsi_reg_cmd_field <= 24'd0;
     else if(dsi_reg_cmd_w)  dsi_reg_cmd_field <= sys_write_data[23:0];
+
+/********************************************************************
+reg:        TIM1
+offset:     0x18
+
+Field                           offset    width     access
+-----------------------------------------------------------
+dsi_reg_tim1_lines_vtotal        0         12         RW
+dsi_reg_tim1_lines_vact          16         12         RW
+
+********************************************************************/
+
+assign dsi_reg_cmd = {
+                    4'b0,
+                    dsi_reg_tim1_lines_vact,
+                    4'b0,
+                    dsi_reg_tim1_lines_vtotal
+                    };
+
+always @(posedge clk or negedge rst_n)
+    if(!rst_n)                  dsi_reg_tim1_lines_vact <= 'd0;
+    else if(dsi_reg_tim1_w)     dsi_reg_tim1_lines_vact <= sys_write_data[28:16];
+
+always @(posedge clk or negedge rst_n)
+    if(!rst_n)                  dsi_reg_tim1_lines_vtotal <= 'd0;
+    else if(dsi_reg_tim1_w)     dsi_reg_tim1_lines_vtotal <= sys_write_data[11:0];
+
+
+/********************************************************************
+reg:        TIM2
+offset:     0x18
+
+Field                           offset    width     access
+-----------------------------------------------------------
+dsi_reg_tim2_lines_vsync        20         4         RW
+dsi_reg_tim2_lines_vbp          16         4         RW
+dsi_reg_tim2_lines_vfp          0         9         RW
+
+********************************************************************/
+assign dsi_reg_cmd = {
+                    8'b0,
+                    dsi_reg_tim2_lines_vsync,
+                    dsi_reg_tim2_lines_vbp,
+                    7'b0,
+                    dsi_reg_tim2_lines_vfp
+                    };
+
+always @(posedge clk or negedge rst_n)
+    if(!rst_n)                  dsi_reg_tim2_lines_vsync <= 'd0;
+    else if(dsi_reg_tim1_w)     dsi_reg_tim2_lines_vsync <= sys_write_data[28:24];
+
+always @(posedge clk or negedge rst_n)
+    if(!rst_n)                  dsi_reg_tim2_lines_vbp <= 'd0;
+    else if(dsi_reg_tim1_w)     dsi_reg_tim2_lines_vbp <= sys_write_data[20:16];
+
+always @(posedge clk or negedge rst_n)
+    if(!rst_n)                  dsi_reg_tim2_lines_vfp <= 'd0;
+    else if(dsi_reg_tim1_w)     dsi_reg_tim2_lines_vfp <= sys_write_data[9:0];
+
+/********************************************************************
+reg:        TIM3
+offset:     0x18
+
+Field                           offset    width     access
+-----------------------------------------------------------
+dsi_reg_tim3_lines_htotal        16         11         RW
+dsi_reg_tim3_lines_hbp          10          6         RW
+dsi_reg_tim3_lines_hact          0         10         RW
+
+********************************************************************/
+assign dsi_reg_cmd = {
+                    16'b0,
+                    dsi_reg_tim3_lines_htotal,
+                    dsi_reg_tim3_lines_hbp,
+                    dsi_reg_tim3_lines_hact
+                    };
+
+always @(posedge clk or negedge rst_n)
+    if(!rst_n)                  dsi_reg_tim3_lines_htotal <= 24'd0;
+    else if(dsi_reg_tim1_w)     dsi_reg_tim3_lines_htotal <= sys_write_data[27:16];
+
+always @(posedge clk or negedge rst_n)
+    if(!rst_n)                  dsi_reg_tim3_lines_hbp <= 24'd0;
+    else if(dsi_reg_tim1_w)     dsi_reg_tim3_lines_hbp <= sys_write_data[15:10];
+
+always @(posedge clk or negedge rst_n)
+    if(!rst_n)                  dsi_reg_tim3_lines_hact <= 24'd0;
+    else if(dsi_reg_tim1_w)     dsi_reg_tim3_lines_hact <= sys_write_data[9:0];
 
 endmodule
 
