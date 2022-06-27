@@ -34,7 +34,7 @@ localparam [2:0] STATE_TX_ACTIVE = 3;
 localparam [2:0] STATE_TX_TRAIL = 4;
 reg [2:0] state_current, state_next;
 
-always @(posedge clk or negedge rst_n) begin
+always @(posedge clk) begin
     if(~rst_n) begin
         state_current <= STATE_IDLE;
     end else begin
@@ -71,14 +71,14 @@ reg active_r;
 
 assign active = active_r;
 
-always @(posedge clk or negedge rst_n)
+always @(posedge clk)
     if(~rst_n)                                  active_r <= 1'b0;
     else if(state_next == STATE_TX_GO)          active_r <= 1'b1;
     else if(state_next == STATE_IDLE)           active_r <= 1'b0;
 
 reg tx_hs_trail_timeout_delayed;
 
-always @(posedge clk or negedge rst_n)
+always @(posedge clk)
     if(~rst_n)          tx_hs_trail_timeout_delayed <= 1'b0;
     else                tx_hs_trail_timeout_delayed <= tx_hs_trail_timeout;
 
@@ -89,7 +89,7 @@ reg data_rqst_r;
 assign data_rqst = data_rqst_r;
 
 // data_rqst line forming
-always @(posedge clk or negedge rst_n) begin
+always @(posedge clk) begin
     if(~rst_n) begin
         data_rqst_r <= 1'b0;
     end else begin
@@ -104,7 +104,7 @@ reg [7:0] serdes_data;
 reg [7:0] last_bit_byte;
 
 // serdes data mux
-always @(posedge clk or negedge rst_n) begin
+always @(posedge clk) begin
     if(~rst_n)                                  serdes_data <= 8'b0;
     else if(state_current == STATE_TX_SYNC)     serdes_data <= SYNC_SEQUENCE;
     else if(state_current == STATE_TX_ACTIVE)   serdes_data <= inp_data;
@@ -113,7 +113,7 @@ always @(posedge clk or negedge rst_n) begin
 end
 
 // remember bit for trail sequence
-always @(posedge clk or negedge rst_n) begin
+always @(posedge clk) begin
     if(~rst_n) begin
          last_bit_byte <= 8'd0;
     end else if(state_current == STATE_TX_ACTIVE) begin
@@ -123,7 +123,7 @@ end
 
 reg serdes_enable;
 
-always @(posedge clk or negedge rst_n)
+always @(posedge clk)
     if(~rst_n)          serdes_enable <= 1'b0;
     else                serdes_enable <= (state_current != STATE_IDLE); // or (state_next != STATE_IDLE)
 
@@ -135,14 +135,14 @@ assign hs_enable        = serdes_enable;
 reg [7:0] tx_hs_go_counter;
 reg [7:0] tx_hs_trail_counter;
 
-always @(posedge clk or negedge rst_n)
+always @(posedge clk)
     if(~rst_n)                          tx_hs_go_counter <= 8'd0;
     else if((|tx_hs_go_counter))        tx_hs_go_counter <= tx_hs_go_counter - 8'd1;
     else if(state_next == STATE_TX_GO)  tx_hs_go_counter <= hs_go_timeout - 8'd1;
 
 assign tx_hs_go_timeout = (state_current == STATE_TX_GO) && !(|tx_hs_go_counter);
 
-always @(posedge clk or negedge rst_n)
+always @(posedge clk)
     if(~rst_n)                              tx_hs_trail_counter <= 8'd0;
     else if((|tx_hs_trail_counter))         tx_hs_trail_counter <= tx_hs_trail_counter - 8'd1;
     else if(state_next == STATE_TX_TRAIL)   tx_hs_trail_counter <= hs_trail_timeout - 8'd1;

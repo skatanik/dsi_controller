@@ -1,8 +1,9 @@
 `timescale 1ns/1ps
 
-module top_level_csi_tx_tb;
+module top_level_dsi_tx_tb;
 
-// `define MODELING
+`define SIMULATION
+`define XILINX
 // `define MAX_10
 
 /********************************************************************
@@ -43,6 +44,7 @@ bit                    rst_phy_n;
 bit                    clk_hs_latch;
 bit                    clk_hs;
 bit                    clk_hs_clk;
+bit                    clk_hs_clk_latch;
 
 wire                    irq_rx;
 wire                    irq_tx;
@@ -118,6 +120,18 @@ end
 initial
 begin
 #1
+#(PHY_SLOW_PERIOD/4)
+forever
+begin
+//   #9.71 clk_hs_latch = 1'b1;
+//   #1.71 clk_hs_latch = 1'b0;
+#(PHY_SLOW_PERIOD/2) clk_hs_clk_latch = ~clk_hs_clk_latch;
+end
+end
+
+initial
+begin
+#1
 forever
 begin
    #(PHY_FAST_PERIOD/2) clk_hs = ~clk_hs;      // 400 MHz
@@ -155,6 +169,8 @@ task avalon_mm_write;
     avl_mm_write[ind]        = 1'b0;
     avl_mm_writedata[ind]    = 0;
     avl_mm_byteenable[ind]   = 0;
+
+    repeat(1) @(posedge clk);
 
 endtask : avalon_mm_write
 
@@ -215,7 +231,10 @@ repeat(40) @(posedge clk);
 
 /********* Init TX controller *********/
 
-settings_word = (31'b1 << 1) | (LANES_NUMBER - 1) << 9;
+//enable lines
+avalon_mm_read(32'h0, read_res, `AVL_MM_TX);
+
+settings_word = read_res | (31'b1 << 1) ; //| (LANES_NUMBER - 1) << 9;
 
 avalon_mm_write(32'b0, settings_word, `AVL_MM_TX);
 repeat(1) @(posedge clk);
@@ -228,50 +247,107 @@ end
 
 $display("Lanes ready");
 
-settings_word = (31'b1 << 2) | (31'b1 << 1) | (LANES_NUMBER - 1) << 9;
+$display("Send LP LMD");
 
-/********* Enable dphy clock *********/
+settings_word = 32'h00001105;
+avalon_mm_write(32'h14, settings_word, `AVL_MM_TX);
 
+avalon_mm_read(32'h0, read_res, `AVL_MM_TX);
+
+settings_word = (32'b1 << 3) | read_res;
 avalon_mm_write(32'b0, settings_word, `AVL_MM_TX);
-repeat(1) @(posedge clk);
 
-while(read_res != (32'd3 << 1))
+avalon_mm_read(32'h4, read_res, `AVL_MM_TX);
+while(!(read_res & (32'b1 << 4)))
+begin
+    avalon_mm_read(32'h4, read_res, `AVL_MM_TX);
+    repeat(1) @(posedge clk);
+end
+repeat(50000) @(posedge clk);
+$display("Run DSI CLK");
+
+avalon_mm_read(32'h0, read_res, `AVL_MM_TX);
+
+settings_word = (32'b1 << 2) | read_res;
+avalon_mm_write(32'b0, settings_word, `AVL_MM_TX);
+
+avalon_mm_read(32'h4, read_res, `AVL_MM_TX);
+while(!(read_res & (32'b1 << 1)))
 begin
     avalon_mm_read(32'h4, read_res, `AVL_MM_TX);
     repeat(1) @(posedge clk);
 end
 
-$display("Clk ready");
+$display("send Display ON");
 
-repeat(10) @(posedge clk);
+settings_word = 32'h00001105;
+avalon_mm_write(32'h14, settings_word, `AVL_MM_TX);
 
-$display("Write CMD");
+avalon_mm_read(32'h0, read_res, `AVL_MM_TX);
 
-avalon_mm_write(32'h14, 32'h005F_7538, `AVL_MM_TX);
-repeat(10) @(posedge clk);
-
-settings_word = (32'b1 << 3) | (31'b1 << 2) | (31'b1 << 1) | (LANES_NUMBER - 1) << 9;
-
-$display("Send CMD");
-
+settings_word = (32'b1 << 3) | read_res;
 avalon_mm_write(32'b0, settings_word, `AVL_MM_TX);
-repeat(1) @(posedge clk);
 
-while(!(read_res & (32'd4 << 1)))
+avalon_mm_read(32'h4, read_res, `AVL_MM_TX);
+while(!(read_res & (32'b1 << 4)))
 begin
     avalon_mm_read(32'h4, read_res, `AVL_MM_TX);
     repeat(1) @(posedge clk);
 end
 
-repeat(200) @(posedge clk_phy);
+repeat(50000) @(posedge clk);
 
-repeat(1) @(posedge clk);
+$display("Run data");
 
-$display("Enable Controller");
+avalon_mm_read(32'h0, read_res, `AVL_MM_TX);
 
-settings_word = 32'b1| (31'b1 << 2) | (31'b1 << 1) | (LANES_NUMBER - 1) << 9;
-
+settings_word = (32'b1 << 0) | read_res;
 avalon_mm_write(32'b0, settings_word, `AVL_MM_TX);
+
+// settings_word = (31'b1 << 2) | (31'b1 << 1) | (LANES_NUMBER - 1) << 9;
+
+// /********* Enable dphy clock *********/
+
+// avalon_mm_write(32'b0, settings_word, `AVL_MM_TX);
+// repeat(1) @(posedge clk);
+
+// while(read_res != (32'd3 << 1))
+// begin
+//     avalon_mm_read(32'h4, read_res, `AVL_MM_TX);
+//     repeat(1) @(posedge clk);
+// end
+
+// $display("Clk ready");
+
+// repeat(10) @(posedge clk);
+
+// $display("Write CMD");
+
+// avalon_mm_write(32'h14, 32'h005F_7538, `AVL_MM_TX);
+// repeat(10) @(posedge clk);
+
+// settings_word = (32'b1 << 3) | (31'b1 << 2) | (31'b1 << 1) | (LANES_NUMBER - 1) << 9;
+
+// $display("Send CMD");
+
+// avalon_mm_write(32'b0, settings_word, `AVL_MM_TX);
+// repeat(1) @(posedge clk);
+
+// while(!(read_res & (32'd4 << 1)))
+// begin
+//     avalon_mm_read(32'h4, read_res, `AVL_MM_TX);
+//     repeat(1) @(posedge clk);
+// end
+
+// repeat(200) @(posedge clk_phy);
+
+// repeat(1) @(posedge clk);
+
+// $display("Enable Controller");
+
+// settings_word = 32'b1| (31'b1 << 2) | (31'b1 << 1) | (LANES_NUMBER - 1) << 9;
+
+// avalon_mm_write(32'b0, settings_word, `AVL_MM_TX);
 
 controllers_ready = 1;
 
@@ -426,6 +502,7 @@ dsi_tx_top #(
     .clk_hs_latch                           (clk_hs_latch                   ),
     .clk_hs                                 (clk_hs                         ),
     .clk_hs_clk                             (clk_hs_clk                     ),
+    .clk_hs_clk_latch                       (clk_hs_clk_latch               ),
 
     .irq                                    (irq_tx                         ),
 
@@ -447,8 +524,8 @@ dsi_tx_top #(
     .dphy_clk_lp_out_p                      (dphy_lane_clk_lp_p             ),
     .dphy_clk_lp_out_n                      (dphy_lane_clk_lp_n             ),
 
-    .dphy_clk_hs_out                        (dphy_lane_clk_hs               ),
-    .dphy_data_hs_out                       (dphy_lane_data_hs              ),
+    // .dphy_clk_hs_out                        (dphy_lane_clk_hs               ),
+    // .dphy_data_hs_out                       (dphy_lane_data_hs              ),
 
     /********* Avalon-MM iface *********/
     .avl_mm_address                         (avl_mm_addr[0]                 ),

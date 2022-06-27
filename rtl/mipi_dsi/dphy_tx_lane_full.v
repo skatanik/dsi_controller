@@ -57,7 +57,7 @@ localparam [3:0] STATE_ULPS_01 = 10;
 
 reg [3:0] state_current, state_next;
 
-always @(posedge clk or negedge rst_n) begin
+always @(posedge clk) begin
     if(~rst_n) begin
         state_current <= STATE_LINES_DISABLED;
     end else begin
@@ -138,7 +138,7 @@ assign next_state_mark_one      = (state_next == STATE_LP_SEND_MARK_ONE) && (sta
 assign next_state_send_cmd      = (state_current == STATE_LP_SEND_ENTRY_CMD) && (state_next == STATE_LP_SEND_LP_CMD);
 assign data_rqst                = (/*(state_current == STATE_HS_RQST) ||*/ (state_current == STATE_HS_PREP) || (state_current == STATE_HS_ACTIVE)) ? hs_data_rqst : lp_data_rqst;
 
-always @(posedge clk or negedge rst_n)
+always @(posedge clk)
     if(~rst_n)                                      lp_data_buffer <= 8'b0;
     else if(next_state_lpdt)                        lp_data_buffer <= ESC_MODE_ENTRY;
     else if(next_state_entry_cmd)                   lp_data_buffer <= ENTRY_CMD;
@@ -146,7 +146,7 @@ always @(posedge clk or negedge rst_n)
     else if(next_state_mark_one)                    lp_data_buffer <= 8'hff;
     else if(state_next == STATE_IDLE)               lp_data_buffer <= 8'b0;
 
-always @(posedge clk or negedge rst_n)
+always @(posedge clk)
     if(~rst_n)                          last_lp_byte <= 1'b0;
     else if(send_lp_data)               last_lp_byte <= lp_fin_rqst_reg;
     else if(state_next == STATE_IDLE)   last_lp_byte <= 1'b0;
@@ -160,7 +160,7 @@ wire bits_counter_is_zero;
 assign bits_counter_is_zero     = !(|lp_data_bits_counter) && reset_baud_counter;
 assign send_lp_data             = next_state_send_cmd || lp_data_rqst && !last_lp_byte && (state_current != STATE_IDLE);
 
-always @(posedge clk or negedge rst_n)
+always @(posedge clk)
     if(~rst_n)                                                      lp_data_bits_counter <= 4'b0;
     else if(next_state_lpdt)                                        lp_data_bits_counter <= 4'b1;
     else if(next_state_entry_cmd)                                   lp_data_bits_counter <= 4'd7;
@@ -170,11 +170,11 @@ always @(posedge clk or negedge rst_n)
 
 reg lp_data_rqst_delayed;
 
-always @(posedge clk or negedge rst_n)
+always @(posedge clk)
     if(!rst_n)  lp_data_rqst_delayed <= 1'b0;
     else        lp_data_rqst_delayed <= lp_data_rqst;
 
-always @(posedge clk or negedge rst_n)
+always @(posedge clk)
     if(!rst_n)                          lp_fin_rqst_reg <= 1'b0;
     else if(lp_data_rqst_delayed)       lp_fin_rqst_reg <= fin_rqst;
 
@@ -185,7 +185,7 @@ assign send_mark_one_done           = (state_current == STATE_LP_SEND_MARK_ONE) 
 
 assign reset_baud_counter = next_state_lpdt || inc_lp_data_bits_counter;
 
-always @(posedge clk or negedge rst_n)
+always @(posedge clk)
     if(~rst_n)                          lp_baud_counter <= 8'b0;
     else if(reset_baud_counter)         lp_baud_counter <= LP_BAUD_TIME;
     else if(state_next == STATE_IDLE)   lp_baud_counter <= 8'b0;
@@ -206,7 +206,7 @@ assign set_lp_line_to_zero      = state_next == STATE_LINES_DISABLED;
 
 
 // LP lines control
-always @(posedge clk or negedge rst_n) begin
+always @(posedge clk) begin
     if(~rst_n)                                                              LP_p <= 0;
     else if(set_lp_line_to_zero)                                            LP_p <= 0;
     else if(set_lp_line_to_one)                                             LP_p <= 1;
@@ -216,7 +216,7 @@ always @(posedge clk or negedge rst_n) begin
     else if(!current_lp_data_bit && (state_current != STATE_IDLE))          LP_p <= 0;
 end
 
-always @(posedge clk or negedge rst_n) begin
+always @(posedge clk) begin
     if(~rst_n)                                                              LP_n <= 0;
     else if(set_lp_line_to_zero)                                            LP_n <= 0;
     else if(set_lp_line_to_one)                                             LP_n <= 1;
@@ -236,21 +236,21 @@ assign LP_n_output      = LP_n;
 reg [7:0] hs_prep_counter;
 reg [7:0] hs_exit_counter;
 
-always @(posedge clk or negedge rst_n)
+always @(posedge clk)
     if(~rst_n)                                                                      hs_rqst_counter <= 8'd0;
     else if((state_current == STATE_HS_RQST) | (state_current == STATE_ULPS_01))    hs_rqst_counter <= hs_rqst_counter - 8'd1;
     else                                                                            hs_rqst_counter <= tlpx_timeout_val - 8'd1;
 
 assign hs_rqst_timeout = (state_current == STATE_HS_RQST) && !(|hs_rqst_counter);
 
-always @(posedge clk or negedge rst_n)
+always @(posedge clk)
     if(~rst_n)                              hs_prep_counter <= 8'd0;
     else if(state_current == STATE_HS_PREP) hs_prep_counter <= hs_prep_counter - 8'd1;
     else if(state_next == STATE_HS_PREP)    hs_prep_counter <= hs_prepare_timeout_val - 8'd1;
 
 assign hs_prep_timeout = (state_current == STATE_HS_PREP) && !(|hs_prep_counter);
 
-always @(posedge clk or negedge rst_n)
+always @(posedge clk)
     if(~rst_n)                              hs_exit_counter <= 8'd0;
     else if(state_current == STATE_HS_EXIT) hs_exit_counter <= hs_exit_counter - 8'd1;
     else if(state_next == STATE_HS_EXIT)    hs_exit_counter <= hs_exit_timeout_val - 8'd1;
@@ -263,7 +263,7 @@ assign hs_start_rqst = (state_next == STATE_HS_ACTIVE) && (state_current != STAT
 
 wire hs_lane_active;
 
-always @(posedge clk or negedge rst_n)
+always @(posedge clk)
     if(~rst_n)                          fin_rqst_reg <= 1'b0;
     else if(fin_rqst && !mode_lp)       fin_rqst_reg <= 1'b1;
     else if(hs_fin_ack)                 fin_rqst_reg <= 1'b0;
