@@ -196,7 +196,7 @@ localparam [2:0] STATE_WAIT_CLK_UNACTIVE    = 4;        // Wait while deinit seq
 localparam [2:0] STATE_DISABLE_BUFFERS  = 5;           // send a signal to lanes to disactivate output LP buffers.
 reg [2:0] state_current, state_next;
 
-always @(posedge clk_phy or negedge rst_n) begin
+always @(posedge clk_phy) begin
     if(~rst_n) begin
         state_current <= STATE_IDLE;
     end else begin
@@ -235,22 +235,22 @@ assign lines_ready      = |dsi_lines_ready;
 assign dsi_start_rqst_clk   = clock_enable;
 assign dsi_fin_rqst_clk     = state_next == STATE_WAIT_CLK_UNACTIVE;
 
-always @(posedge clk_phy or negedge rst_n)
+always @(posedge clk_phy)
     if(~rst_n)                                          dsi_lines_enable[0] <= 1'b0;
     else if(lines_enable)                               dsi_lines_enable[0] <= 1'b1;
     else if(state_current == STATE_DISABLE_BUFFERS)     dsi_lines_enable[0] <= 1'b0;
 
-always @(posedge clk_phy or negedge rst_n)
+always @(posedge clk_phy)
     if(~rst_n)                                          dsi_lines_enable[1] <= 1'b0;
     else if(lines_enable)                               dsi_lines_enable[1] <= (reg_lanes_number >= 3'd2);
     else if(state_current == STATE_DISABLE_BUFFERS)     dsi_lines_enable[1] <= 1'b0;
 
-always @(posedge clk_phy or negedge rst_n)
+always @(posedge clk_phy)
     if(~rst_n)                                          dsi_lines_enable[2] <= 1'b0;
     else if(lines_enable)                               dsi_lines_enable[2] <= (reg_lanes_number >= 3'd3);
     else if(state_current == STATE_DISABLE_BUFFERS)     dsi_lines_enable[2] <= 1'b0;
 
-always @(posedge clk_phy or negedge rst_n)
+always @(posedge clk_phy)
     if(~rst_n)                                          dsi_lines_enable[3] <= 1'b0;
     else if(lines_enable)                               dsi_lines_enable[3] <= (reg_lanes_number == 3'd4);
     else if(state_current == STATE_DISABLE_BUFFERS)     dsi_lines_enable[3] <= 1'b0;

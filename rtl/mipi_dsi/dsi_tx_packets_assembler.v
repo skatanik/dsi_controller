@@ -56,64 +56,52 @@ localparam BYTES_IN_LINE = LINE_WIDTH * BITS_PER_PIXEL / 8;
 /********* FSM declaration *********/
 
 wire send_lp_cmd_done;
-wire send_vss_vsa_done;
-wire wait_h_blank_vss_vsa_done;
-wire send_hss_vsa_done;
-wire wait_h_blank_vsa_done;
+wire send_vss_done;
 wire send_hss_vbp_done;
-wire wait_h_blank_vbp_done;
 wire send_hss_act_done;
-wire wait_h_blank_act_hbp_done;
+wire send_blank_header_done;
+wire send_blank_crc_done;
 wire send_data_header_done;
 wire send_data_done;
 wire send_data_crc_done;
-wire wait_h_blank_act_hfp_done;
 wire send_hss_vfp_done;
-wire wait_h_blank_vfp_done;
-wire last_wait_h_blank_vsa;
-wire last_wait_h_blank_vbp;
-wire last_wait_h_blank_act_hfp;
-wire last_wait_h_blank_vfp;
+wire send_hfp_done;
 wire send_lp_cmd;
+wire line_end;
+wire last_act_line;
 
 localparam [4:0]        STATE_IDLE                  = 5'd0;
 localparam [4:0]        STATE_SEND_LP_CMD           = 5'd1;
-localparam [4:0]        STATE_SEND_VSS_VSA          = 5'd2;
-localparam [4:0]        STATE_WAIT_H_BLANK_VSS_VSA  = 5'd3;
-localparam [4:0]        STATE_SEND_HSS_VSA          = 5'd4;
-localparam [4:0]        STATE_WAIT_H_BLANK_VSA      = 5'd5;
-localparam [4:0]        STATE_SEND_HSS_VBP          = 5'd6;
-localparam [4:0]        STATE_WAIT_H_BLANK_VBP      = 5'd7;
-localparam [4:0]        STATE_SEND_HSS_ACT          = 5'd8;
-localparam [4:0]        STATE_WAIT_H_BLANK_ACT_HBP  = 5'd9;
+localparam [4:0]        STATE_SEND_VSS              = 5'd2;
+localparam [4:0]        STATE_SEND_HSS_VBP          = 5'd4;
+localparam [4:0]        STATE_SEND_HSS_ACT          = 5'd5;
+localparam [4:0]        STATE_SEND_BLANK_HEADER      = 5'd6;
+localparam [4:0]        STATE_SEND_BLANK             = 5'd7;
+localparam [4:0]        STATE_SEND_BLANK_CRC         = 5'd8;
+localparam [4:0]        STATE_SEND_HFP              = 5'd9;
 localparam [4:0]        STATE_SEND_DATA_HEADER      = 5'd10;
 localparam [4:0]        STATE_SEND_DATA             = 5'd11;
 localparam [4:0]        STATE_SEND_DATA_CRC         = 5'd12;
-localparam [4:0]        STATE_WAIT_H_BLANK_ACT_HFP  = 5'd13;
 localparam [4:0]        STATE_SEND_HSS_VFP          = 5'd14;
-localparam [4:0]        STATE_WAIT_H_BLANK_VFP      = 5'd15;
 
 reg [4:0] state_current;
 reg [4:0] state_next;
 
 wire state_is_idle                  = (state_current == STATE_IDLE);
 wire state_send_lp_cmd              = (state_current == STATE_SEND_LP_CMD);
-wire state_send_vss_vsa             = (state_current == STATE_SEND_VSS_VSA);
-wire state_wait_h_blank_vss_vsa     = (state_current == STATE_WAIT_H_BLANK_VSS_VSA);
-wire state_send_hss_vsa             = (state_current == STATE_SEND_HSS_VSA);
-wire state_wait_h_blank_vsa         = (state_current == STATE_WAIT_H_BLANK_VSA);
+wire state_send_vss                 = (state_current == STATE_SEND_VSS);
 wire state_send_hss_vbp             = (state_current == STATE_SEND_HSS_VBP);
-wire state_wait_h_blank_vbp         = (state_current == STATE_WAIT_H_BLANK_VBP);
 wire state_send_hss_act             = (state_current == STATE_SEND_HSS_ACT);
-wire state_wait_h_blank_act_hbp     = (state_current == STATE_WAIT_H_BLANK_ACT_HBP);
 wire state_send_data_header         = (state_current == STATE_SEND_DATA_HEADER);
 wire state_send_data                = (state_current == STATE_SEND_DATA);
 wire state_send_data_crc            = (state_current == STATE_SEND_DATA_CRC);
-wire state_wait_h_blank_act_hfp     = (state_current == STATE_WAIT_H_BLANK_ACT_HFP);
+wire state_send_blank_header        = (state_current == STATE_SEND_BLANK_HEADER);
+wire state_send_blank               = (state_current == STATE_SEND_BLANK);
+wire state_send_blank_crc           = (state_current == STATE_SEND_BLANK_CRC);
 wire state_send_hss_vfp             = (state_current == STATE_SEND_HSS_VFP);
-wire state_wait_h_blank_vfp         = (state_current == STATE_WAIT_H_BLANK_VFP);
+wire state_send_hfp                 = (state_current == STATE_SEND_HFP);
 
-always @(posedge clk or negedge rst_n)
+always @(posedge clk)
     if(!rst_n)  state_current <= STATE_IDLE;
     else        state_current <= state_next;
 
@@ -121,34 +109,28 @@ always @(*)
     begin
         case (state_current)
             STATE_IDLE:
-                state_next = fifo_line_ready & enable ? STATE_SEND_VSS_VSA : (send_lp_cmd ? STATE_SEND_LP_CMD : STATE_IDLE);
+                state_next = fifo_line_ready & enable & line_end ? STATE_SEND_VSS : (send_lp_cmd ? STATE_SEND_LP_CMD : STATE_IDLE);
 
             STATE_SEND_LP_CMD:
                 state_next = send_lp_cmd_done ? STATE_IDLE : STATE_SEND_LP_CMD;
 
-            STATE_SEND_VSS_VSA:
-                state_next = send_vss_vsa_done ? STATE_WAIT_H_BLANK_VSS_VSA : STATE_SEND_VSS_VSA;
-
-            STATE_WAIT_H_BLANK_VSS_VSA:
-                state_next = wait_h_blank_vss_vsa_done ? STATE_SEND_HSS_VSA : STATE_WAIT_H_BLANK_VSS_VSA;
-
-            STATE_SEND_HSS_VSA:
-                state_next = send_hss_vsa_done ? STATE_WAIT_H_BLANK_VSA : STATE_SEND_HSS_VSA;
-
-            STATE_WAIT_H_BLANK_VSA:
-                state_next = wait_h_blank_vsa_done ? (last_wait_h_blank_vsa ? STATE_SEND_HSS_VBP : STATE_SEND_HSS_VSA) : STATE_WAIT_H_BLANK_VSA;
+            STATE_SEND_VSS:
+                state_next = send_vss_done ? STATE_SEND_HSS_VBP : STATE_SEND_VSS;
 
             STATE_SEND_HSS_VBP:
-                state_next = send_hss_vbp_done ? STATE_WAIT_H_BLANK_VBP : STATE_SEND_HSS_VBP;
-
-            STATE_WAIT_H_BLANK_VBP:
-                state_next = wait_h_blank_vbp_done ? (last_wait_h_blank_vbp ? STATE_SEND_HSS_ACT : STATE_SEND_HSS_VBP) : STATE_WAIT_H_BLANK_VBP;
-
+                state_next = send_hss_vbp_done ? STATE_SEND_HSS_ACT : STATE_SEND_HSS_VBP;
+            // horizontal fsm
             STATE_SEND_HSS_ACT:
-                state_next = send_hss_act_done ? STATE_SEND_DATA_HEADER : STATE_SEND_HSS_ACT;
+                state_next = send_hss_act_done ? STATE_SEND_BLANK_HEADER : STATE_SEND_HSS_ACT;
 
-            // STATE_WAIT_H_BLANK_ACT_HBP:
-            //     state_next = wait_h_blank_act_hbp_done ? STATE_SEND_DATA_HEADER : STATE_WAIT_H_BLANK_ACT_HBP;
+            STATE_SEND_BLANK_HEADER:
+                state_next = send_blank_header_done ? STATE_SEND_BLANK : STATE_SEND_BLANK_HEADER;
+
+            STATE_SEND_BLANK:
+                state_next = send_data_done ? STATE_SEND_BLANK_CRC : STATE_SEND_BLANK;
+
+            STATE_SEND_BLANK_CRC:
+                state_next = send_blank_crc_done ? STATE_SEND_DATA_HEADER : STATE_SEND_BLANK_CRC;
 
             STATE_SEND_DATA_HEADER:
                 state_next = send_data_header_done ? STATE_SEND_DATA : STATE_SEND_DATA_HEADER;
@@ -157,16 +139,13 @@ always @(*)
                 state_next = send_data_done ? STATE_SEND_DATA_CRC : STATE_SEND_DATA;
 
             STATE_SEND_DATA_CRC:
-                state_next = send_data_crc_done ? STATE_WAIT_H_BLANK_ACT_HFP : STATE_SEND_DATA_CRC;
+                state_next = send_data_crc_done ? STATE_SEND_HFP : STATE_SEND_DATA_CRC;
 
-            STATE_WAIT_H_BLANK_ACT_HFP:
-                state_next = wait_h_blank_act_hfp_done ? (last_wait_h_blank_act_hfp ? STATE_SEND_HSS_VFP : STATE_SEND_HSS_ACT) : STATE_WAIT_H_BLANK_ACT_HFP;
-
+            STATE_SEND_HFP:
+                state_next = send_hfp_done ? (last_act_line ? STATE_SEND_HSS_VFP : STATE_SEND_HSS_ACT) : STATE_SEND_HFP;
+            // horizontal fsm end
             STATE_SEND_HSS_VFP:
-                state_next = send_hss_vfp_done ? STATE_WAIT_H_BLANK_VFP : STATE_SEND_HSS_VFP;
-
-            STATE_WAIT_H_BLANK_VFP:
-                state_next = wait_h_blank_vfp_done ? (last_wait_h_blank_vfp ? STATE_IDLE : STATE_SEND_HSS_VFP) : STATE_WAIT_H_BLANK_VFP;
+                state_next = send_hss_vfp_done ? (enable ? STATE_SEND_VSS : STATE_IDLE) : STATE_SEND_HSS_VFP;
 
             default:
                 state_next = STATE_IDLE;
@@ -177,7 +156,7 @@ always @(*)
 /********* Send lp cmd *********/
 reg send_cmd_reg;
 
-always @(posedge clk or negedge rst_n)
+always @(posedge clk)
     if(!rst_n)      send_cmd_reg <= 1'b0;
     else            send_cmd_reg <= send_cmd;
 
@@ -188,44 +167,43 @@ assign send_lp_cmd     = (send_cmd_reg ^ send_cmd) & send_cmd;
 assign pix_buffer_underflow_set = state_send_data_header && !fifo_line_ready;
 
 /********* Timeouts *********/
-reg [31:0] blank_counter;
 
-always @(posedge clk or negedge rst_n)
-    if(!rst_n)                                  blank_counter <= 32'b0;
-    // else if((state_current != state_next))      blank_counter <= BLANK_TIME;
-    else if((state_next == STATE_SEND_VSS_VSA))      blank_counter <= BLANK_TIME + LINE_WIDTH;
-    else if((state_next == STATE_SEND_HSS_VSA))      blank_counter <= BLANK_TIME + LINE_WIDTH;
-    else if((state_next == STATE_SEND_HSS_VBP))      blank_counter <= BLANK_TIME + LINE_WIDTH;
-    else if((state_next == STATE_SEND_HSS_ACT))      blank_counter <= BLANK_TIME + LINE_WIDTH;
-    else if((state_next == STATE_SEND_HSS_VFP))      blank_counter <= BLANK_TIME + LINE_WIDTH;
-    else if(|blank_counter)                     blank_counter <= blank_counter - 32'b1;
+wire line_start;
+wire last_line_vbp;
+wire last_line_vfp;
 
-assign wait_h_blank_vss_vsa_done    = (blank_counter == 0) & state_wait_h_blank_vss_vsa;
-assign wait_h_blank_vsa_done        = (blank_counter == 0) & state_wait_h_blank_vsa;
-assign wait_h_blank_vbp_done        = (blank_counter == 0) & state_wait_h_blank_vbp;
-// assign wait_h_blank_act_hbp_done    = (blank_counter == (BLANK_TIME - BLANK_TIME_HBP_ACT)) & state_wait_h_blank_act_hbp;
-assign wait_h_blank_act_hfp_done    = (blank_counter == 0) & state_wait_h_blank_act_hfp;
-assign wait_h_blank_vfp_done        = (blank_counter == 0) & state_wait_h_blank_vfp;
+reg [31:0] pix_counter;
+reg [31:0] lines_counter;
 
-reg [15:0] lines_counter;
+always @(posedge clk) begin
+    if(!rst_n)          pix_counter <= 32'b0;
+    else if(enable) begin
+        if(!(|pix_counter)) pix_counter <= i_lines_htotal-1;
+        else                pix_counter <= pix_counter - 32'b1;
+    end
+end
 
-wire line_finished =    wait_h_blank_vsa_done |
-                        wait_h_blank_vbp_done |
-                        wait_h_blank_act_hfp_done |
-                        wait_h_blank_vfp_done;
+assign line_start = enable & !(|pix_counter);
+assign line_end = enable & !(|pix_counter[31:1]) & pix_counter[0];
 
-always @(posedge clk or negedge rst_n)
-    if(!rst_n)                                                                  lines_counter <= 16'b0;
-    else if((state_next == STATE_SEND_HSS_VSA) && (lines_counter == 16'b0))     lines_counter <= VSA_LINES_NUMBER-1;
-    else if((state_next == STATE_SEND_HSS_VBP) && (lines_counter == 16'b0))     lines_counter <= VBP_LINES_NUMBER-1;
-    else if((state_next == STATE_SEND_HSS_ACT) && (lines_counter == 16'b0))     lines_counter <= ACT_LINES_NUMBER-1;
-    else if((state_next == STATE_SEND_HSS_VFP) && (lines_counter == 16'b0))     lines_counter <= VFP_LINES_NUMBER-1;
-    else if(line_finished)                                                      lines_counter <= lines_counter - 16'd1;
+always @(posedge clk) begin
+    if(!rst_n)                  lines_counter <= 32'b0;
+    else if(line_end)
+        if(!(|lines_counter))   lines_counter <= i_lines_vtotal - 1;
+        else                    lines_counter <= lines_counter - 32'b1;
+end
 
-assign last_wait_h_blank_vsa        = state_wait_h_blank_vsa        && (lines_counter == 16'd1);
-assign last_wait_h_blank_vbp        = state_wait_h_blank_vbp        && (lines_counter == 16'd1);
-assign last_wait_h_blank_act_hfp    = state_wait_h_blank_act_hfp    && (lines_counter == 16'd1);
-assign last_wait_h_blank_vfp        = state_wait_h_blank_vfp        && (lines_counter == 16'd1);
+reg [31:0] vbp_cnt;
+reg [31:0] act_cnt;
+
+always @(posedge clk) begin
+    vbp_cnt <= i_lines_vtotal - (i_lines_vsync + i_lines_vbp );
+    act_cnt <= i_lines_vtotal - (i_lines_vsync + i_lines_vbp + i_lines_vact);
+end
+
+assign last_line_vbp = lines_counter == vbp_cnt;
+assign last_line_vfp = !(|lines_counter);
+assign last_act_line = lines_counter == act_cnt;
 
 /********* Short packets assembling *********/
 wire [23:0] packet_header;
@@ -250,8 +228,11 @@ always @(*)
             STATE_SEND_LP_CMD:
                 data_bytes_number = cmd_packet[23:8];
 
+            STATE_SEND_BLANK_HEADER:
+                data_bytes_number = i_lines_hbp * 3 + 2; // align to 32 bit (with crc)
+
             STATE_SEND_DATA_HEADER:
-                data_bytes_number = BYTES_IN_LINE;
+                data_bytes_number = i_lines_hact * 3;
 
             default:
                 data_bytes_number = 16'b0;
@@ -265,11 +246,8 @@ always @(*)
             STATE_SEND_LP_CMD:
                 packet_id = cmd_packet[7:0];
 
-            STATE_SEND_VSS_VSA:
+            STATE_SEND_VSS:
                 packet_id = {2'b0, `PACKET_VSS};
-
-            STATE_SEND_HSS_VSA:
-                packet_id = {2'b0, `PACKET_HSS};
 
             STATE_SEND_HSS_VBP:
                 packet_id = {2'b0, `PACKET_HSS};
@@ -279,6 +257,9 @@ always @(*)
 
             STATE_SEND_HSS_VFP:
                 packet_id = {2'b0, `PACKET_HSS};
+
+            STATE_SEND_BLANK_HEADER:
+                packet_id = {2'b0, `PACKET_BLANKING};
 
             STATE_SEND_DATA_HEADER:
                 packet_id = {2'b0, `PACKET_PPS24};
@@ -295,7 +276,7 @@ wire        clear_crc;
 wire        write_crc;
 wire [15:0] crc_result;
 
-assign clear_crc            = state_send_data_header;
+assign clear_crc            = state_send_data_header | state_send_blank_header;
 
 crc_calculator crc_calculator_0(
     .clk                (clk                ),
@@ -312,9 +293,9 @@ crc_calculator crc_calculator_0(
 
 reg [15:0] data_size_left;
 
-always @(posedge clk or negedge rst_n)
+always @(posedge clk)
     if(!rst_n)                  data_size_left <= 16'b0;
-    else if(clear_crc)          data_size_left <= BYTES_IN_LINE/4;
+    else if(clear_crc)          data_size_left <= state_send_data_header ? {8'b0, (i_lines_hact * 3) >> 2} : {12'b0, (i_lines_hbp * 3) >> 2 };
     else if(fifo_read_ack)      data_size_left <= data_size_left - 16'd1;
 
 assign send_data_done = (data_size_left == 16'd1) & fifo_read_ack;
@@ -369,6 +350,12 @@ always @(*)
             STATE_SEND_LP_CMD:
                 data_mux = {2'b10, packet_header_full};
 
+            STATE_SEND_BLANK:
+                data_mux = {2'b00, 32'b0};
+
+            STATE_SEND_BLANK_CRC:
+                data_mux = {2'b00, crc_result, 16'b0};
+
             STATE_SEND_DATA:
                 data_mux = {2'b00, fifo_data};
 
@@ -382,24 +369,27 @@ always @(*)
     end
 
 assign fifo_mux_write           = !fifo_mux_full & (state_send_lp_cmd |
-                                                    state_send_vss_vsa |
-                                                    state_send_hss_vsa |
-                                                    state_send_hss_vbp |
-                                                    state_send_hss_act |
-                                                    state_send_hss_vfp |
-                                                    (state_send_data_header & fifo_line_ready) |
-                                                    state_send_data |
-                                                    state_send_data_crc);
+                                                    state_send_vss & line_start |
+                                                    state_send_hss_vbp & line_start |
+                                                    state_send_hss_act & line_start |
+                                                    state_send_hss_vfp & line_start |
+                                                    state_send_data_header |
+                                                    state_send_blank_header |
+                                                    state_send_data_crc |
+                                                    state_send_blank_crc |
+                                                    state_send_data | state_send_blank);
 
-assign fifo_read_ack            = fifo_mux_write & state_send_data & fifo_not_empty;
+assign fifo_read_ack            = fifo_mux_write & (state_send_data | state_send_blank) & fifo_not_empty;
 assign send_lp_cmd_done         = fifo_mux_write & state_send_lp_cmd;
-assign send_vss_vsa_done        = fifo_mux_write & state_send_vss_vsa;
-assign send_hss_vsa_done        = fifo_mux_write & state_send_hss_vsa;
-assign send_hss_vbp_done        = fifo_mux_write & state_send_hss_vbp;
+assign send_vss_done            = line_end;
+assign send_hfp_done            = line_end;
+assign send_hss_vbp_done        = line_end & last_line_vbp;
 assign send_hss_act_done        = fifo_mux_write & state_send_hss_act;
 assign send_data_header_done    = fifo_mux_write & state_send_data_header;
+assign send_blank_header_done   = fifo_mux_write & state_send_blank_header;
 assign send_data_crc_done       = fifo_mux_write & state_send_data_crc;
-assign send_hss_vfp_done        = fifo_mux_write & state_send_hss_vfp;
+assign send_blank_crc_done      = fifo_mux_write & state_send_blank_crc;
+assign send_hss_vfp_done        = line_end & last_line_vfp;
 assign write_crc                = fifo_read_ack;
 
 /********* Repacker part *********/
@@ -415,15 +405,15 @@ reg [63:0]  shift_register;
 reg [3:0]   shift_register_bn;
 reg         lp_mode_flag;
 
-always @(posedge clk or negedge rst_n)
+always @(posedge clk)
     if(!rst_n)              lp_mode_flag <= 1'b0;
     else if(fifo_mux_read)  lp_mode_flag <= fifo_mux_data_out[33];
 
-always @(posedge clk or negedge rst_n)
+always @(posedge clk)
     if(!rst_n)              shift_register <= 64'b0;
     else                    shift_register <= (shift_register >> ({3{fifo_out_write}} & output_bytes_number)*8) | {64{fifo_mux_read}} & ({32'b0, fifo_mux_data_out[31:0]} << (8 - shift_free_bytes)*8);
 
-always @(posedge clk or negedge rst_n)
+always @(posedge clk)
     if(!rst_n)              shift_register_bn <= 4'b0;
     else                    shift_register_bn <= shift_register_bn + ({3{fifo_mux_read}} & input_bytes_number) - ({3{fifo_out_write}} & output_bytes_number);
 

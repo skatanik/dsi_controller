@@ -41,11 +41,11 @@ wire [9:0]  fifo_wrusedw;
 reg fifo_line_ready_reg;
 reg fifo_not_full;
 
-always @(posedge clk_phy or negedge rst_phy_n)
+always @(posedge clk_phy)
     if(!rst_phy_n)  fifo_line_ready_reg <= 1'b0;
     else            fifo_line_ready_reg <= fifo_usedw >= (NOT_EMPTY_TRESHOLD >> 2);
 
-always @(posedge clk or negedge rst_n)
+always @(posedge clk)
     if(!rst_n)          fifo_not_full <= 1'b0;
     else                fifo_not_full <= fifo_wrusedw < (FIFO_DEPTH - 16);
 

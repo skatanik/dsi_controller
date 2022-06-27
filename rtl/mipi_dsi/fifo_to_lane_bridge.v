@@ -31,23 +31,23 @@ generate
     end
 endgenerate
 
-always @(posedge clk or negedge rst_n)
+always @(posedge clk)
     if(!rst_n)      fifo_empty_delayed <= 1'b0;
     else            fifo_empty_delayed <= fifo_empty;
 
 assign start_rqst = (fifo_empty_delayed ^ fifo_empty) & !fifo_empty & !state_active & data_rqst;
 
-always @(posedge clk or negedge rst_n)
+always @(posedge clk)
     if(!rst_n)                  state_active <= 1'b0;
     else if(start_rqst)         state_active <= 1'b1;
     else if(fin_rqst)           state_active <= 1'b0;
 
-always @(posedge clk or negedge rst_n)
+always @(posedge clk)
     if(!rst_n)                  mode_lp_reg <= 1'b0;
     else if(fifo_read)          mode_lp_reg <= mode_lp_in;
     else if(fin_rqst)           mode_lp_reg <= 1'b0;
 
-always @(posedge clk or negedge rst_n)
+always @(posedge clk)
     if(!rst_n)                                          middle_buffer <= 1'b0;
     else if(start_rqst)                                 middle_buffer <= fifo_data_inv;
     else if(!fifo_empty && data_rqst && state_active)   middle_buffer <= fifo_data_inv;

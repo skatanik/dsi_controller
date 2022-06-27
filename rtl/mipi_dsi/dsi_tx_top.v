@@ -518,7 +518,7 @@ assign dphy_clk_hs_out_n = 1'b0;
 assign dphy_clk_lp_out_p = clk_lp_enable ? clock_LP_p_output : 1'bZ;
 assign dphy_clk_lp_out_n = clk_lp_enable ? clock_LP_n_output : 1'bZ;
 
-`ifdef MODELING
+`ifdef SIMULATION
     assign dphy_clk_hs_out = clk_lvds_out;
 `endif
 
@@ -567,7 +567,7 @@ generate
         assign dphy_data_lp_out_p[i] = data_lp_enable[i] ? LP_p_output[i] : 1'bZ;
         assign dphy_data_lp_out_n[i] = data_lp_enable[i] ? LP_n_output[i] : 1'bZ;
 
-        `ifdef MODELING
+        `ifdef SIMULATION
             assign dphy_data_hs_out[i] = data_lvds_out[i];
         `endif
 
